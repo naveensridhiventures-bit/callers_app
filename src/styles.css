@@ -414,3 +414,32 @@ textarea { resize: vertical; margin-top: 10px; }
 .lead { flex-wrap: wrap; }
 .lead > .mv { flex: 1 0 100%; margin-top: 2px; }
 .lead > .mv button { padding: 10px 6px; }
+
+/* ---------- install banner, edit/delete, requests ---------- */
+.install { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 20px; background: #fff; box-shadow: var(--shadow); border: 1.5px solid rgba(34, 197, 94, .35); position: relative; text-align: left; width: min(380px, 100%); }
+.install.dark { background: rgba(255, 255, 255, .12); border-color: rgba(212, 232, 58, .5); color: #fff; backdrop-filter: blur(10px); }
+.install-ico { font-size: 26px; }
+.install-txt { flex: 1; min-width: 0; } .install-txt b { display: block; font-size: 13.5px; } .install-txt small { display: block; font-size: 11.5px; color: var(--muted); line-height: 1.4; margin-top: 1px; }
+.install.dark small { color: rgba(255, 255, 255, .75); }
+.install-btn { flex: none; padding: 9px 16px; border-radius: 14px; font-weight: 700; font-size: 13px; color: var(--g950); background: linear-gradient(180deg, #eaf870, var(--lime)); box-shadow: 0 4px 0 #7d9410; }
+.install-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #7d9410; }
+.install-x { position: absolute; top: 6px; right: 6px; color: var(--muted); padding: 4px; display: grid; }
+.install:has(.install-x) .install-btn { margin-right: 18px; }
+.dh-top { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
+.dh-top .tool { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px; border-radius: 14px; background: rgba(255, 255, 255, .18); color: #fff; font-size: 13px; font-weight: 600; }
+.dh-top .tool.del { background: rgba(239, 68, 68, .3); color: #fecaca; }
+.dh-top .tool:active { transform: scale(.95); }
+.dh-top .icon-btn { width: 38px; height: 38px; margin-left: auto; }
+.dh-top .tool.del + .icon-btn { margin-left: 0; }
+.dh-top { justify-content: flex-start; }
+.dh-top .icon-btn { margin-left: auto; }
+.del-panel { padding: 14px; border-radius: 20px; background: #fff; border: 1.5px solid #fecaca; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 8px; text-align: center; }
+.del-panel b { color: #b91c1c; } .del-panel p { color: var(--muted); font-size: 13px; }
+.del-panel textarea { margin-top: 2px; }
+.fill-banner.req { flex-direction: column; align-items: stretch; background: #fee2e2; color: #991b1b; }
+.fill-banner.req .row-btns button { padding: 8px 16px; border-radius: 12px; background: #dc2626; color: #fff; font-weight: 700; font-size: 13px; box-shadow: 0 3px 0 #7f1d1d; }
+.fill-banner.req .row-btns .keep { background: #fff; color: var(--g800); box-shadow: 0 3px 0 rgba(0, 0, 0, .15); }
+.tag.red { background: #fee2e2; color: #b91c1c; }
+.req-card { display: flex; flex-direction: column; gap: 10px; }
+.req-top { display: flex; align-items: center; gap: 12px; cursor: pointer; } .req-top small { display: block; color: var(--muted); font-size: 12px; }
+.req-note { font-size: 13px; color: var(--muted); line-height: 1.5; } .req-note b { color: var(--ink); }

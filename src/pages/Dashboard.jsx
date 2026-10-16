@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Counter, Icon, Ring, Tilt } from '../ui'
 import LeadCard from '../components/LeadCard'
+import InstallBanner from '../components/InstallBanner'
 import { CLOSED, OUTCOMES, STATUSES } from '../constants'
 import { bucket, greeting, sameDay } from '../utils'
 
@@ -56,6 +57,7 @@ export default function Dashboard() {
 
   return (
     <div className="page">
+      <InstallBanner dismissible />
       <Tilt className="hero" max={3}>
         <div className="orbs"><i /><i /><i /></div>
         <div className="hero-3d">

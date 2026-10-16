@@ -5,11 +5,11 @@ import { Avatar, Confetti, Icon, Segmented, Sheet, StatusPill } from '../ui'
 import { CLOSED, NUMBER_ONLY, NUMBER_OUTCOMES, OUTCOMES, PRIORITIES, QUICK_REMARKS, STATUSES } from '../constants'
 import {
   addHours, atDay, downloadICS, fmtDur, fmtWhen, fromLocalInput, gcalLink, gmailLink,
-  nameOf, suggestNext, telHref, toLocalInput, typeLabel, waHref,
+  nameOf, nowISO, suggestNext, telHref, toLocalInput, typeLabel, waHref,
 } from '../utils'
 
 export default function LeadDetail({ id, calling, onClose }) {
-  const { leads, logCall, removeLead, openForm, settings, toast, go, session, callers, assignMany, convertLead } = useApp()
+  const { leads, logCall, removeLead, saveLead, openForm, settings, toast, go, session, callers, assignMany, convertLead, scriptVersion } = useApp()
   const lead = leads.find((l) => l.id === id)
   const [tab, setTab] = useState('call')
   const [started, setStarted] = useState(calling ? Date.now() : null)
@@ -20,6 +20,8 @@ export default function LeadDetail({ id, calling, onClose }) {
   const [status, setStatus] = useState(lead?.status || 'New')
   const [next, setNext] = useState('')
   const [done, setDone] = useState(null)
+  const [delOpen, setDelOpen] = useState(false)
+  const [delNote, setDelNote] = useState('')
 
   useEffect(() => {
     if (!started) return
@@ -28,6 +30,8 @@ export default function LeadDetail({ id, calling, onClose }) {
   }, [started])
 
   if (!lead) return null
+  const isAdmin = session?.role === 'admin'
+  const pending = lead.delReq === '1'
   const secs = started ? Math.floor((Date.now() - started) / 1000) : 0
   const isNum = lead.type === 'number'
   const remarks = QUICK_REMARKS[lead.type] || QUICK_REMARKS.distributor
@@ -51,6 +55,15 @@ export default function LeadDetail({ id, calling, onClose }) {
     setStarted(null)
   }
 
+  const requestDelete = () => {
+    saveLead({ ...lead, delReq: '1', delReqBy: session?.name || settings.name || 'Caller', delReqAt: nowISO(), delReqNote: delNote.trim() })
+    setDelOpen(false); setDelNote('')
+    toast(scriptVersion && scriptVersion < 3 ? 'Saved here. Ask HR to update the Apps Script (v3) so the request reaches the admin.' : 'Delete request sent to admin ✓', scriptVersion && scriptVersion < 3 ? 'warn' : 'ok')
+  }
+  const cancelRequest = () => { saveLead({ ...lead, delReq: '', delReqBy: '', delReqAt: '', delReqNote: '' }); setDelOpen(false); toast('Delete request cancelled') }
+  const deleteNow = () => { removeLead(lead.id); onClose(); toast('Lead deleted') }
+  const keepLead = () => { saveLead({ ...lead, delReq: '', delReqBy: '', delReqAt: '', delReqNote: '' }); toast('Kept. Request rejected') }
+
   const reset = () => {
     setDone(null); setOutcome(''); setRemark(''); setNext(''); setStatus(lead.status); setTab('call')
   }
@@ -71,6 +84,11 @@ export default function LeadDetail({ id, calling, onClose }) {
   return (
     <Sheet onClose={onClose}>
       <div className="detail-head">
+        <div className="dh-top">
+          <button className="tool" onClick={() => { onClose(); setTimeout(() => openForm(lead), 250) }}><Icon name="edit" size={16} /> Edit</button>
+          <button className="tool del" onClick={() => setDelOpen((o) => !o)}><Icon name="trash" size={16} /> {isAdmin ? 'Delete' : pending ? 'Delete requested' : 'Request delete'}</button>
+          <button className="icon-btn light" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
+        </div>
         <div className="dh-row">
           <Avatar name={nameOf(lead)} size={56} icon={isNum || !lead.name} />
           <div className="dh-main">
@@ -78,7 +96,6 @@ export default function LeadDetail({ id, calling, onClose }) {
             <p>{isNum ? 'New number · who is this?' : `${lead.company ? `${lead.company} · ` : ''}${lead.area || 'Bengaluru'}`}</p>
             <div className="dh-tags">{!isNum && <StatusPill status={lead.status} />}<span className="tag light">{typeLabel(lead.type)}</span></div>
           </div>
-          <button className="icon-btn light" onClick={onClose}><Icon name="x" /></button>
         </div>
         <div className="dh-actions">
           <motion.a whileTap={{ scale: 0.94 }} className="act call" href={telHref(lead.phone)} onClick={() => { setStarted(Date.now()); setTab('call') }}>
@@ -93,6 +110,37 @@ export default function LeadDetail({ id, calling, onClose }) {
       </div>
 
       <div className="sheet-body tight">
+        {delOpen && (
+          <motion.div className="del-panel" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+            {isAdmin ? (
+              <>
+                <b>Delete {nameOf(lead)} permanently?</b>
+                <p>This removes the lead and its call history for everyone.</p>
+                <div className="done-actions"><button className="btn-soft" onClick={() => setDelOpen(false)}>Cancel</button><button className="btn-soft danger" onClick={deleteNow}><Icon name="trash" /> Delete</button></div>
+              </>
+            ) : pending ? (
+              <>
+                <b>Delete request already sent</b>
+                <p>Waiting for the admin to approve or reject.{lead.delReqNote ? ` Your note: “${lead.delReqNote}”` : ''}</p>
+                <div className="done-actions"><button className="btn-soft" onClick={() => setDelOpen(false)}>Close</button><button className="btn-soft danger" onClick={cancelRequest}>Cancel request</button></div>
+              </>
+            ) : (
+              <>
+                <b>Request delete</b>
+                <p>The admin will review it and delete the lead if approved.</p>
+                <textarea rows={2} value={delNote} onChange={(e) => setDelNote(e.target.value)} placeholder="Why should it be deleted? (wrong number, duplicate…)" />
+                <div className="done-actions"><button className="btn-soft" onClick={() => setDelOpen(false)}>Cancel</button><button className="btn3d" onClick={requestDelete}>Send to admin</button></div>
+              </>
+            )}
+          </motion.div>
+        )}
+        {isAdmin && pending && !delOpen && (
+          <div className="fill-banner req">
+            <span>🗑 {lead.delReqBy || 'A caller'} asked to delete this lead{lead.delReqNote ? `: “${lead.delReqNote}”` : ''}</span>
+            <div className="row-btns"><button onClick={deleteNow}>Approve</button><button className="keep" onClick={keepLead}>Keep</button></div>
+          </div>
+        )}
+        {!isAdmin && pending && !delOpen && <div className="fill-banner"><span>🗑 Delete request sent. Waiting for admin.</span></div>}
         <Segmented id="ld-tab" value={tab} onChange={setTab}
           options={[{ value: 'call', label: '📞 Log call' }, { value: 'history', label: `🕘 History (${lead.calls?.length || 0})` }, { value: 'info', label: 'ℹ️ Info' }]} />
 
@@ -235,7 +283,6 @@ export default function LeadDetail({ id, calling, onClose }) {
               )}
               <div className="done-actions">
                 <button className="btn-soft" onClick={() => { onClose(); setTimeout(() => openForm(lead), 250) }}><Icon name="edit" /> Edit</button>
-                {session?.role !== 'caller' && <button className="btn-soft danger" onClick={() => { if (confirm(`Delete ${nameOf(lead)}?`)) { removeLead(lead.id); onClose(); toast('Lead deleted') } }}><Icon name="trash" /> Delete</button>}
                 <button className="btn-soft" onClick={() => { onClose(); go('more', 'scripts') }}><Icon name="book" /> Scripts</button>
               </div>
             </motion.div>

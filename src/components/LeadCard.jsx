@@ -39,6 +39,7 @@ export default function LeadCard({ lead, i = 0 }) {
         <div className="lead-meta">
           {isNum ? <span className="tag num">📞 Number</span> : <StatusPill status={lead.status} />}
           {lead.type === 'sales' && <span className="tag">Sales</span>}
+          {lead.delReq === '1' && <span className="tag red">🗑 Delete requested</span>}
           {session?.role === 'admin' && <span className={`tag ${lead.assignedTo ? '' : 'amber'}`}>👤 {lead.assignedTo ? callers.find((c) => c.id === lead.assignedTo)?.name || lead.assignedName || '—' : 'Unassigned'}</span>}
           {lead.nextFollowUp && !closed && (
             <span className={`due ${k}`}><Icon name="clock" size={12} />{fmtWhen(lead.nextFollowUp)}</span>

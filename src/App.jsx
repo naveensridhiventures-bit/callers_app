@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AppProvider, useApp } from './store'
 import { Icon } from './ui'
-import Login, { AdminPrompt } from './components/Login'
+import Login from './components/Login'
+import ControlLogin from './components/ControlLogin'
 import Splash from './components/Splash'
 import LeadForm from './components/LeadForm'
 import LeadDetail from './components/LeadDetail'
@@ -23,15 +24,7 @@ const TABS = [
 ]
 
 function Shell() {
-  const { page, go, sheet, closeSheet, openForm, leads, toasts, sync, session, gate, openLead, toast } = useApp()
-  const [adminAsk, setAdminAsk] = useState(false)
-  const logoTaps = useRef({ n: 0, t: null })
-  const logoTap = () => {
-    clearTimeout(logoTaps.current.t)
-    logoTaps.current.n += 1
-    if (logoTaps.current.n >= 5) { logoTaps.current.n = 0; setAdminAsk(true) }
-    else logoTaps.current.t = setTimeout(() => (logoTaps.current.n = 0), 1800)
-  }
+  const { route, page, go, sheet, closeSheet, openForm, leads, allLeads, toasts, sync, session, gate, openLead, toast } = useApp()
   const Page = PAGES[page]
   const notified = useRef(new Set(JSON.parse(localStorage.getItem('sridhi.notified') || '[]')))
 
@@ -49,7 +42,7 @@ function Shell() {
         toast(`⏰ Call ${nameOf(l)} now (${fmtTime(l.nextFollowUp)})`, 'warn')
         navigator.vibrate?.([120, 60, 120])
         if ('Notification' in window && Notification.permission === 'granted') {
-          const n = new Notification('Follow-up due', { body: `${nameOf(l)} · ${l.area || 'Bengaluru'}\n${l.lastRemark || ''}`, icon: '/icon.svg' })
+          const n = new Notification('Follow-up due', { body: `${nameOf(l)} · ${l.area || 'Bengaluru'}\n${l.lastRemark || ''}`, icon: '/icon-192.png' })
           n.onclick = () => { window.focus(); openLead(l.id) }
         }
       })
@@ -59,14 +52,21 @@ function Shell() {
     return () => clearInterval(t)
   }, [leads, toast, openLead])
 
+  /* already signed in as admin and opened /control: go straight to the admin panel */
+  useEffect(() => {
+    if (route === 'control' && session?.role === 'admin') go('more', 'admin')
+  }, [route, session, go])
+
+  if (route === 'control') return <ControlLogin />
   if (gate !== 'ready') return <Login />
 
   const due = leads.filter((l) => ['overdue', 'today'].includes(bucket(l))).length
+  const formLead = sheet?.type === 'form' && sheet.leadId ? allLeads.find((l) => l.id === sheet.leadId) || null : null
 
   return (
     <div className="app">
       <header className="top">
-        <div className="brand" onClick={logoTap}><i>S</i><b>Sridhi <span>Caller</span></b></div>
+        <div className="brand"><i>S</i><b>Sridhi <span>Caller</span></b></div>
         <div className="top-r">
           {session && <span className="who">{session.role === 'admin' ? '🛡' : '👤'} {session.name.split(' ')[0]}</span>}
           <span className={`sync ${sync.state}`} title={sync.msg || 'Google Sheets auto-sync'} onClick={() => go('more', 'settings')}>
@@ -102,8 +102,7 @@ function Shell() {
       </nav>
 
       <AnimatePresence>
-        {adminAsk && <AdminPrompt key="admin" onClose={() => setAdminAsk(false)} />}
-        {sheet?.type === 'form' && <LeadForm key="form" lead={sheet.lead} preset={sheet.preset} onClose={closeSheet} />}
+        {sheet?.type === 'form' && <LeadForm key="form" lead={formLead} preset={sheet.preset} onClose={closeSheet} />}
         {sheet?.type === 'detail' && <LeadDetail key={`d-${sheet.id}`} id={sheet.id} calling={sheet.calling} onClose={closeSheet} />}
       </AnimatePresence>
 

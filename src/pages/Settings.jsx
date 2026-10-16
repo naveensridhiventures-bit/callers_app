@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useApp } from '../store'
 import { Icon } from '../ui'
+import InstallBanner from '../components/InstallBanner'
 import { fmtTime, parseCSV, rowsToLeads } from '../utils'
 import script from '../../apps-script/Code.gs?raw'
 
@@ -36,6 +37,7 @@ export default function Settings() {
 
   return (
     <div className="sub">
+      <InstallBanner />
       {session && (
         <section className="card form">
           <h3>{session.role === 'admin' ? '🛡 HR admin' : `👤 ${session.name}`}</h3>

@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Avatar, Counter, Icon, Segmented, StatusPill } from '../ui'
 import { STATUSES, OUTCOMES } from '../constants'
-import { nameOf, nowISO, parseCSV, rowsToLeads, sameDay, uid } from '../utils'
+import { fmtWhen, nameOf, nowISO, parseCSV, rowsToLeads, sameDay, uid } from '../utils'
 
 const rndPin = () => String(Math.floor(1000 + Math.random() * 9000))
 
@@ -281,19 +281,46 @@ function Team() {
   )
 }
 
+/* ---------------- Delete requests ---------------- */
+function Requests() {
+  const { allLeads, removeLead, saveLead, openLead, toast } = useApp()
+  const list = allLeads.filter((l) => l.delReq === '1')
+  return (
+    <div className="sub">
+      <AnimatePresence initial={false}>
+        {list.map((l) => (
+          <motion.div key={l.id} layout className="card req-card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -40 }}>
+            <div className="req-top" onClick={() => openLead(l.id)}>
+              <Avatar name={nameOf(l)} icon={l.type === 'number' || !l.name} size={42} />
+              <div><b>{nameOf(l)}</b><small>{l.phone} · {l.area || 'Bengaluru'}</small></div>
+            </div>
+            <p className="req-note">Requested by <b>{l.delReqBy || 'caller'}</b>{l.delReqAt ? ` · ${fmtWhen(l.delReqAt)}` : ''}{l.delReqNote ? <><br />“{l.delReqNote}”</> : null}</p>
+            <div className="done-actions" style={{ justifyContent: 'flex-start' }}>
+              <button className="btn-soft danger" onClick={() => { removeLead(l.id); toast('Lead deleted') }}><Icon name="trash" /> Approve &amp; delete</button>
+              <button className="btn-soft" onClick={() => { saveLead({ ...l, delReq: '', delReqBy: '', delReqAt: '', delReqNote: '' }); toast('Request rejected, lead kept') }}>Keep lead</button>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+      {!list.length && <div className="card empty"><div className="empty-ico">✅</div><h3>No delete requests</h3><p>When a caller asks to delete a lead, it shows up here for your approval.</p></div>}
+    </div>
+  )
+}
+
 /* ---------------- page ---------------- */
 export default function Admin() {
-  const { session, logout, scriptVersion } = useApp()
+  const { session, logout, scriptVersion, allLeads } = useApp()
+  const reqCount = allLeads.filter((l) => l.delReq === '1').length
   const [tab, setTab] = useState('callers')
   if (session?.role !== 'admin') return <div className="card empty"><h3>Admin only</h3></div>
-  const C = { callers: Callers, assign: Assign, team: Team }[tab]
+  const C = { callers: Callers, assign: Assign, team: Team, requests: Requests }[tab]
   return (
     <div className="sub">
       <div className="admin-bar">
-        <span>🛡 HR admin mode{scriptVersion && scriptVersion < 2 ? ' · script v1' : ''}</span>
+        <span>🛡 HR admin mode{scriptVersion && scriptVersion < 3 ? ` · script v${scriptVersion} (update to v3)` : ''}</span>
         <button className="btn-soft sm" onClick={logout}>Exit admin</button>
       </div>
-      <Segmented id="adm-tab" value={tab} onChange={setTab} options={[{ value: 'callers', label: '👥 Callers' }, { value: 'assign', label: '📤 Assign' }, { value: 'team', label: '📊 Team' }]} />
+      <Segmented id="adm-tab" value={tab} onChange={setTab} options={[{ value: 'callers', label: '👥 Callers' }, { value: 'assign', label: '📤 Assign' }, { value: 'team', label: '📊 Team' }, { value: 'requests', label: `🗑 Requests${reqCount ? ` (${reqCount})` : ''}` }]} />
       <motion.div key={tab} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}><C /></motion.div>
     </div>
   )

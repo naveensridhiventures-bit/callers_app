@@ -1,5 +1,5 @@
 /**
- * SRIDHI CALLER APP - Google Sheets backend  (version 2)
+ * SRIDHI CALLER APP - Google Sheets backend  (version 3)
  * ------------------------------------------------------
  * Paste this whole file into the Apps Script of your Google Sheet
  * (Extensions -> Apps Script), Save, then:
@@ -10,17 +10,17 @@
  * Tabs "Leads", "Calls" and "Callers" are created automatically, and new columns are
  * added automatically when the app needs them. Nothing to set up by hand.
  *
- * CHANGE ADMIN_PIN below. It is the hidden HR admin password (tap the Sridhi logo 5 times in the app).
+ * CHANGE ADMIN_PIN below. It is the HR admin password, asked at  yoursite.com/control
  */
 const ADMIN_PIN = 'hr@sridhi'
 const SECRET = '' // optional extra key; if you set it, enter the same in the app (Settings -> Advanced)
-const VERSION = 2
+const VERSION = 3
 
 const LEAD_HEADERS = [
   'id', 'type', 'name', 'phone', 'altPhone', 'email', 'company', 'bizType', 'area', 'city',
   'source', 'status', 'priority', 'assignedTo', 'assignedName', 'investment', 'vehicle', 'coldStorage',
   'experience', 'dailyQty', 'notes', 'nextFollowUp', 'lastCall', 'lastOutcome', 'lastRemark',
-  'callCount', 'createdAt', 'updatedAt', 'callsJson',
+  'callCount', 'createdAt', 'updatedAt', 'delReq', 'delReqBy', 'delReqAt', 'delReqNote', 'callsJson',
 ]
 const CALL_HEADERS = ['at', 'leadId', 'name', 'phone', 'outcome', 'remark', 'next', 'by', 'duration']
 const CALLER_HEADERS = ['id', 'name', 'pin', 'active', 'createdAt']

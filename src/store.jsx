@@ -14,6 +14,10 @@ const load = (k, d) => {
   }
 }
 
+const initialRoute = () => (location.pathname.replace(/\/+$/, '').toLowerCase() === '/control' ? 'control' : 'app')
+const pathFor = (r) => (r === 'control' ? '/control' : '/')
+let navInited = false
+
 const rpc = async (url, body) => {
   const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) })
   return r.json()
@@ -40,6 +44,7 @@ export function AppProvider({ children }) {
   const [loginList, setLoginList] = useState([])
   const [loginErr, setLoginErr] = useState('')
   const [gateTry, setGateTry] = useState(0)
+  const [route, setRoute] = useState(initialRoute)
   const [page, setPage] = useState('home')
   const [sub, setSub] = useState('reports')
   const [sheet, setSheet] = useState(null)
@@ -57,6 +62,8 @@ export function AppProvider({ children }) {
   const settingsRef = useRef(rawSettings); settingsRef.current = rawSettings
   const sessionRef = useRef(session); sessionRef.current = session
   const syncing = useRef(false)
+  const reqSeen = useRef(null)
+  const navRef = useRef({ route: initialRoute(), page: 'home', sub: 'reports', sheet: null })
 
   useEffect(() => localStorage.setItem('sridhi.leads', JSON.stringify(allLeads)), [allLeads])
   useEffect(() => localStorage.setItem('sridhi.callers', JSON.stringify(callers)), [callers])
@@ -72,14 +79,62 @@ export function AppProvider({ children }) {
     setToasts((t) => [...t, { id, msg, type }])
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3800)
   }, [])
+  /* ---------- navigation that behaves like a real app (back = previous page / close sheet) ---------- */
+  const pushNav = (patch, replace = false) => {
+    const next = { ...navRef.current, ...patch }
+    navRef.current = next
+    const st = { app: 1, ...next }
+    if (replace) window.history.replaceState(st, '', pathFor(next.route))
+    else window.history.pushState(st, '', pathFor(next.route))
+  }
   const go = useCallback((p, s) => {
-    setPage(p)
-    if (s) setSub(s)
+    const cur = navRef.current
+    const nsub = s || cur.sub
     window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (cur.route === 'app' && p === cur.page && nsub === cur.sub && !cur.sheet) return
+    pushNav({ route: 'app', page: p, sub: nsub, sheet: null }, cur.route === 'app' && p === cur.page && !cur.sheet)
+    setRoute('app'); setPage(p); setSub(nsub); setSheet(null)
   }, [])
-  const openLead = useCallback((id, opts = {}) => setSheet({ type: 'detail', id, ...opts }), [])
-  const openForm = useCallback((lead = null, preset = {}) => setSheet({ type: 'form', lead, preset }), [])
-  const closeSheet = useCallback(() => setSheet(null), [])
+  const openLead = useCallback((id, opts = {}) => {
+    const sh = { type: 'detail', id, ...opts }
+    pushNav({ sheet: sh }, !!navRef.current.sheet)
+    setSheet(sh)
+  }, [])
+  const openForm = useCallback((lead = null, preset = {}) => {
+    const sh = { type: 'form', leadId: lead?.id || null, preset }
+    pushNav({ sheet: sh }, !!navRef.current.sheet)
+    setSheet(sh)
+  }, [])
+  const closeSheet = useCallback(() => {
+    if (navRef.current.sheet) window.history.back()
+    else setSheet(null)
+  }, [])
+
+  useEffect(() => {
+    if (navInited) return
+    navInited = true
+    const r = initialRoute()
+    window.history.replaceState({ root: true }, '', pathFor(r))
+    navRef.current = { route: r, page: 'home', sub: 'reports', sheet: null }
+    window.history.pushState({ app: 1, ...navRef.current }, '', pathFor(r))
+    let lastExit = 0
+    const onPop = (e) => {
+      const st = e.state
+      if (st?.root) {
+        // bottom of the stack: first back asks, second back really leaves
+        if (Date.now() - lastExit < 2000) { window.history.back(); return }
+        lastExit = Date.now()
+        toast('Press back again to exit')
+        window.history.pushState({ app: 1, ...navRef.current }, '', pathFor(navRef.current.route))
+        return
+      }
+      if (st?.app) {
+        navRef.current = { route: st.route, page: st.page, sub: st.sub, sheet: st.sheet || null }
+        setRoute(st.route); setPage(st.page); setSub(st.sub); setSheet(st.sheet || null)
+      }
+    }
+    window.addEventListener('popstate', onPop)
+  }, [toast])
 
   /* ---------- Google Sheets transport ---------- */
   const authPayload = () => {
@@ -150,6 +205,11 @@ export function AppProvider({ children }) {
       })
       const merged = [...map.values()].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
       setLeads(merged)
+      const reqCount = merged.filter((l) => l.delReq === '1').length
+      if (sessionRef.current?.role === 'admin' && reqSeen.current !== null && reqCount > reqSeen.current) {
+        toast(`🗑 ${reqCount} delete request${reqCount > 1 ? 's' : ''} waiting for you`, 'warn')
+      }
+      reqSeen.current = reqCount
 
       const toPush = merged.filter((l) => l._synced !== true)
       for (let i = 0; i < toPush.length; i += 200) {
@@ -247,12 +307,17 @@ export function AppProvider({ children }) {
   }, [])
 
   const logout = useCallback(async () => {
+    const wasAdmin = sessionRef.current?.role === 'admin'
     await syncNow()
     setLeads([])
     setCallers([])
     setSession(null)
-    setPage('home')
-  }, [syncNow])
+    setSheet(null)
+    if (wasAdmin) {
+      pushNav({ route: 'control', page: 'home', sheet: null })
+      setRoute('control'); setPage('home')
+    } else go('home')
+  }, [syncNow, go])
 
   /* ---------- lead actions ---------- */
   const saveLead = useCallback(
@@ -398,7 +463,7 @@ export function AppProvider({ children }) {
   const value = {
     leads, allLeads, callers, settings, setSettings, sync, syncNow, scriptVersion,
     session, gate, loginList, loginErr, retryGate: () => setGateTry((n) => n + 1), login, adminLogin, logout,
-    page, sub, go, sheet, openLead, openForm, closeSheet,
+    route, page, sub, go, sheet, openLead, openForm, closeSheet,
     filter, setFilter, toasts, toast,
     saveLead, addLead, logCall, convertLead, snooze, removeLead, importLeads, clearAll, loadSample,
     assignMany, saveCaller, deleteCaller,
