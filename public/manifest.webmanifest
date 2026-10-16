@@ -1,0 +1,10 @@
+{
+  "name": "Sridhi Caller",
+  "short_name": "Sridhi Caller",
+  "description": "Distributor hiring & sales follow-up app",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#06301a",
+  "theme_color": "#0a4a25",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
