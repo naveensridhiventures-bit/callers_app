@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AppProvider, useApp } from './store'
 import { Icon } from './ui'
+import Login, { AdminPrompt } from './components/Login'
 import Splash from './components/Splash'
 import LeadForm from './components/LeadForm'
 import LeadDetail from './components/LeadDetail'
@@ -10,7 +11,7 @@ import Leads from './pages/Leads'
 import Followups from './pages/Followups'
 import CallMode from './pages/CallMode'
 import More from './pages/More'
-import { bucket, fmtTime } from './utils'
+import { bucket, fmtTime, nameOf } from './utils'
 
 const PAGES = { home: Dashboard, leads: Leads, call: CallMode, follow: Followups, more: More }
 const TABS = [
@@ -22,7 +23,15 @@ const TABS = [
 ]
 
 function Shell() {
-  const { page, go, sheet, closeSheet, openForm, leads, toasts, sync, settings, openLead, toast } = useApp()
+  const { page, go, sheet, closeSheet, openForm, leads, toasts, sync, session, gate, openLead, toast } = useApp()
+  const [adminAsk, setAdminAsk] = useState(false)
+  const logoTaps = useRef({ n: 0, t: null })
+  const logoTap = () => {
+    clearTimeout(logoTaps.current.t)
+    logoTaps.current.n += 1
+    if (logoTaps.current.n >= 5) { logoTaps.current.n = 0; setAdminAsk(true) }
+    else logoTaps.current.t = setTimeout(() => (logoTaps.current.n = 0), 1800)
+  }
   const Page = PAGES[page]
   const notified = useRef(new Set(JSON.parse(localStorage.getItem('sridhi.notified') || '[]')))
 
@@ -37,10 +46,10 @@ function Shell() {
         if (t > now || now - t > 6 * 3600e3 || notified.current.has(key)) return
         notified.current.add(key)
         localStorage.setItem('sridhi.notified', JSON.stringify([...notified.current].slice(-300)))
-        toast(`⏰ Call ${l.name} now (${fmtTime(l.nextFollowUp)})`, 'warn')
+        toast(`⏰ Call ${nameOf(l)} now (${fmtTime(l.nextFollowUp)})`, 'warn')
         navigator.vibrate?.([120, 60, 120])
         if ('Notification' in window && Notification.permission === 'granted') {
-          const n = new Notification('Follow-up due', { body: `${l.name} · ${l.area || 'Bengaluru'}\n${l.lastRemark || ''}`, icon: '/icon.svg' })
+          const n = new Notification('Follow-up due', { body: `${nameOf(l)} · ${l.area || 'Bengaluru'}\n${l.lastRemark || ''}`, icon: '/icon.svg' })
           n.onclick = () => { window.focus(); openLead(l.id) }
         }
       })
@@ -50,15 +59,18 @@ function Shell() {
     return () => clearInterval(t)
   }, [leads, toast, openLead])
 
+  if (gate !== 'ready') return <Login />
+
   const due = leads.filter((l) => ['overdue', 'today'].includes(bucket(l))).length
 
   return (
     <div className="app">
       <header className="top">
-        <div className="brand"><i>S</i><b>Sridhi <span>Caller</span></b></div>
+        <div className="brand" onClick={logoTap}><i>S</i><b>Sridhi <span>Caller</span></b></div>
         <div className="top-r">
-          <span className={`sync ${sync.state}`} title={sync.msg || 'Google Sheets sync'} onClick={() => go('more', 'settings')}>
-            <Icon name="cloud" size={16} />{sync.state === 'syncing' ? <em className="spin" /> : settings.sheetUrl ? '' : <small>local</small>}
+          {session && <span className="who">{session.role === 'admin' ? '🛡' : '👤'} {session.name.split(' ')[0]}</span>}
+          <span className={`sync ${sync.state}`} title={sync.msg || 'Google Sheets auto-sync'} onClick={() => go('more', 'settings')}>
+            <Icon name="cloud" size={16} />{sync.state === 'syncing' ? <em className="spin" /> : null}
           </span>
           <button className="icon-btn" onClick={() => go('more', 'settings')} aria-label="Settings"><Icon name="gear" size={20} /></button>
         </div>
@@ -90,6 +102,7 @@ function Shell() {
       </nav>
 
       <AnimatePresence>
+        {adminAsk && <AdminPrompt key="admin" onClose={() => setAdminAsk(false)} />}
         {sheet?.type === 'form' && <LeadForm key="form" lead={sheet.lead} preset={sheet.preset} onClose={closeSheet} />}
         {sheet?.type === 'detail' && <LeadDetail key={`d-${sheet.id}`} id={sheet.id} calling={sheet.calling} onClose={closeSheet} />}
       </AnimatePresence>

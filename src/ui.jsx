@@ -110,11 +110,11 @@ const GRADS = [
   ['#16a34a', '#065f46'], ['#0ea5e9', '#1e3a8a'], ['#f59e0b', '#b45309'],
   ['#8b5cf6', '#4c1d95'], ['#ec4899', '#9d174d'], ['#14b8a6', '#0f766e'],
 ]
-export function Avatar({ name = '?', size = 46 }) {
+export function Avatar({ name = '?', size = 46, icon = false }) {
   const g = useMemo(() => GRADS[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % GRADS.length], [name])
   return (
     <div className="avatar" style={{ width: size, height: size, fontSize: size * 0.4, background: `linear-gradient(135deg, ${g[0]}, ${g[1]})` }}>
-      {name.trim().charAt(0).toUpperCase()}
+      {icon ? '📞' : name.trim().charAt(0).toUpperCase()}
     </div>
   )
 }
@@ -182,6 +182,31 @@ export function Confetti() {
           transition={{ duration: 1.9, ease: 'easeOut' }}
         />
       ))}
+    </div>
+  )
+}
+
+/* ---------- PIN keypad ---------- */
+export function PinPad({ value, onChange, len = 4, disabled }) {
+  const press = (k) => {
+    if (disabled) return
+    if (k === '⌫') return onChange(value.slice(0, -1))
+    if (value.length < len) onChange(value + k)
+  }
+  return (
+    <div className="pinpad">
+      <div className="pin-dots">
+        {Array.from({ length: len }).map((_, i) => (
+          <motion.i key={i} className={i < value.length ? 'on' : ''} animate={{ scale: i === value.length - 1 ? [1, 1.35, 1] : 1 }} />
+        ))}
+      </div>
+      <div className="keys">
+        {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map((k, i) =>
+          k === '' ? <span key={i} /> : (
+            <motion.button key={i} type="button" whileTap={{ scale: 0.88, y: 3 }} onClick={() => press(k)}>{k}</motion.button>
+          )
+        )}
+      </div>
     </div>
   )
 }

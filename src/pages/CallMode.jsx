@@ -2,12 +2,13 @@ import { useMemo, useState } from 'react'
 import { AnimatePresence, motion, useMotionValue, useTransform } from 'framer-motion'
 import { useApp } from '../store'
 import { Avatar, Confetti, Icon, StatusPill } from '../ui'
-import { bucket, fmtWhen, suggestNext, telHref } from '../utils'
+import { bucket, fmtWhen, nameOf, suggestNext, telHref } from '../utils'
 import { OUTCOMES } from '../constants'
 
-const QUICK = ['Not Answered', 'Busy', 'Wrong Number']
 
-function TopCard({ lead, onSkip, onOpen, quick }) {
+function TopCard({ lead, onSkip, onOpen, quick, onMove }) {
+  const isNum = lead.type === 'number'
+  const quickIds = isNum ? ['No Response', 'Switched Off', 'Not Reachable'] : ['Not Answered', 'Busy', 'Wrong Number']
   const x = useMotionValue(0)
   const rot = useTransform(x, [-200, 200], [-14, 14])
   const hintL = useTransform(x, [-120, -30], [1, 0])
@@ -27,11 +28,11 @@ function TopCard({ lead, onSkip, onOpen, quick }) {
     >
       <motion.span className="swipe-hint l" style={{ opacity: hintL }}>SKIP</motion.span>
       <motion.span className="swipe-hint r" style={{ opacity: hintR }}>CALL</motion.span>
-      <Avatar name={lead.name} size={76} />
-      <h2>{lead.name}</h2>
-      <p>{lead.company ? `${lead.company} · ` : ''}{lead.area || 'Bengaluru'}</p>
+      <Avatar name={nameOf(lead)} size={76} icon={isNum} />
+      <h2>{isNum ? 'New number' : lead.name || lead.phone}</h2>
+      <p>{isNum ? 'Call it. Who picks up?' : `${lead.company ? `${lead.company} · ` : ''}${lead.area || 'Bengaluru'}`}</p>
       <div className="cm-tags">
-        <StatusPill status={lead.status} />
+        {isNum ? <span className="tag num">📞 Number</span> : <StatusPill status={lead.status} />}
         {lead.priority === 'Hot' && <span className="tag">🔥 Hot</span>}
         {lead.type === 'sales' && <span className="tag">Sales</span>}
         {lead.nextFollowUp && <span className={`due ${k}`}><Icon name="clock" size={12} />{fmtWhen(lead.nextFollowUp)}</span>}
@@ -41,8 +42,14 @@ function TopCard({ lead, onSkip, onOpen, quick }) {
       <motion.a whileTap={{ scale: 0.93, y: 4 }} className="btn3d call-big" href={telHref(lead.phone)} onClick={() => onOpen(true)}>
         <Icon name="phone" size={24} /> Call now
       </motion.a>
+      {isNum && (
+        <div className="mv big" style={{ width: '100%' }}>
+          <button onClick={() => onMove('distributor')}>🤝 Distributor lead</button>
+          <button onClick={() => onMove('sales')}>🛒 Sales lead</button>
+        </div>
+      )}
       <div className="cm-quick">
-        {QUICK.map((id) => (
+        {quickIds.map((id) => (
           <button key={id} onClick={() => quick(lead, id)}>
             <em>{OUTCOMES.find((o) => o.id === id).icon}</em>{id}
           </button>
@@ -54,7 +61,7 @@ function TopCard({ lead, onSkip, onOpen, quick }) {
 }
 
 export default function CallMode() {
-  const { leads, openLead, logCall, toast, go } = useApp()
+  const { leads, openLead, logCall, toast, go, convertLead } = useApp()
   const [handled, setHandled] = useState([])
 
   const queue = useMemo(() => {
@@ -72,6 +79,7 @@ export default function CallMode() {
     toast(`${outcome} logged${next ? ` · retry ${fmtWhen(next)}` : ''}`)
     handle(lead.id)
   }
+  const move = (lead, type) => { convertLead(lead, type); openLead(lead.id, { moved: true }); handle(lead.id) }
   const open = (lead, calling) => { openLead(lead.id, { calling }); handle(lead.id) }
 
   return (
@@ -87,7 +95,7 @@ export default function CallMode() {
         ))}
         <AnimatePresence mode="popLayout">
           {current ? (
-            <TopCard key={current.id} lead={current} onSkip={() => handle(current.id)} onOpen={(calling) => open(current, calling)} quick={quick} />
+            <TopCard key={current.id} lead={current} onSkip={() => handle(current.id)} onOpen={(calling) => open(current, calling)} quick={quick} onMove={(t) => move(current, t)} />
           ) : (
             <motion.div key="done" className="cm-card top allclear" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}>
               <Confetti />

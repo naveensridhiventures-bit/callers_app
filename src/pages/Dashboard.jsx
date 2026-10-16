@@ -26,7 +26,7 @@ function Stat({ emoji, label, value, hint, color, action }) {
 }
 
 export default function Dashboard() {
-  const { leads, settings, go, openForm, openLead, setFilter, loadSample } = useApp()
+  const { leads, settings, go, openForm, setFilter, loadSample, session } = useApp()
 
   const s = useMemo(() => {
     const now = new Date()
@@ -80,7 +80,16 @@ export default function Dashboard() {
         </div>
       </Tilt>
 
-      {leads.length === 0 && (
+      {leads.length === 0 && session?.role === 'caller' && (
+        <motion.div className="card empty" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="empty-ico">📭</div>
+          <h3>No numbers assigned yet</h3>
+          <p>HR will assign numbers to you. They appear here automatically. You'll get a pop-up when new ones arrive.</p>
+          <button className="btn-soft" onClick={() => openForm()}><Icon name="plus" /> Add a lead yourself</button>
+        </motion.div>
+      )}
+
+      {leads.length === 0 && session?.role !== 'caller' && (
         <motion.div className="card empty" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="empty-ico">🌿</div>
           <h3>Welcome to Sridhi Caller</h3>

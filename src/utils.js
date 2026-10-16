@@ -2,6 +2,10 @@ import { CLOSED } from './constants'
 
 const pad = (n) => String(n).padStart(2, '0')
 
+/** a bare number has no name yet, so show the phone instead */
+export const nameOf = (l) => l.name || l.phone || 'Unknown'
+export const typeLabel = (t) => (t === 'sales' ? 'Sales' : t === 'number' ? 'Number' : 'Distributor')
+
 export const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4)
 export const nowISO = () => new Date().toISOString()
 
@@ -64,7 +68,10 @@ export function bucket(lead) {
 export function suggestNext(outcome) {
   const h = new Date().getHours()
   switch (outcome) {
-    case 'Not Answered': return h < 17 ? addHours(3) : atDay(1, 10)
+    case 'Not Answered':
+    case 'No Response':
+    case 'Switched Off':
+    case 'Not Reachable': return h < 17 ? addHours(3) : atDay(1, 10)
     case 'Busy': return h < 18 ? addHours(1.5) : atDay(1, 10)
     case 'Call Back Later':
     case 'Interested':
@@ -82,7 +89,7 @@ function eventFor(lead) {
   const start = new Date(lead.nextFollowUp)
   const end = new Date(start.getTime() + 15 * 60000)
   return {
-    title: `📞 Call ${lead.name} (${lead.type === 'distributor' ? 'Distributor' : 'Sales'}) - Sridhi`,
+    title: `📞 Call ${nameOf(lead)} (${typeLabel(lead.type)}) - Sridhi`,
     details: `Phone: ${lead.phone}\nArea: ${lead.area || ''}\nStatus: ${lead.status}\nLast remark: ${lead.lastRemark || '-'}`,
     start,
     end,
@@ -102,12 +109,12 @@ export function gcalLink(lead) {
 
 export function gmailLink(lead, email) {
   const body =
-    `Follow-up reminder\n\nLead: ${lead.name}\nPhone: ${lead.phone}\nWhen: ${fmtWhen(lead.nextFollowUp)}\n` +
+    `Follow-up reminder\n\nLead: ${nameOf(lead)}\nPhone: ${lead.phone}\nWhen: ${fmtWhen(lead.nextFollowUp)}\n` +
     `Area: ${lead.area || '-'}\nLast remark: ${lead.lastRemark || '-'}\n\n- Sridhi Caller App`
   return (
     'https://mail.google.com/mail/?view=cm&fs=1' +
     `&to=${encodeURIComponent(email || '')}` +
-    `&su=${encodeURIComponent(`Reminder: call ${lead.name} - ${fmtWhen(lead.nextFollowUp)}`)}` +
+    `&su=${encodeURIComponent(`Reminder: call ${nameOf(lead)} - ${fmtWhen(lead.nextFollowUp)}`)}` +
     `&body=${encodeURIComponent(body)}`
   )
 }
@@ -201,21 +208,27 @@ export function rowsToLeads(rows) {
   })
   let body = rows.slice(1)
   if (idx.name == null && idx.phone == null) {
-    // no header row - assume order: name, phone, area, company
-    Object.assign(idx, { name: 0, phone: 1, area: 2, company: 3 })
+    // no header row: find the phone column; a lone column of numbers becomes bare "number" leads
     body = rows
+    const pc = rows[0].findIndex((c) => String(c).replace(/\D/g, '').length >= 10)
+    idx.phone = pc >= 0 ? pc : 1
+    const other = rows[0].map((_, i) => i).filter((i) => i !== idx.phone)
+    if (other[0] != null) idx.name = other[0]
+    if (other[1] != null) idx.area = other[1]
+    if (other[2] != null) idx.company = other[2]
   }
   const now = nowISO()
   return body
     .map((r) => {
       const g = (k) => (idx[k] != null ? (r[idx[k]] || '').trim() : '')
       const t = g('type').toLowerCase()
+      const nm = g('name') || g('company')
       return {
         id: uid(),
-        type: t.startsWith('s') ? 'sales' : 'distributor',
-        name: g('name'),
+        type: !nm || t.startsWith('n') ? 'number' : t.startsWith('s') ? 'sales' : 'distributor',
+        name: nm,
         phone: cleanPhone(g('phone')),
-        company: g('company'),
+        company: g('name') ? g('company') : '',
         area: g('area'),
         email: g('email'),
         notes: g('notes'),
@@ -230,6 +243,5 @@ export function rowsToLeads(rows) {
         updatedAt: now,
       }
     })
-    .filter((l) => l.name || l.phone)
-    .map((l) => ({ ...l, name: l.name || l.company || l.phone }))
+    .filter((l) => (l.type === 'number' ? l.phone.length === 10 : l.name || l.phone))
 }

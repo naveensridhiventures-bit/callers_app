@@ -7,7 +7,7 @@ import { STATUSES } from '../constants'
 import { cleanPhone } from '../utils'
 
 export default function Leads() {
-  const { leads, filter, setFilter, openForm } = useApp()
+  const { leads, filter, setFilter, openForm, session, callers } = useApp()
   const [sort, setSort] = useState('recent')
   const [limit, setLimit] = useState(40)
 
@@ -17,6 +17,7 @@ export default function Leads() {
     let r = leads.filter((l) => {
       if (filter.type !== 'all' && l.type !== filter.type) return false
       if (filter.status !== 'all' && l.status !== filter.status) return false
+      if (filter.caller && filter.caller !== 'all') { if (filter.caller === 'none' ? !!l.assignedTo : l.assignedTo !== filter.caller) return false }
       if (!q) return true
       return (
         l.name?.toLowerCase().includes(q) || l.company?.toLowerCase().includes(q) ||
@@ -26,7 +27,7 @@ export default function Leads() {
     const by = {
       recent: (a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''),
       follow: (a, b) => (a.nextFollowUp || '9').localeCompare(b.nextFollowUp || '9'),
-      name: (a, b) => a.name.localeCompare(b.name),
+      name: (a, b) => (a.name || a.phone).localeCompare(b.name || b.phone),
       hot: (a, b) => ['Hot', 'Warm', 'Cold'].indexOf(a.priority) - ['Hot', 'Warm', 'Cold'].indexOf(b.priority),
     }
     return [...r].sort(by[sort])
@@ -53,7 +54,15 @@ export default function Leads() {
       </div>
 
       <Segmented id="lead-type" value={filter.type} onChange={(v) => set({ type: v })}
-        options={[{ value: 'all', label: 'All' }, { value: 'distributor', label: '🤝 Distributors' }, { value: 'sales', label: '🛒 Sales' }]} />
+        options={[{ value: 'all', label: 'All' }, { value: 'distributor', label: '🤝 Distributors' }, { value: 'sales', label: '🛒 Sales' }, { value: 'number', label: '📞 Numbers' }]} />
+
+      {session?.role === 'admin' && (
+        <select className="mini-sel wide-sel" value={filter.caller || 'all'} onChange={(e) => set({ caller: e.target.value })}>
+          <option value="all">All callers</option>
+          <option value="none">Unassigned</option>
+          {callers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+      )}
 
       <div className="chips scroll">
         {[{ id: 'all' }, ...STATUSES].map((s) => (

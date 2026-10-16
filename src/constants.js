@@ -24,7 +24,14 @@ export const OUTCOMES = [
   { id: 'Busy', icon: '⏳', status: null, connected: false },
   { id: 'Not Interested', icon: '👎', status: 'Not Interested', connected: true },
   { id: 'Wrong Number', icon: '❌', status: 'Not Reachable', connected: false },
+  { id: 'No Response', icon: '☎️', status: null, connected: false },
+  { id: 'Switched Off', icon: '📴', status: null, connected: false },
+  { id: 'Not Reachable', icon: '🚫', status: null, connected: false },
 ]
+
+// outcomes offered for a bare number (before the caller knows who it is)
+export const NUMBER_OUTCOMES = ['No Response', 'Switched Off', 'Not Reachable', 'Busy', 'Wrong Number', 'Call Back Later']
+export const NUMBER_ONLY = ['No Response', 'Switched Off', 'Not Reachable']
 
 export const PRIORITIES = ['Cold', 'Warm', 'Hot']
 
@@ -49,6 +56,10 @@ export const BIZ_TYPES = [
 export const INVEST = ['Below ₹50,000', '₹50,000 – ₹1 Lakh', '₹1 – 3 Lakh', 'Above ₹3 Lakh']
 
 export const QUICK_REMARKS = {
+  number: [
+    'Ringing - no response', 'Switched off', 'Out of coverage area',
+    'Call disconnected', 'Asked to call later', 'Busy tone',
+  ],
   distributor: [
     'Wants to know margin', 'Has own vehicle', 'Has fridge / cold storage',
     'Asked to call in evening', 'Will discuss with family', 'Needs agreement details',

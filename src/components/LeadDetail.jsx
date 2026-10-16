@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Avatar, Confetti, Icon, Segmented, Sheet, StatusPill } from '../ui'
-import { CLOSED, OUTCOMES, PRIORITIES, QUICK_REMARKS, STATUSES } from '../constants'
+import { CLOSED, NUMBER_ONLY, NUMBER_OUTCOMES, OUTCOMES, PRIORITIES, QUICK_REMARKS, STATUSES } from '../constants'
 import {
   addHours, atDay, downloadICS, fmtDur, fmtWhen, fromLocalInput, gcalLink, gmailLink,
-  suggestNext, telHref, toLocalInput, waHref,
+  nameOf, suggestNext, telHref, toLocalInput, typeLabel, waHref,
 } from '../utils'
 
 export default function LeadDetail({ id, calling, onClose }) {
-  const { leads, logCall, removeLead, openForm, settings, toast, go } = useApp()
+  const { leads, logCall, removeLead, openForm, settings, toast, go, session, callers, assignMany, convertLead } = useApp()
   const lead = leads.find((l) => l.id === id)
   const [tab, setTab] = useState('call')
   const [started, setStarted] = useState(calling ? Date.now() : null)
@@ -29,8 +29,13 @@ export default function LeadDetail({ id, calling, onClose }) {
 
   if (!lead) return null
   const secs = started ? Math.floor((Date.now() - started) / 1000) : 0
+  const isNum = lead.type === 'number'
   const remarks = QUICK_REMARKS[lead.type] || QUICK_REMARKS.distributor
-  const waText = `Hi ${lead.name}, this is ${settings.name || 'the team'} from Sridhi Premium Idli & Dosa Batter. Thank you for your time. Soft idlies & crispy dosas - no preservatives, RO purified water, naturally fermented. 🌿`
+  const outcomeList = isNum
+    ? OUTCOMES.filter((o) => NUMBER_OUTCOMES.includes(o.id))
+    : OUTCOMES.filter((o) => !NUMBER_ONLY.includes(o.id))
+  const moveTo = (type) => { convertLead(lead, type); setOutcome(''); toast(`Moved to ${typeLabel(type)} lead ✓ Now call and add the details`) }
+  const waText = `Hi ${lead.name || 'there'}, this is ${settings.name || 'the team'} from Sridhi Premium Idli & Dosa Batter. Thank you for your time. Soft idlies & crispy dosas - no preservatives, RO purified water, naturally fermented. 🌿`
 
   const pick = (o) => {
     setOutcome(o.id)
@@ -67,11 +72,11 @@ export default function LeadDetail({ id, calling, onClose }) {
     <Sheet onClose={onClose}>
       <div className="detail-head">
         <div className="dh-row">
-          <Avatar name={lead.name} size={56} />
+          <Avatar name={nameOf(lead)} size={56} icon={isNum || !lead.name} />
           <div className="dh-main">
-            <h2>{lead.name}</h2>
-            <p>{lead.company ? `${lead.company} · ` : ''}{lead.area || 'Bengaluru'}</p>
-            <div className="dh-tags"><StatusPill status={lead.status} /><span className="tag light">{lead.type === 'sales' ? 'Sales' : 'Distributor'}</span></div>
+            <h2>{isNum ? lead.phone : lead.name || lead.phone}</h2>
+            <p>{isNum ? 'New number · who is this?' : `${lead.company ? `${lead.company} · ` : ''}${lead.area || 'Bengaluru'}`}</p>
+            <div className="dh-tags">{!isNum && <StatusPill status={lead.status} />}<span className="tag light">{typeLabel(lead.type)}</span></div>
           </div>
           <button className="icon-btn light" onClick={onClose}><Icon name="x" /></button>
         </div>
@@ -94,10 +99,26 @@ export default function LeadDetail({ id, calling, onClose }) {
         <AnimatePresence mode="wait">
           {tab === 'call' && !done && (
             <motion.div key="call" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+              {!isNum && !lead.name && (
+                <motion.div className="fill-banner" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
+                  <span>📝 Call the number, then add the person's details.</span>
+                  <button type="button" onClick={() => { onClose(); setTimeout(() => openForm(lead), 250) }}>Add details</button>
+                </motion.div>
+              )}
+              {isNum && (
+                <div className="mvbox">
+                  <p>Person picked up? Move this number:</p>
+                  <div className="mv big">
+                    <button type="button" onClick={() => moveTo('distributor')}>🤝 Distributor lead</button>
+                    <button type="button" onClick={() => moveTo('sales')}>🛒 Sales lead</button>
+                  </div>
+                  <small>No answer? Pick what happened below and set a retry time.</small>
+                </div>
+              )}
               {lead.lastRemark && <div className="last-remark">Last: <b>{lead.lastOutcome}</b> — {lead.lastRemark}</div>}
               <h4 className="lbl">What happened?</h4>
               <div className="outcomes">
-                {OUTCOMES.map((o, i) => (
+                {outcomeList.map((o, i) => (
                   <motion.button
                     key={o.id} type="button" className={`oc ${outcome === o.id ? 'on' : ''}`}
                     initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}
@@ -116,7 +137,7 @@ export default function LeadDetail({ id, calling, onClose }) {
               </div>
               <textarea rows={3} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Type what the person said…" />
 
-              <div className="grid2">
+              {!isNum && <div className="grid2">
                 <div className="field"><span>Temperature</span>
                   <Segmented id="ld-pri" value={priority} onChange={setPriority}
                     options={PRIORITIES.map((p) => ({ value: p, label: p === 'Hot' ? '🔥' : p === 'Warm' ? '🌤' : '❄️' }))} />
@@ -126,7 +147,7 @@ export default function LeadDetail({ id, calling, onClose }) {
                     {STATUSES.map((s) => <option key={s.id}>{s.id}</option>)}
                   </select>
                 </label>
-              </div>
+              </div>}
 
               {!CLOSED.includes(status) && (
                 <>
@@ -152,7 +173,7 @@ export default function LeadDetail({ id, calling, onClose }) {
               <motion.div className="done-check" initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 14 }}>
                 <Icon name="check" size={38} />
               </motion.div>
-              <h3>{done.outcome === 'Onboarded' ? 'Distributor onboarded! 🎉' : 'Call saved'}</h3>
+              <h3>{done.outcome === 'Onboarded' ? 'Distributor onboarded! 🎉' : isNum ? 'Number updated' : 'Call saved'}</h3>
               {done.lead.nextFollowUp ? (
                 <>
                   <p>Follow-up set for <b>{fmtWhen(done.lead.nextFollowUp)}</b>. Add a reminder so you never miss it:</p>
@@ -204,9 +225,17 @@ export default function LeadDetail({ id, calling, onClose }) {
                   <button className="btn-soft" onClick={() => downloadICS([lead])}><Icon name="download" /> .ics</button>
                 </div>
               )}
+              {session?.role === 'admin' && (
+                <label className="field" style={{ marginBottom: 12 }}><span>Assigned to</span>
+                  <select value={lead.assignedTo || ''} onChange={async (e) => { await assignMany([[lead.id, e.target.value]]); toast('Assignment updated ✓') }}>
+                    <option value="">Unassigned</option>
+                    {callers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </label>
+              )}
               <div className="done-actions">
                 <button className="btn-soft" onClick={() => { onClose(); setTimeout(() => openForm(lead), 250) }}><Icon name="edit" /> Edit</button>
-                <button className="btn-soft danger" onClick={() => { if (confirm(`Delete ${lead.name}?`)) { removeLead(lead.id); onClose(); toast('Lead deleted') } }}><Icon name="trash" /> Delete</button>
+                {session?.role !== 'caller' && <button className="btn-soft danger" onClick={() => { if (confirm(`Delete ${nameOf(lead)}?`)) { removeLead(lead.id); onClose(); toast('Lead deleted') } }}><Icon name="trash" /> Delete</button>}
                 <button className="btn-soft" onClick={() => { onClose(); go('more', 'scripts') }}><Icon name="book" /> Scripts</button>
               </div>
             </motion.div>
