@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { uid, nowISO, addHours, atDay } from './utils'
-import { OUTCOMES, CLOSED, DEFAULT_SHEET_URL } from './constants'
+import { OUTCOMES, CLOSED, DEFAULT_SHEET_URL, OLD_DEFAULT_URLS } from './constants'
 
 const Ctx = createContext(null)
 export const useApp = () => useContext(Ctx)
@@ -31,7 +31,7 @@ export function AppProvider({ children }) {
   const [session, setSession] = useState(() => load('sridhi.session', null))
   const [rawSettings, setSettings] = useState(() => {
     const s = { name: '', email: '', target: 60, sheetUrl: '', token: '', ...load('sridhi.settings', {}) }
-    if (!s.sheetUrl) s.sheetUrl = DEFAULT_SHEET_URL
+    if (!s.sheetUrl || OLD_DEFAULT_URLS.includes(s.sheetUrl)) s.sheetUrl = DEFAULT_SHEET_URL
     return s
   })
   const [sync, setSync] = useState({ state: 'idle', at: null, msg: '' })
