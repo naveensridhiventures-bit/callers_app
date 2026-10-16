@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, useMotionValue, useSpring, useTransform, useDragControls, animate } from 'framer-motion'
 import { STATUSES } from './constants'
 
@@ -9,6 +9,8 @@ const P = {
   phone: 'M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z',
   calendar: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',
   chart: 'M4 20V10M10 20V4M16 20v-8M22 20H2',
+  send: 'M22 2L11 13|M22 2l-7 20-4-9-9-4 20-7z',
+  list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
   grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
   gear: 'M12 15a3 3 0 100-6 3 3 0 000 6z|M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z',
   plus: 'M12 5v14M5 12h14',
@@ -142,23 +144,36 @@ export function Segmented({ id, value, onChange, options }) {
 }
 
 /* ---------- bottom sheet ---------- */
-export function Sheet({ onClose, children }) {
+export function Sheet({ onClose, children, footer }) {
   const controls = useDragControls()
+  const [closing, setClosing] = useState(false)
+  const timer = useRef()
+  // CSS animations + a timer (not exit animations) so the overlay can never get stuck on screen
+  const close = useCallback(() => {
+    if (closing) return
+    setClosing(true)
+    timer.current = setTimeout(onClose, 190)
+  }, [closing, onClose])
+  useEffect(() => () => clearTimeout(timer.current), [])
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
   return (
-    <motion.div className="sheet-back" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
+    <div className={`sheet-back ${closing ? 'out' : ''}`} onClick={close}>
       <motion.div
         className="sheet"
-        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
         drag="y" dragListener={false} dragControls={controls}
         dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: 0.7 }}
-        onDragEnd={(_, i) => (i.offset.y > 120 || i.velocity.y > 600) && onClose()}
+        onDragEnd={(_, i) => (i.offset.y > 120 || i.velocity.y > 600) && close()}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="grab" onPointerDown={(e) => controls.start(e)}><i /></div>
-        {children}
+        <div className="sheet-scroll">{children}</div>
+        {footer}
       </motion.div>
-    </motion.div>
+    </div>
   )
 }
 

@@ -298,7 +298,7 @@ export function AppProvider({ children }) {
     try {
       const j = await rpc(sheetUrl, { action: 'adminLogin', pin, token })
       if (j.error) return { ok: false, error: j.error }
-      if (j.admin !== true) return { ok: false, error: 'Your Google Apps Script is old. Paste the new Code.gs (v2) and deploy a new version.' }
+      if (j.admin !== true) return { ok: false, error: 'Your Google Apps Script is old. Paste the latest Code.gs (v3) into your Sheet Apps Script and deploy a new version.' }
       setSession({ role: 'admin', id: 'admin', name: 'HR Admin', pin })
       return { ok: true }
     } catch {

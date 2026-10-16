@@ -4,18 +4,15 @@ import { Segmented } from '../ui'
 import Reports from './Reports'
 import Scripts from './Scripts'
 import Settings from './Settings'
-import Admin from './Admin'
 
 export default function More() {
-  const { sub, go, session } = useApp()
-  const isAdmin = session?.role === 'admin'
-  const key = sub === 'admin' && !isAdmin ? 'reports' : sub
-  const C = { reports: Reports, scripts: Scripts, settings: Settings, admin: Admin }[key] || Reports
+  const { sub, go } = useApp()
+  const key = ['reports', 'scripts', 'settings'].includes(sub) ? sub : 'reports'
+  const C = { reports: Reports, scripts: Scripts, settings: Settings }[key]
   const options = [
     { value: 'reports', label: '📊 Reports' },
     { value: 'scripts', label: '🎙 Scripts' },
     { value: 'settings', label: '⚙️ Settings' },
-    ...(isAdmin ? [{ value: 'admin', label: '🛡 Admin' }] : []),
   ]
   return (
     <div className="page">

@@ -20,7 +20,7 @@ export default function ControlLogin() {
     setBusy(false)
     if (!r.ok) { setErr(r.error); setShake((s) => s + 1); return }
     toast('Admin mode on 🛡')
-    go('more', 'admin')
+    go('overview')
   }
 
   return (

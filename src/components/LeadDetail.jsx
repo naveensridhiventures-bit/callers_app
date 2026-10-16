@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Avatar, Confetti, Icon, Segmented, Sheet, StatusPill } from '../ui'
 import { CLOSED, NUMBER_ONLY, NUMBER_OUTCOMES, OUTCOMES, PRIORITIES, QUICK_REMARKS, STATUSES } from '../constants'
@@ -11,7 +11,8 @@ import {
 export default function LeadDetail({ id, calling, onClose }) {
   const { leads, logCall, removeLead, saveLead, openForm, settings, toast, go, session, callers, assignMany, convertLead, scriptVersion } = useApp()
   const lead = leads.find((l) => l.id === id)
-  const [tab, setTab] = useState('call')
+  const [tab, setTab] = useState(() => (session?.role === 'admin' ? 'history' : 'call'))
+  const remarkRef = useRef(null)
   const [started, setStarted] = useState(calling ? Date.now() : null)
   const [, tick] = useState(0)
   const [outcome, setOutcome] = useState('')
@@ -45,6 +46,13 @@ export default function LeadDetail({ id, calling, onClose }) {
     setOutcome(o.id)
     if (o.status) setStatus(o.status)
     setNext(suggestNext(o.id))
+    // bring the remark + follow-up section up so nobody has to scroll to find it
+    setTimeout(() => {
+      const el = remarkRef.current
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      el.classList.remove('focus-flash'); void el.offsetWidth; el.classList.add('focus-flash')
+    }, 140)
   }
   const toggleRemark = (r) => setRemark((cur) => (cur.includes(r) ? cur.replace(r, '').replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,/g, ',') : cur ? `${cur}, ${r}` : r))
 
@@ -53,6 +61,7 @@ export default function LeadDetail({ id, calling, onClose }) {
     const updated = logCall(lead, { outcome, remark: remark.trim(), next, status, priority, duration: secs })
     setDone({ lead: updated, outcome })
     setStarted(null)
+    setTimeout(() => document.querySelector('.sheet-scroll')?.scrollTo({ top: 0, behavior: 'smooth' }), 60)
   }
 
   const requestDelete = () => {
@@ -81,8 +90,16 @@ export default function LeadDetail({ id, calling, onClose }) {
     ['Notes', lead.notes],
   ].filter(([, v]) => v !== '' && v != null)
 
+  const footer = tab === 'call' && !done && !isAdmin ? (
+    <div className="sheet-foot">
+      <motion.button whileTap={{ scale: 0.97, y: 3 }} className={`btn3d big ${outcome ? '' : 'off'}`} onClick={save}>
+        <Icon name="check" /> {outcome ? `Save “${outcome}” & follow-up` : 'Pick what happened ↑'}
+      </motion.button>
+    </div>
+  ) : null
+
   return (
-    <Sheet onClose={onClose}>
+    <Sheet onClose={onClose} footer={footer}>
       <div className="detail-head">
         <div className="dh-top">
           <button className="tool" onClick={() => { onClose(); setTimeout(() => openForm(lead), 250) }}><Icon name="edit" size={16} /> Edit</button>
@@ -97,13 +114,13 @@ export default function LeadDetail({ id, calling, onClose }) {
             <div className="dh-tags">{!isNum && <StatusPill status={lead.status} />}<span className="tag light">{typeLabel(lead.type)}</span></div>
           </div>
         </div>
-        <div className="dh-actions">
+        {!isAdmin && <div className="dh-actions">
           <motion.a whileTap={{ scale: 0.94 }} className="act call" href={telHref(lead.phone)} onClick={() => { setStarted(Date.now()); setTab('call') }}>
             <Icon name="phone" /> {started ? <span className="live"><i />{fmtDur(secs)}</span> : 'Call'}
           </motion.a>
           <motion.a whileTap={{ scale: 0.94 }} className="act wa" href={waHref(lead.phone, waText)} target="_blank" rel="noreferrer"><Icon name="whatsapp" /> WhatsApp</motion.a>
           {lead.email && <motion.a whileTap={{ scale: 0.94 }} className="act" href={`mailto:${lead.email}`}><Icon name="mail" /></motion.a>}
-        </div>
+        </div>}
         {lead.nextFollowUp && !CLOSED.includes(lead.status) && (
           <div className="dh-next"><Icon name="clock" size={14} /> Next follow-up: <b>{fmtWhen(lead.nextFollowUp)}</b></div>
         )}
@@ -142,11 +159,10 @@ export default function LeadDetail({ id, calling, onClose }) {
         )}
         {!isAdmin && pending && !delOpen && <div className="fill-banner"><span>🗑 Delete request sent. Waiting for admin.</span></div>}
         <Segmented id="ld-tab" value={tab} onChange={setTab}
-          options={[{ value: 'call', label: '📞 Log call' }, { value: 'history', label: `🕘 History (${lead.calls?.length || 0})` }, { value: 'info', label: 'ℹ️ Info' }]} />
+          options={[...(isAdmin ? [] : [{ value: 'call', label: '📞 Log call' }]), { value: 'history', label: `🕘 History (${lead.calls?.length || 0})` }, { value: 'info', label: 'ℹ️ Info' }]} />
 
-        <AnimatePresence mode="wait">
           {tab === 'call' && !done && (
-            <motion.div key="call" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+            <motion.div key="call" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
               {!isNum && !lead.name && (
                 <motion.div className="fill-banner" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
                   <span>📝 Call the number, then add the person's details.</span>
@@ -177,7 +193,7 @@ export default function LeadDetail({ id, calling, onClose }) {
                 ))}
               </div>
 
-              <h4 className="lbl">Remark</h4>
+              <h4 className="lbl" ref={remarkRef} style={{ scrollMarginTop: 8 }}>Remark &amp; follow-up</h4>
               <div className="chips small">
                 {remarks.map((r) => (
                   <button type="button" key={r} className={`chip ${remark.includes(r) ? 'on' : ''}`} onClick={() => toggleRemark(r)}>{r}</button>
@@ -209,9 +225,6 @@ export default function LeadDetail({ id, calling, onClose }) {
                 </>
               )}
 
-              <motion.button whileTap={{ scale: 0.97, y: 3 }} className="btn3d big" onClick={save}>
-                <Icon name="check" /> Save call &amp; follow-up
-              </motion.button>
             </motion.div>
           )}
 
@@ -241,7 +254,7 @@ export default function LeadDetail({ id, calling, onClose }) {
           )}
 
           {tab === 'history' && (
-            <motion.div key="hist" className="timeline" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <motion.div key="hist" className="timeline" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
               {!lead.calls?.length && <p className="empty-s">No calls logged yet. Make the first call! 📞</p>}
               {lead.calls?.map((c, i) => (
                 <motion.div key={c.id} className="tl" initial={{ opacity: 0, x: -14 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}>
@@ -258,7 +271,7 @@ export default function LeadDetail({ id, calling, onClose }) {
           )}
 
           {tab === 'info' && (
-            <motion.div key="info" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <motion.div key="info" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
               <div className="info">
                 {info.map(([k, v], i) => (
                   <motion.div key={k} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.025 }}>
@@ -287,7 +300,6 @@ export default function LeadDetail({ id, calling, onClose }) {
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
       </div>
     </Sheet>
   )

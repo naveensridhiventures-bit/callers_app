@@ -56,3 +56,13 @@ Reports + CSV export, scripts and WhatsApp templates, in-app due reminders with 
 - **Back button:** goes to the previous page / closes the open sheet instead of leaving the app; on the first page it asks "Press back again to exit".
 - **Edit / Delete:** open a lead → ✏️ Edit, 🗑 Delete (admin deletes; callers send a request).
 - `/control` needs SPA rewrites on the host: `vercel.json` and `public/_redirects` (Netlify/Cloudflare) are included. GitHub Pages has no rewrites, so use Vercel/Netlify/Cloudflare Pages.
+
+## HR admin dashboard (open `/control`)
+
+- **Progress:** calls made, connected %, positive calls, onboarded, unassigned, overdue; calls-per-day chart, pipeline funnel, caller leaderboard and a live activity feed. Filter Today / 7 days / 30 days / All.
+- **Callers:** one card per caller with last-active time, assigned / calls / connected % / interested / not called / overdue, an *interest-level bar* (Onboarded, Hot, Warm, Cold, Number tried, Not called), a 7-day chart, her leads (filter by interest) and recent calls. Add or remove callers here.
+- **Assign, Leads, Requests, Settings** as before. On a PC the admin gets a sidebar; on a phone a bottom bar.
+- Interest level: Onboarded = status Onboarded; Hot = priority Hot or status Interested / Meeting Fixed / Documentation; Cold = Not Interested or priority Cold; Warm = called, otherwise; Number tried = a bare number that was called; Not called = no calls yet.
+
+## Mobile fixes
+Bottom sheets are CSS-animated and can no longer get stuck on screen; after choosing a call outcome the panel scrolls to Remark / Follow-up and the **Save** button stays pinned at the bottom.

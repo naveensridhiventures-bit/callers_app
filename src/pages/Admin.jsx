@@ -2,24 +2,17 @@ import { useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Avatar, Counter, Icon, Segmented, StatusPill } from '../ui'
-import { STATUSES, OUTCOMES } from '../constants'
-import { fmtWhen, nameOf, nowISO, parseCSV, rowsToLeads, sameDay, uid } from '../utils'
+import { STATUSES } from '../constants'
+import { fmtWhen, nameOf, nowISO, parseCSV, rowsToLeads, uid } from '../utils'
 
 const rndPin = () => String(Math.floor(1000 + Math.random() * 9000))
 
-/* ---------------- Callers ---------------- */
-function Callers() {
-  const { callers, allLeads, saveCaller, deleteCaller, toast } = useApp()
+/* ---------------- Add caller ---------------- */
+export function AddCaller({ onDone }) {
+  const { saveCaller, toast } = useApp()
   const [name, setName] = useState('')
   const [pin, setPin] = useState(rndPin())
-  const [show, setShow] = useState({})
   const [busy, setBusy] = useState(false)
-
-  const counts = useMemo(() => {
-    const m = {}
-    allLeads.forEach((l) => { if (l.assignedTo) m[l.assignedTo] = (m[l.assignedTo] || 0) + 1 })
-    return m
-  }, [allLeads])
 
   const add = async (e) => {
     e.preventDefault()
@@ -28,12 +21,11 @@ function Callers() {
     setBusy(true)
     const ok = await saveCaller({ id: uid(), name: name.trim(), pin, active: true, createdAt: nowISO() })
     setBusy(false)
-    if (ok) { toast(`${name.trim()} added ✓  PIN ${pin}`); setName(''); setPin(rndPin()) }
-    else toast('Could not save. Check internet / Apps Script v2', 'warn')
+    if (ok) { toast(`${name.trim()} added ✓  PIN ${pin}`); setName(''); setPin(rndPin()); onDone?.() }
+    else toast('Could not save. Check internet / Apps Script v3', 'warn')
   }
 
   return (
-    <div className="sub">
       <form className="card form" onSubmit={add}>
         <h3>➕ Add a caller</h3>
         <div className="grid2">
@@ -48,29 +40,11 @@ function Callers() {
         <motion.button whileTap={{ scale: 0.97, y: 3 }} className="btn3d" disabled={busy}><Icon name="plus" /> {busy ? 'Saving…' : 'Add caller'}</motion.button>
         <small className="hint">Tell the caller her name and PIN. She signs in with these on her phone and sees only the numbers you assign to her.</small>
       </form>
-
-      <AnimatePresence initial={false}>
-        {callers.map((c, i) => (
-          <motion.div key={c.id} layout className="crow card" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ delay: i * 0.04 }}>
-            <Avatar name={c.name} size={46} />
-            <div className="crow-main">
-              <b>{c.name}</b>
-              <small>{counts[c.id] || 0} leads assigned</small>
-            </div>
-            <button className="pin-chip" onClick={() => setShow((s) => ({ ...s, [c.id]: !s[c.id] }))}>{show[c.id] ? `PIN ${c.pin}` : 'PIN ••••'}</button>
-            <button className="icon-btn danger" aria-label="Remove" onClick={async () => {
-              if (confirm(`Remove ${c.name}? Her ${counts[c.id] || 0} leads become unassigned.`)) { await deleteCaller(c.id); toast('Caller removed') }
-            }}><Icon name="trash" size={18} /></button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-      {!callers.length && <div className="card empty"><div className="empty-ico">👥</div><h3>No callers yet</h3><p>Add your first caller above. Until then the app stays in single-user mode.</p></div>}
-    </div>
   )
 }
 
 /* ---------------- Assign ---------------- */
-function Assign() {
+export function Assign() {
   const { allLeads, callers, assignMany, importLeads, toast } = useApp()
   const [scope, setScope] = useState('unassigned')
   const [status, setStatus] = useState('all')
@@ -236,53 +210,8 @@ function Assign() {
   )
 }
 
-/* ---------------- Team ---------------- */
-function Team() {
-  const { callers, allLeads } = useApp()
-  const rows = useMemo(() => {
-    const now = new Date()
-    const week = new Date(); week.setDate(week.getDate() - 6); week.setHours(0, 0, 0, 0)
-    return callers.map((c) => {
-      const mine = allLeads.filter((l) => l.assignedTo === c.id)
-      const calls = mine.flatMap((l) => l.calls || [])
-      const isConn = (x) => OUTCOMES.find((o) => o.id === x.outcome)?.connected
-      return {
-        c, assigned: mine.length,
-        fresh: mine.filter((l) => !l.callCount).length,
-        today: calls.filter((x) => sameDay(x.at, now)).length,
-        week: calls.filter((x) => new Date(x.at) >= week).length,
-        connected: calls.filter((x) => new Date(x.at) >= week && isConn(x)).length,
-        interested: mine.filter((l) => ['Interested', 'Meeting Fixed', 'Documentation'].includes(l.status)).length,
-        won: mine.filter((l) => l.status === 'Onboarded').length,
-        overdue: mine.filter((l) => l.nextFollowUp && !['Onboarded', 'Not Interested'].includes(l.status) && new Date(l.nextFollowUp) < now).length,
-      }
-    })
-  }, [callers, allLeads])
-  const max = Math.max(1, ...rows.map((r) => r.week))
-
-  return (
-    <div className="sub">
-      {rows.map((r, i) => (
-        <motion.div key={r.c.id} className="card team" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-          <div className="team-h"><Avatar name={r.c.name} size={42} /><b>{r.c.name}</b><span className="tag">{r.assigned} assigned</span></div>
-          <div className="team-grid">
-            <div><b>{r.today}</b><small>Calls today</small></div>
-            <div><b>{r.week}</b><small>Calls 7 days</small></div>
-            <div><b>{r.interested}</b><small>Interested</small></div>
-            <div><b>{r.won}</b><small>Onboarded</small></div>
-            <div><b>{r.fresh}</b><small>Not called</small></div>
-            <div className={r.overdue ? 'bad' : ''}><b>{r.overdue}</b><small>Overdue</small></div>
-          </div>
-          <div className="meter"><motion.i initial={{ width: 0 }} animate={{ width: `${(r.week / max) * 100}%` }} transition={{ duration: 0.8 }} /></div>
-        </motion.div>
-      ))}
-      {!rows.length && <div className="card empty"><div className="empty-ico">📊</div><h3>No callers yet</h3><p>Add callers in the Callers tab.</p></div>}
-    </div>
-  )
-}
-
 /* ---------------- Delete requests ---------------- */
-function Requests() {
+export function Requests() {
   const { allLeads, removeLead, saveLead, openLead, toast } = useApp()
   const list = allLeads.filter((l) => l.delReq === '1')
   return (
@@ -303,25 +232,6 @@ function Requests() {
         ))}
       </AnimatePresence>
       {!list.length && <div className="card empty"><div className="empty-ico">✅</div><h3>No delete requests</h3><p>When a caller asks to delete a lead, it shows up here for your approval.</p></div>}
-    </div>
-  )
-}
-
-/* ---------------- page ---------------- */
-export default function Admin() {
-  const { session, logout, scriptVersion, allLeads } = useApp()
-  const reqCount = allLeads.filter((l) => l.delReq === '1').length
-  const [tab, setTab] = useState('callers')
-  if (session?.role !== 'admin') return <div className="card empty"><h3>Admin only</h3></div>
-  const C = { callers: Callers, assign: Assign, team: Team, requests: Requests }[tab]
-  return (
-    <div className="sub">
-      <div className="admin-bar">
-        <span>🛡 HR admin mode{scriptVersion && scriptVersion < 3 ? ` · script v${scriptVersion} (update to v3)` : ''}</span>
-        <button className="btn-soft sm" onClick={logout}>Exit admin</button>
-      </div>
-      <Segmented id="adm-tab" value={tab} onChange={setTab} options={[{ value: 'callers', label: '👥 Callers' }, { value: 'assign', label: '📤 Assign' }, { value: 'team', label: '📊 Team' }, { value: 'requests', label: `🗑 Requests${reqCount ? ` (${reqCount})` : ''}` }]} />
-      <motion.div key={tab} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}><C /></motion.div>
     </div>
   )
 }

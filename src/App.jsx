@@ -12,9 +12,24 @@ import Leads from './pages/Leads'
 import Followups from './pages/Followups'
 import CallMode from './pages/CallMode'
 import More from './pages/More'
+import Settings from './pages/Settings'
+import AdminOverview from './pages/AdminOverview'
+import AdminTeam from './pages/AdminTeam'
+import { Assign, Requests } from './pages/Admin'
 import { bucket, fmtTime, nameOf } from './utils'
 
 const PAGES = { home: Dashboard, leads: Leads, call: CallMode, follow: Followups, more: More }
+const AdminAssign = () => <div className="page adm"><div className="page-h"><h1>Assign leads</h1></div><Assign /></div>
+const AdminRequests = () => <div className="page adm"><div className="page-h"><h1>Delete requests</h1></div><Requests /></div>
+const AdminSettings = () => <div className="page adm"><div className="page-h"><h1>Settings</h1></div><Settings /></div>
+const ADMIN_PAGES = { overview: AdminOverview, team: AdminTeam, assign: AdminAssign, leads: Leads, requests: AdminRequests, settings: AdminSettings }
+const ADMIN_TABS = [
+  { id: 'overview', icon: 'chart', label: 'Progress' },
+  { id: 'team', icon: 'users', label: 'Callers' },
+  { id: 'assign', icon: 'send', label: 'Assign' },
+  { id: 'leads', icon: 'list', label: 'Leads' },
+  { id: 'requests', icon: 'trash', label: 'Requests' },
+]
 const TABS = [
   { id: 'home', icon: 'home', label: 'Home' },
   { id: 'leads', icon: 'users', label: 'Leads' },
@@ -24,8 +39,10 @@ const TABS = [
 ]
 
 function Shell() {
-  const { route, page, go, sheet, closeSheet, openForm, leads, allLeads, toasts, sync, session, gate, openLead, toast } = useApp()
-  const Page = PAGES[page]
+  const { route, page, go, sheet, closeSheet, openForm, leads, allLeads, toasts, sync, session, gate, openLead, toast, logout } = useApp()
+  const isAdmin = session?.role === 'admin'
+  const Page = isAdmin ? ADMIN_PAGES[page] || AdminOverview : PAGES[page] || Dashboard
+  const curPage = isAdmin ? (ADMIN_PAGES[page] ? page : 'overview') : PAGES[page] ? page : 'home'
   const notified = useRef(new Set(JSON.parse(localStorage.getItem('sridhi.notified') || '[]')))
 
   /* due-follow-up reminders while the app is open */
@@ -54,66 +71,82 @@ function Shell() {
 
   /* already signed in as admin and opened /control: go straight to the admin panel */
   useEffect(() => {
-    if (route === 'control' && session?.role === 'admin') go('more', 'admin')
+    if (route === 'control' && session?.role === 'admin') go('overview')
   }, [route, session, go])
 
   if (route === 'control') return <ControlLogin />
   if (gate !== 'ready') return <Login />
 
+  const reqCount = isAdmin ? allLeads.filter((l) => l.delReq === '1').length : 0
   const due = leads.filter((l) => ['overdue', 'today'].includes(bucket(l))).length
   const formLead = sheet?.type === 'form' && sheet.leadId ? allLeads.find((l) => l.id === sheet.leadId) || null : null
 
-  return (
-    <div className="app">
-      <header className="top">
-        <div className="brand"><i>S</i><b>Sridhi <span>Caller</span></b></div>
-        <div className="top-r">
-          {session && <span className="who">{session.role === 'admin' ? '🛡' : '👤'} {session.name.split(' ')[0]}</span>}
-          <span className={`sync ${sync.state}`} title={sync.msg || 'Google Sheets auto-sync'} onClick={() => go('more', 'settings')}>
-            <Icon name="cloud" size={16} />{sync.state === 'syncing' ? <em className="spin" /> : null}
-          </span>
-          <button className="icon-btn" onClick={() => go('more', 'settings')} aria-label="Settings"><Icon name="gear" size={20} /></button>
-        </div>
-      </header>
+  const tabs = isAdmin ? ADMIN_TABS : TABS
+  const active = curPage
 
-      <AnimatePresence mode="wait">
-        <motion.main key={page} initial={{ opacity: 0, y: 18, rotateX: -4 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.28 }}>
+  return (
+    <div className={`app ${isAdmin ? 'admin-app' : ''}`}>
+      {isAdmin && (
+        <aside className="side">
+          <div className="brand"><i>S</i><b>Sridhi <span>HR Control</span></b></div>
+          <nav>
+            {ADMIN_TABS.map((t) => (
+              <button key={t.id} className={active === t.id ? 'on' : ''} onClick={() => go(t.id)}>
+                <Icon name={t.icon} size={20} /><span>{t.label}</span>
+                {t.id === 'requests' && reqCount > 0 && <b className="badge static">{reqCount}</b>}
+              </button>
+            ))}
+            <button className={active === 'settings' ? 'on' : ''} onClick={() => go('settings')}><Icon name="gear" size={20} /><span>Settings</span></button>
+          </nav>
+          <div className="side-foot">
+            <span className={`sync ${sync.state}`} title={sync.msg || 'Google Sheets auto-sync'}><Icon name="cloud" size={16} /> {sync.state === 'error' ? 'Sync problem' : sync.state === 'syncing' ? 'Syncing…' : 'Synced'}</span>
+            <button className="btn-soft sm" onClick={logout}>Exit admin</button>
+          </div>
+        </aside>
+      )}
+
+      <div className="content">
+        <header className="top">
+          <div className="brand"><i>S</i><b>Sridhi <span>{isAdmin ? 'HR Control' : 'Caller'}</span></b></div>
+          <div className="top-r">
+            {session && !isAdmin && <span className="who">👤 {session.name.split(' ')[0]}</span>}
+            <span className={`sync ${sync.state}`} title={sync.msg || 'Google Sheets auto-sync'} onClick={() => go(isAdmin ? 'settings' : 'more', isAdmin ? undefined : 'settings')}>
+              <Icon name="cloud" size={16} />{sync.state === 'syncing' ? <em className="spin" /> : null}
+            </span>
+            <button className="icon-btn" onClick={() => go(isAdmin ? 'settings' : 'more', isAdmin ? undefined : 'settings')} aria-label="Settings"><Icon name="gear" size={20} /></button>
+          </div>
+        </header>
+
+        <motion.main key={`${isAdmin ? 'a' : 'c'}-${curPage}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.26 }}>
           <Page />
         </motion.main>
-      </AnimatePresence>
+      </div>
 
-      {page !== 'call' && (
+      {(!isAdmin ? page !== 'call' : active === 'leads') && (
         <motion.button className="fab-add" initial={{ scale: 0 }} animate={{ scale: 1 }} whileTap={{ scale: 0.88 }} whileHover={{ scale: 1.08, rotate: 90 }} onClick={() => openForm()} aria-label="Add lead">
           <Icon name="plus" size={26} />
         </motion.button>
       )}
 
       <nav className="dock">
-        {TABS.map((t) => (
-          <button key={t.id} className={`${page === t.id ? 'on' : ''} ${t.fab ? 'fab' : ''}`} onClick={() => go(t.id)}>
-            {page === t.id && !t.fab && <motion.span layoutId="dock-pill" className="dock-pill" transition={{ type: 'spring', stiffness: 380, damping: 30 }} />}
-            <motion.span className="ico" whileTap={{ scale: 0.8 }} animate={page === t.id && !t.fab ? { y: -2 } : { y: 0 }}>
+        {tabs.map((t) => (
+          <button key={t.id} className={`${active === t.id ? 'on' : ''} ${t.fab ? 'fab' : ''}`} onClick={() => go(t.id)}>
+            {active === t.id && !t.fab && <motion.span layoutId="dock-pill" className="dock-pill" transition={{ type: 'spring', stiffness: 380, damping: 30 }} />}
+            <motion.span className="ico" whileTap={{ scale: 0.8 }} animate={active === t.id && !t.fab ? { y: -2 } : { y: 0 }}>
               <Icon name={t.icon} size={t.fab ? 26 : 22} />
               {t.id === 'follow' && due > 0 && <b className="badge">{due > 99 ? '99+' : due}</b>}
+              {t.id === 'requests' && reqCount > 0 && <b className="badge">{reqCount}</b>}
             </motion.span>
             <small>{t.label}</small>
           </button>
         ))}
       </nav>
 
-      <AnimatePresence>
-        {sheet?.type === 'form' && <LeadForm key="form" lead={formLead} preset={sheet.preset} onClose={closeSheet} />}
-        {sheet?.type === 'detail' && <LeadDetail key={`d-${sheet.id}`} id={sheet.id} calling={sheet.calling} onClose={closeSheet} />}
-      </AnimatePresence>
+      {sheet?.type === 'form' && <LeadForm key="form" lead={formLead} preset={sheet.preset} onClose={closeSheet} />}
+      {sheet?.type === 'detail' && <LeadDetail key={`d-${sheet.id}`} id={sheet.id} calling={sheet.calling} onClose={closeSheet} />}
 
       <div className="toasts">
-        <AnimatePresence>
-          {toasts.map((t) => (
-            <motion.div key={t.id} className={`toast ${t.type}`} layout initial={{ opacity: 0, y: 30, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }}>
-              {t.msg}
-            </motion.div>
-          ))}
-        </AnimatePresence>
+        {toasts.map((t) => <div key={t.id} className={`toast ${t.type}`}>{t.msg}</div>)}
       </div>
     </div>
   )
