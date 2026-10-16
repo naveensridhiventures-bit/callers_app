@@ -14,7 +14,7 @@ export default function Reports() {
     const since = new Date(); since.setHours(0, 0, 0, 0); since.setDate(since.getDate() - (days - 1))
     const calls = leads.flatMap((l) => (l.calls || []).map((c) => ({ ...c, lead: l }))).filter((c) => new Date(c.at) >= since)
     const connected = calls.filter((c) => OUTCOMES.find((o) => o.id === c.outcome)?.connected).length
-    const outcomes = OUTCOMES.map((o) => ({ ...o, n: calls.filter((c) => c.outcome === o.id).length }))
+    const outcomes = OUTCOMES.filter((o) => !o.hidden).map((o) => ({ ...o, n: calls.filter((c) => c.outcome === o.id).length }))
     const series = Array.from({ length: Math.min(days, 14) }, (_, i) => {
       const d = new Date(); d.setDate(d.getDate() - (Math.min(days, 14) - 1 - i))
       return { l: d.getDate(), n: calls.filter((c) => sameDay(c.at, d)).length }

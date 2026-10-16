@@ -38,7 +38,7 @@ export default function LeadDetail({ id, calling, onClose }) {
   const remarks = QUICK_REMARKS[lead.type] || QUICK_REMARKS.distributor
   const outcomeList = isNum
     ? OUTCOMES.filter((o) => NUMBER_OUTCOMES.includes(o.id))
-    : OUTCOMES.filter((o) => !NUMBER_ONLY.includes(o.id))
+    : OUTCOMES.filter((o) => !NUMBER_ONLY.includes(o.id) && !o.hidden)
   const moveTo = (type) => { convertLead(lead, type); setOutcome(''); toast(`Moved to ${typeLabel(type)} lead ✓ Now call and add the details`) }
   const waText = `Hi ${lead.name || 'there'}, this is ${settings.name || 'the team'} from Sridhi Premium Idli & Dosa Batter. Thank you for your time. Soft idlies & crispy dosas - no preservatives, RO purified water, naturally fermented. 🌿`
 

@@ -4,13 +4,15 @@ import { Segmented } from '../ui'
 import Reports from './Reports'
 import Scripts from './Scripts'
 import Settings from './Settings'
+import ReportCenter from './ReportCenter'
 
 export default function More() {
   const { sub, go } = useApp()
-  const key = ['reports', 'scripts', 'settings'].includes(sub) ? sub : 'reports'
-  const C = { reports: Reports, scripts: Scripts, settings: Settings }[key]
+  const key = ['eod', 'reports', 'scripts', 'settings'].includes(sub) ? sub : 'eod'
+  const C = { eod: ReportCenter, reports: Reports, scripts: Scripts, settings: Settings }[key]
   const options = [
-    { value: 'reports', label: '📊 Reports' },
+    { value: 'eod', label: '📋 EOD' },
+    { value: 'reports', label: '📊 Stats' },
     { value: 'scripts', label: '🎙 Scripts' },
     { value: 'settings', label: '⚙️ Settings' },
   ]

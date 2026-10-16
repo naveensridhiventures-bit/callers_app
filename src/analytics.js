@@ -11,6 +11,9 @@ export const INTEREST = [
 const HOT_STATUS = ['Interested', 'Meeting Fixed', 'Documentation']
 const POSITIVE = ['Interested', 'Meeting Fixed', 'Onboarded']
 
+export const isUpdate = (c) => c.outcome === 'Details Updated' || c.outcome === 'Lead Added'
+// a real call, or the first time a lead was touched (updating a lead's details counts as called)
+export const isCall = (c) => !isUpdate(c) || !!c.first
 export const isConnected = (outcome) => !!OUTCOMES.find((o) => o.id === outcome)?.connected
 
 /** how interested is this lead? one bucket per lead */
@@ -55,6 +58,7 @@ export function lastDays(calls, n = 7, callerId = null) {
     if (callerId && c.callerId !== callerId) return
     const e = map.get(dayKey(c.at))
     if (!e) return
+    if (!isCall(c)) return
     e.calls++
     if (isConnected(c.outcome)) e.connected++
   })
@@ -77,10 +81,11 @@ export function callerStats(leads, callers, calls, period) {
       c, mine, interest,
       assigned: mine.length,
       fresh: interest.fresh,
-      calls: inP.length,
-      today: cs.filter((x) => new Date(x.at) >= today).length,
-      total: cs.length,
-      connected: inP.filter((x) => isConnected(x.outcome)).length,
+      calls: inP.filter(isCall).length,
+      updates: inP.filter(isUpdate).length,
+      today: cs.filter((x) => isCall(x) && new Date(x.at) >= today).length,
+      total: cs.filter(isCall).length,
+      connected: inP.filter((x) => isCall(x) && isConnected(x.outcome)).length,
       positive: inP.filter((x) => POSITIVE.includes(x.outcome)).length,
       updated: new Set(inP.map((x) => x.lead.id)).size,
       overdue: mine.filter((l) => l.nextFollowUp && !['Onboarded', 'Not Interested'].includes(l.status) && new Date(l.nextFollowUp) < now).length,

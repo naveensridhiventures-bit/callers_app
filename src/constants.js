@@ -36,6 +36,9 @@ export const OUTCOMES = [
   { id: 'No Response', icon: '☎️', status: null, connected: false },
   { id: 'Switched Off', icon: '📴', status: null, connected: false },
   { id: 'Not Reachable', icon: '🚫', status: null, connected: false },
+  // automatic activity entries (not offered in the outcome picker)
+  { id: 'Details Updated', icon: '📝', status: null, connected: true, hidden: true },
+  { id: 'Lead Added', icon: '➕', status: null, connected: true, hidden: true },
 ]
 
 // outcomes offered for a bare number (before the caller knows who it is)

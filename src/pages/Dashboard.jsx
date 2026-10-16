@@ -6,6 +6,7 @@ import LeadCard from '../components/LeadCard'
 import InstallBanner from '../components/InstallBanner'
 import { CLOSED, OUTCOMES, STATUSES } from '../constants'
 import { bucket, greeting, sameDay } from '../utils'
+import { isCall } from '../analytics'
 
 function Stat({ emoji, label, value, hint, color, action }) {
   const [flip, setFlip] = useState(false)
@@ -31,7 +32,7 @@ export default function Dashboard() {
 
   const s = useMemo(() => {
     const now = new Date()
-    const calls = leads.flatMap((l) => l.calls || [])
+    const calls = leads.flatMap((l) => l.calls || []).filter(isCall)
     const today = calls.filter((c) => sameDay(c.at, now))
     const connected = today.filter((c) => OUTCOMES.find((o) => o.id === c.outcome)?.connected).length
     const by = { overdue: [], today: [], upcoming: [] }
@@ -58,6 +59,11 @@ export default function Dashboard() {
   return (
     <div className="page">
       <InstallBanner dismissible />
+      <motion.button className={`cta-report ${new Date().getHours() >= 17 ? 'hot' : ''}`} whileTap={{ scale: 0.98 }} onClick={() => go('more', 'eod')} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        <span className="cta-ico">📋</span>
+        <span><b>{new Date().getHours() >= 17 ? 'Day done? Share your EOD report' : 'Today’s EOD report'}</b><small>Copy for WhatsApp · download PDF or Excel</small></span>
+        <Icon name="chevron" size={18} />
+      </motion.button>
       <Tilt className="hero" max={3}>
         <div className="orbs"><i /><i /><i /></div>
         <div className="hero-3d">

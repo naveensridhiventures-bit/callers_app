@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Avatar, Counter, Icon, Segmented } from '../ui'
-import { INTEREST, ago, allCalls, callerStats, interestOf, isConnected, lastDays, pct, sinceFor } from '../analytics'
+import { INTEREST, ago, allCalls, callerStats, interestOf, isCall, isConnected, lastDays, pct, sinceFor } from '../analytics'
 import { OUTCOMES } from '../constants'
 import { nameOf } from '../utils'
 
@@ -52,7 +52,7 @@ export default function AdminOverview() {
 
   const d = useMemo(() => {
     const since = sinceFor(period)
-    const inP = calls.filter((c) => new Date(c.at) >= since)
+    const inP = calls.filter((c) => isCall(c) && new Date(c.at) >= since)
     const conn = inP.filter((c) => isConnected(c.outcome)).length
     const now = new Date()
     const assigned = allLeads.filter((l) => l.assignedTo)
@@ -86,6 +86,11 @@ export default function AdminOverview() {
         <h1>Team progress <small>{session?.name}</small></h1>
       </div>
       <Segmented id="ov-period" value={period} onChange={setPeriod} options={PERIODS} />
+      <motion.button className="cta-report" whileTap={{ scale: 0.98 }} onClick={() => go('reports')} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        <span className="cta-ico">📄</span>
+        <span><b>Download or share reports</b><small>Daily, weekly, monthly or custom dates · PDF, Excel and WhatsApp message</small></span>
+        <Icon name="chevron" size={18} />
+      </motion.button>
 
       <div className="kpis kpis6">
         {[

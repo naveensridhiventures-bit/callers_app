@@ -46,7 +46,7 @@ export function AppProvider({ children }) {
   const [gateTry, setGateTry] = useState(0)
   const [route, setRoute] = useState(initialRoute)
   const [page, setPage] = useState('home')
-  const [sub, setSub] = useState('reports')
+  const [sub, setSub] = useState('eod')
   const [sheet, setSheet] = useState(null)
   const [filter, setFilter] = useState({ q: '', type: 'all', status: 'all', caller: 'all' })
   const [toasts, setToasts] = useState([])
@@ -63,7 +63,7 @@ export function AppProvider({ children }) {
   const sessionRef = useRef(session); sessionRef.current = session
   const syncing = useRef(false)
   const reqSeen = useRef(null)
-  const navRef = useRef({ route: initialRoute(), page: 'home', sub: 'reports', sheet: null })
+  const navRef = useRef({ route: initialRoute(), page: 'home', sub: 'eod', sheet: null })
 
   useEffect(() => localStorage.setItem('sridhi.leads', JSON.stringify(allLeads)), [allLeads])
   useEffect(() => localStorage.setItem('sridhi.callers', JSON.stringify(callers)), [callers])
@@ -115,7 +115,7 @@ export function AppProvider({ children }) {
     navInited = true
     const r = initialRoute()
     window.history.replaceState({ root: true }, '', pathFor(r))
-    navRef.current = { route: r, page: 'home', sub: 'reports', sheet: null }
+    navRef.current = { route: r, page: 'home', sub: 'eod', sheet: null }
     window.history.pushState({ app: 1, ...navRef.current }, '', pathFor(r))
     let lastExit = 0
     const onPop = (e) => {
@@ -336,15 +336,53 @@ export function AppProvider({ children }) {
     [post]
   )
 
+  /* a caller who adds or edits a person's details has spoken to them, so the lead counts as CALLED */
+  const activityEntry = (lead, outcome, remark = '') => ({
+    id: uid(), at: nowISO(), outcome, remark, next: '',
+    by: sessionRef.current?.name || settingsRef.current.name || '', duration: 0,
+    first: !(lead.callCount > 0),
+  })
+
   const addLead = useCallback(
     (data) => {
       const s = sessionRef.current
-      return saveLead({
+      const base = {
         id: uid(), type: 'distributor', status: 'New', priority: 'Warm', city: 'Bengaluru',
         calls: [], callCount: 0, createdAt: nowISO(), nextFollowUp: '',
         ...(s?.role === 'caller' ? { assignedTo: s.id, assignedName: s.name } : {}),
         ...data,
-      })
+      }
+      if (s?.role === 'caller' && base.type !== 'number') {
+        const call = activityEntry(base, 'Lead Added', 'New lead entered after speaking')
+        return saveLead(
+          { ...base, calls: [call], callCount: 1, lastCall: call.at, lastOutcome: 'Lead Added', status: base.status === 'New' ? 'Contacted' : base.status },
+          { ...call, leadId: base.id, name: base.name, phone: base.phone }
+        )
+      }
+      return saveLead(base)
+    },
+    [saveLead]
+  )
+
+  const DETAIL_KEYS = ['type', 'name', 'altPhone', 'email', 'company', 'bizType', 'area', 'source', 'priority', 'status', 'investment', 'vehicle', 'coldStorage', 'experience', 'dailyQty', 'notes']
+  const saveDetails = useCallback(
+    (prev, data) => {
+      const s = sessionRef.current
+      const changed = DETAIL_KEYS.some((k) => String(prev[k] ?? '') !== String(data[k] ?? ''))
+      if (!s || s.role === 'admin' || !changed) return saveLead(data)
+      const call = activityEntry(prev, 'Details Updated', 'Lead details updated')
+      const first = call.first
+      return saveLead(
+        {
+          ...data,
+          calls: [call, ...(prev.calls || [])],
+          callCount: first ? 1 : prev.callCount,
+          lastCall: first ? call.at : prev.lastCall,
+          lastOutcome: first ? 'Details Updated' : prev.lastOutcome,
+          status: first && data.status === 'New' && data.type !== 'number' ? 'Contacted' : data.status,
+        },
+        { ...call, leadId: prev.id, name: data.name, phone: data.phone }
+      )
     },
     [saveLead]
   )
@@ -465,7 +503,7 @@ export function AppProvider({ children }) {
     session, gate, loginList, loginErr, retryGate: () => setGateTry((n) => n + 1), login, adminLogin, logout,
     route, page, sub, go, sheet, openLead, openForm, closeSheet,
     filter, setFilter, toasts, toast,
-    saveLead, addLead, logCall, convertLead, snooze, removeLead, importLeads, clearAll, loadSample,
+    saveLead, addLead, saveDetails, logCall, convertLead, snooze, removeLead, importLeads, clearAll, loadSample,
     assignMany, saveCaller, deleteCaller,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

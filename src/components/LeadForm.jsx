@@ -6,7 +6,7 @@ import { AREAS, BIZ_TYPES, INVEST, PRIORITIES, SOURCES, STATUSES } from '../cons
 import { cleanPhone, fromLocalInput, toLocalInput, atDay, addHours } from '../utils'
 
 export default function LeadForm({ lead, preset, onClose }) {
-  const { leads, addLead, saveLead, toast, session, callers } = useApp()
+  const { leads, addLead, saveDetails, toast, session, callers } = useApp()
   const editing = !!lead
   const [f, setF] = useState(() => ({
     type: 'distributor', name: '', phone: '', altPhone: '', email: '', company: '', bizType: '',
@@ -28,7 +28,7 @@ export default function LeadForm({ lead, preset, onClose }) {
     if (cleanPhone(f.phone).length < 10) return toast('Enter a valid 10-digit phone number', 'warn')
     const data = { ...f, name: f.name.trim(), phone: cleanPhone(f.phone), altPhone: cleanPhone(f.altPhone) }
     if (session?.role === 'admin' && data.assignedTo !== undefined) data.assignedName = callers.find((c) => c.id === data.assignedTo)?.name || ''
-    if (editing) saveLead(data)
+    if (editing) saveDetails(lead, data)
     else addLead(data)
     toast(editing ? 'Lead updated ✓' : isNum ? 'Number saved ✓' : 'Lead added ✓')
     onClose()

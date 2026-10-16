@@ -66,3 +66,12 @@ Reports + CSV export, scripts and WhatsApp templates, in-app due reminders with 
 
 ## Mobile fixes
 Bottom sheets are CSS-animated and can no longer get stuck on screen; after choosing a call outcome the panel scrolls to Remark / Follow-up and the **Save** button stays pinned at the bottom.
+
+## EOD & reports
+
+- **Caller:** More → **📋 EOD** (and the card on Home, highlighted after 5 PM). Pick Today / Yesterday / This week / This month / Custom dates, then:
+  - **Copy for WhatsApp**: an emoji-formatted message (calls, connected, details updated, interested, meetings, onboarded, outcomes, highlights, tomorrow's follow-ups, pipeline, your note) ready to paste in the management group. Also *Open WhatsApp* and *Share…*.
+  - **Download PDF** (branded, charts + tables + full call log) or **Download Excel** (Summary, By Caller, Activity Log, Highlights & Follow-ups, Leads Snapshot). On phones that support it, *Share PDF on WhatsApp* sends the file directly.
+- **Admin:** sidebar **Reports** (or the card on Progress): same options for the whole team or one caller, with a caller-wise leaderboard.
+- **What counts as "called":** logging a call, **adding a new lead after speaking**, or **updating a lead's details** all mark the lead as called (the first time it is touched it counts as a call; later edits are logged as *Details updated*).
+- PDF/Excel libraries are loaded only when you press download, so the app stays fast.

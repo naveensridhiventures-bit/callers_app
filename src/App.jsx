@@ -15,6 +15,7 @@ import More from './pages/More'
 import Settings from './pages/Settings'
 import AdminOverview from './pages/AdminOverview'
 import AdminTeam from './pages/AdminTeam'
+import ReportCenter from './pages/ReportCenter'
 import { Assign, Requests } from './pages/Admin'
 import { bucket, fmtTime, nameOf } from './utils'
 
@@ -22,7 +23,8 @@ const PAGES = { home: Dashboard, leads: Leads, call: CallMode, follow: Followups
 const AdminAssign = () => <div className="page adm"><div className="page-h"><h1>Assign leads</h1></div><Assign /></div>
 const AdminRequests = () => <div className="page adm"><div className="page-h"><h1>Delete requests</h1></div><Requests /></div>
 const AdminSettings = () => <div className="page adm"><div className="page-h"><h1>Settings</h1></div><Settings /></div>
-const ADMIN_PAGES = { overview: AdminOverview, team: AdminTeam, assign: AdminAssign, leads: Leads, requests: AdminRequests, settings: AdminSettings }
+const AdminReports = () => <div className="page adm"><div className="page-h"><h1>Reports</h1></div><ReportCenter admin /></div>
+const ADMIN_PAGES = { reports: AdminReports, overview: AdminOverview, team: AdminTeam, assign: AdminAssign, leads: Leads, requests: AdminRequests, settings: AdminSettings }
 const ADMIN_TABS = [
   { id: 'overview', icon: 'chart', label: 'Progress' },
   { id: 'team', icon: 'users', label: 'Callers' },
@@ -96,6 +98,7 @@ function Shell() {
                 {t.id === 'requests' && reqCount > 0 && <b className="badge static">{reqCount}</b>}
               </button>
             ))}
+            <button className={active === 'reports' ? 'on' : ''} onClick={() => go('reports')}><Icon name="download" size={20} /><span>Reports</span></button>
             <button className={active === 'settings' ? 'on' : ''} onClick={() => go('settings')}><Icon name="gear" size={20} /><span>Settings</span></button>
           </nav>
           <div className="side-foot">
