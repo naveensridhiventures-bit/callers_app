@@ -1,9 +1,10 @@
 // Google Sheets database (Apps Script web app). Pre-connected so every device syncs out of the box.
 export const DEFAULT_SHEET_URL =
-  'https://script.google.com/macros/s/AKfycbyQPgJCPM_tqtgrS6PeYlGcCHiGsftg6xMfnlX5H1gabv8eES68E9mgykacIiw7E3LP/exec'
+  'https://script.google.com/macros/s/AKfycbymro0Y-iDp4skwJhZxXjkaE0eHNCzJL6-f3bQZqAqRw6Ort3JS0tD-T8gVT0qqsxpf/exec'
 
 // earlier built-in links: devices that saved one of these are moved to the current link automatically
 export const OLD_DEFAULT_URLS = [
+  'https://script.google.com/macros/s/AKfycbyQPgJCPM_tqtgrS6PeYlGcCHiGsftg6xMfnlX5H1gabv8eES68E9mgykacIiw7E3LP/exec',
   'https://script.google.com/macros/s/AKfycbynKeLY0Ce0E8C4O0tDdr8mo7GsDaueXhEnHfliCpBZp7MvFXWPoN8z8FmJ4ebxi8_-/exec',
   'https://script.google.com/macros/s/AKfycbxRyPPP-1b3oRUQ904N7WRQSuT4AXaS5TtJeZH3ppPjKTBpwWp9Bl24bU_fiU2DRhwV/exec',
   'https://script.google.com/macros/s/AKfycby9c3rA4V35IkB954ZQ7qXS1Te_zEXSafmE_xFm5ybBBCvepAD3dqnfYn0S6BBWBou-/exec',
