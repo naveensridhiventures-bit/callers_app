@@ -7,6 +7,8 @@ import ControlLogin from './components/ControlLogin'
 import Splash from './components/Splash'
 import LeadForm from './components/LeadForm'
 import LeadDetail from './components/LeadDetail'
+import CallClose from './components/CallClose'
+import DueModal from './components/DueModal'
 import Dashboard from './pages/Dashboard'
 import Leads from './pages/Leads'
 import Followups from './pages/Followups'
@@ -146,7 +148,9 @@ function Shell() {
       </nav>
 
       {sheet?.type === 'form' && <LeadForm key="form" lead={formLead} preset={sheet.preset} onClose={closeSheet} />}
-      {sheet?.type === 'detail' && <LeadDetail key={`d-${sheet.id}`} id={sheet.id} calling={sheet.calling} onClose={closeSheet} />}
+      {sheet?.type === 'detail' && <LeadDetail key={`d-${sheet.id}`} id={sheet.id} calling={sheet.calling} preset={sheet.outcome} onClose={closeSheet} />}
+
+      {!isAdmin && <><DueModal /><CallClose /></>}
 
       <div className="toasts">
         {toasts.map((t) => <div key={t.id} className={`toast ${t.type}`}>{t.msg}</div>)}

@@ -5,7 +5,7 @@ import { assignedAtOf, bucket, fmtAssigned, fmtWhen, isToday, nameOf, telHref, w
 import { CLOSED, NUMBER_ONLY } from '../constants'
 
 export default function LeadCard({ lead, i = 0 }) {
-  const { openLead, session, callers, convertLead } = useApp()
+  const { openLead, session, callers, convertLead, startCall } = useApp()
   const k = bucket(lead)
   const closed = CLOSED.includes(lead.status)
   const isNum = lead.type === 'number'
@@ -51,7 +51,7 @@ export default function LeadCard({ lead, i = 0 }) {
         </div>
       </div>
       <div className="lead-actions" onClick={(e) => e.stopPropagation()}>
-        <a className="round call" href={telHref(lead.phone)} onClick={() => openLead(lead.id, { calling: true })} aria-label="Call">
+        <a className="round call" href={telHref(lead.phone)} onClick={(e) => { if (!startCall(lead)) return e.preventDefault(); openLead(lead.id, { calling: true }) }} aria-label="Call">
           <Icon name="phone" size={18} />
         </a>
         <a className="round wa" href={waHref(lead.phone)} target="_blank" rel="noreferrer" aria-label="WhatsApp">

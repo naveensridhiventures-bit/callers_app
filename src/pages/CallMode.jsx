@@ -7,6 +7,7 @@ import { OUTCOMES } from '../constants'
 
 
 function TopCard({ lead, onSkip, onOpen, quick, onMove }) {
+  const { startCall } = useApp()
   const isNum = lead.type === 'number'
   const quickIds = isNum ? ['No Response', 'Switched Off', 'Not Reachable'] : ['Not Answered', 'Busy', 'Wrong Number']
   const x = useMotionValue(0)
@@ -39,7 +40,7 @@ function TopCard({ lead, onSkip, onOpen, quick, onMove }) {
       </div>
       {lead.lastRemark ? <div className="cm-remark">“{lead.lastRemark}”<small>— {lead.lastOutcome}, {lead.callCount} call{lead.callCount > 1 ? 's' : ''}</small></div> : <div className="cm-remark soft">Fresh lead · no calls yet</div>}
       <div className="cm-phone">{lead.phone}</div>
-      <motion.a whileTap={{ scale: 0.93, y: 4 }} className="btn3d call-big" href={telHref(lead.phone)} onClick={() => onOpen(true)}>
+      <motion.a whileTap={{ scale: 0.93, y: 4 }} className="btn3d call-big" href={telHref(lead.phone)} onClick={(e) => { if (!startCall(lead)) return e.preventDefault(); onOpen(true) }}>
         <Icon name="phone" size={24} /> Call now
       </motion.a>
       {isNum && (
@@ -61,7 +62,7 @@ function TopCard({ lead, onSkip, onOpen, quick, onMove }) {
 }
 
 export default function CallMode() {
-  const { leads, openLead, logCall, toast, go, convertLead } = useApp()
+  const { leads, openLead, logCall, toast, go, convertLead, startCall } = useApp()
   const [handled, setHandled] = useState([])
 
   const queue = useMemo(() => {

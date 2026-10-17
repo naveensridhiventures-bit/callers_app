@@ -29,7 +29,8 @@ function Stat({ emoji, label, value, hint, color, action }) {
 }
 
 export default function Dashboard() {
-  const { leads, settings, go, openForm, setFilter, loadSample, session, filter } = useApp()
+  const { leads, settings, go, openForm, setFilter, loadSample, session, filter, pendingCall, reopenPending } = useApp()
+  const pLead = pendingCall && leads.find((l) => l.id === pendingCall.leadId)
   const freshToday = useMemo(() => leads.filter((l) => l.assignedTo && isToday(assignedAtOf(l)) && !l.callCount).length, [leads])
 
   const s = useMemo(() => {
@@ -61,6 +62,13 @@ export default function Dashboard() {
   return (
     <div className="page">
       <InstallBanner dismissible />
+      {pLead && (
+        <button className="cc-banner" onClick={reopenPending}>
+          <Icon name="phone" size={20} />
+          <span>Close your last call<small>{pLead.name || pLead.phone} · pick ring / no response</small></span>
+          <span className="go">Close now</span>
+        </button>
+      )}
       {session?.role === 'caller' && freshToday > 0 && (
         <motion.button className="cta-report new" whileTap={{ scale: 0.98 }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} onClick={() => { setFilter({ ...filter, date: 'today', type: 'all', status: 'all', q: '' }); go('leads') }}>
           <span className="cta-ico">🆕</span>

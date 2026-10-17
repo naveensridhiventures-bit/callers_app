@@ -61,6 +61,24 @@ export function AppProvider({ children }) {
   const callersRef = useRef(callers); callersRef.current = callers
   const settingsRef = useRef(rawSettings); settingsRef.current = rawSettings
   const sessionRef = useRef(session); sessionRef.current = session
+
+  /* ---- unclosed-call tracking: every call must be closed with an outcome ---- */
+  const [pendingCall, setPendingCall] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sridhi.pending') || 'null') } catch { return null }
+  })
+  const [pendingSnooze, setPendingSnooze] = useState(0)
+  const pendingRef = useRef(pendingCall); pendingRef.current = pendingCall
+  const writePending = useCallback((v) => {
+    setPendingCall(v); pendingRef.current = v
+    try { v ? localStorage.setItem('sridhi.pending', JSON.stringify(v)) : localStorage.removeItem('sridhi.pending') } catch {}
+  }, [])
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === 'hidden' && pendingRef.current && !pendingRef.current.away) writePending({ ...pendingRef.current, away: true })
+    }
+    document.addEventListener('visibilitychange', onHide)
+    return () => document.removeEventListener('visibilitychange', onHide)
+  }, [writePending])
   const syncing = useRef(false)
   const reqSeen = useRef(null)
   const navRef = useRef({ route: initialRoute(), page: 'home', sub: 'eod', sheet: null })
@@ -311,6 +329,7 @@ export function AppProvider({ children }) {
     await syncNow()
     setLeads([])
     setCallers([])
+    writePending(null)
     setSession(null)
     setSheet(null)
     if (wasAdmin) {
@@ -406,14 +425,27 @@ export function AppProvider({ children }) {
         priority: priority || lead.priority,
         nextFollowUp: CLOSED.includes(newStatus) ? '' : next || '',
       }
+      if (pendingRef.current?.leadId === lead.id) writePending(null)
       return saveLead(updated, { ...call, leadId: lead.id, name: lead.name, phone: lead.phone })
     },
-    [saveLead]
+    [saveLead, writePending]
   )
 
   const convertLead = useCallback((lead, type) => saveLead({ ...lead, type }), [saveLead])
 
   const snooze = useCallback((lead, iso) => saveLead({ ...lead, nextFollowUp: iso }), [saveLead])
+
+  // returns false (and surfaces the popup) when another call is still unclosed
+  const startCall = useCallback((lead) => {
+    const p = pendingRef.current
+    if (p && p.leadId !== lead.id) { writePending({ ...p, away: true, at: Math.min(p.at, Date.now() - 3000) }); setPendingSnooze(0); return false }
+    writePending({ leadId: lead.id, at: Date.now(), away: false })
+    setPendingSnooze(0)
+    return true
+  }, [writePending])
+  const clearPending = useCallback(() => { writePending(null); setPendingSnooze(0) }, [writePending])
+  const snoozePending = useCallback((mins = 10) => setPendingSnooze(Date.now() + mins * 60000), [])
+  const reopenPending = useCallback(() => setPendingSnooze(0), [])
 
   const removeLead = useCallback(
     (id) => {
@@ -506,6 +538,7 @@ export function AppProvider({ children }) {
     session, gate, loginList, loginErr, retryGate: () => setGateTry((n) => n + 1), login, adminLogin, logout,
     route, page, sub, go, sheet, openLead, openForm, closeSheet,
     filter, setFilter, toasts, toast,
+    pendingCall, pendingSnooze, startCall, clearPending, snoozePending, reopenPending,
     saveLead, addLead, saveDetails, logCall, convertLead, snooze, removeLead, importLeads, clearAll, loadSample,
     assignMany, saveCaller, deleteCaller,
   }

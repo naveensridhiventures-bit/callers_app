@@ -78,3 +78,8 @@ Bottom sheets are CSS-animated and can no longer get stuck on screen; after choo
 
 ## Assigned date & time
 Every lead now remembers **when it was assigned** (`assignedAt`): on HR assign, import, reassign, or when a caller adds it. Callers see a **📥 Today, 2:57 pm** tag and a **🆕 New** tag on cards, leads are **grouped by day** (Today / Yesterday / date) with counts, and there are date chips (All dates, Today, Yesterday, This week, Pick date). Home shows "N new leads assigned today". The Excel report has an *Assigned on* column. Needs script **v4** (older leads fall back to the day they were added).
+
+## Close every call + follow-up reminders
+- Tapping **Call** records a pending call. When the caller comes back from the dialer (or reopens the app) a popup forces her to close it: **No Response / Switched Off / Not Reachable / Busy** (one tap, follow-up auto-set, can be changed with chips) or **Spoke to the person** (opens the lead with the outcome pre-selected).
+- Another call cannot be started until the pending one is closed. "Later" snoozes 10 min and a red banner stays on Home.
+- After login/open, and after 30+ min away, a **Follow-ups need you** popup lists overdue and today's leads with Call, WhatsApp, +1h and +1d snooze. "Remind me in 30 min" re-shows it later.

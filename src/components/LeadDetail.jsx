@@ -8,18 +8,18 @@ import {
   assignedAtOf, fmtAssigned, nameOf, nowISO, suggestNext, telHref, toLocalInput, typeLabel, waHref,
 } from '../utils'
 
-export default function LeadDetail({ id, calling, onClose }) {
-  const { leads, logCall, removeLead, saveLead, openForm, settings, toast, go, session, callers, assignMany, convertLead, scriptVersion } = useApp()
+export default function LeadDetail({ id, calling, preset, onClose }) {
+  const { leads, logCall, removeLead, saveLead, openForm, settings, toast, go, session, callers, assignMany, convertLead, scriptVersion, startCall } = useApp()
   const lead = leads.find((l) => l.id === id)
   const [tab, setTab] = useState(() => (session?.role === 'admin' ? 'history' : 'call'))
   const remarkRef = useRef(null)
   const [started, setStarted] = useState(calling ? Date.now() : null)
   const [, tick] = useState(0)
-  const [outcome, setOutcome] = useState('')
+  const [outcome, setOutcome] = useState(preset || '')
   const [remark, setRemark] = useState('')
   const [priority, setPriority] = useState(lead?.priority || 'Warm')
-  const [status, setStatus] = useState(lead?.status || 'New')
-  const [next, setNext] = useState('')
+  const [status, setStatus] = useState(() => (preset && OUTCOMES.find((o) => o.id === preset)?.status) || lead?.status || 'New')
+  const [next, setNext] = useState(preset ? suggestNext(preset) : '')
   const [done, setDone] = useState(null)
   const [delOpen, setDelOpen] = useState(false)
   const [delNote, setDelNote] = useState('')
@@ -117,7 +117,7 @@ export default function LeadDetail({ id, calling, onClose }) {
           </div>
         </div>
         {!isAdmin && <div className="dh-actions">
-          <motion.a whileTap={{ scale: 0.94 }} className="act call" href={telHref(lead.phone)} onClick={() => { setStarted(Date.now()); setTab('call') }}>
+          <motion.a whileTap={{ scale: 0.94 }} className="act call" href={telHref(lead.phone)} onClick={(e) => { if (!startCall(lead)) return e.preventDefault(); setStarted(Date.now()); setTab('call') }}>
             <Icon name="phone" /> {started ? <span className="live"><i />{fmtDur(secs)}</span> : 'Call'}
           </motion.a>
           <motion.a whileTap={{ scale: 0.94 }} className="act wa" href={waHref(lead.phone, waText)} target="_blank" rel="noreferrer"><Icon name="whatsapp" /> WhatsApp</motion.a>
