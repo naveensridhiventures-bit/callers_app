@@ -48,7 +48,7 @@ export function AppProvider({ children }) {
   const [page, setPage] = useState('home')
   const [sub, setSub] = useState('eod')
   const [sheet, setSheet] = useState(null)
-  const [filter, setFilter] = useState({ q: '', type: 'all', status: 'all', caller: 'all' })
+  const [filter, setFilter] = useState({ q: '', type: 'all', status: 'all', caller: 'all', date: 'all' })
   const [toasts, setToasts] = useState([])
 
   const settings = useMemo(() => ({ ...rawSettings, name: session?.name || rawSettings.name }), [rawSettings, session])
@@ -349,7 +349,7 @@ export function AppProvider({ children }) {
       const base = {
         id: uid(), type: 'distributor', status: 'New', priority: 'Warm', city: 'Bengaluru',
         calls: [], callCount: 0, createdAt: nowISO(), nextFollowUp: '',
-        ...(s?.role === 'caller' ? { assignedTo: s.id, assignedName: s.name } : {}),
+        ...(s?.role === 'caller' ? { assignedTo: s.id, assignedName: s.name, assignedAt: nowISO() } : {}),
         ...data,
       }
       if (s?.role === 'caller' && base.type !== 'number') {
@@ -429,7 +429,7 @@ export function AppProvider({ children }) {
       const name = callersRef.current.find((c) => c.id === assignedTo)?.name || ''
       const fresh = arr
         .filter((l) => !l.phone || !phones.has(l.phone))
-        .map((l) => ({ ...l, assignedTo, assignedName: name, _synced: false }))
+        .map((l) => ({ ...l, assignedTo, assignedName: name, assignedAt: assignedTo ? nowISO() : '', _synced: false }))
       setLeads((p) => [...fresh, ...p])
       ;(async () => {
         for (let i = 0; i < fresh.length; i += 200) await post({ action: 'bulk', leads: fresh.slice(i, i + 200).map(strip) })
@@ -447,7 +447,10 @@ export function AppProvider({ children }) {
       const ts = nowISO()
       const changed = leadsRef.current
         .filter((l) => pm.has(l.id))
-        .map((l) => ({ ...l, assignedTo: pm.get(l.id) || '', assignedName: names.get(pm.get(l.id)) || '', updatedAt: ts, _synced: false }))
+        .map((l) => {
+          const to = pm.get(l.id) || ''
+          return { ...l, assignedTo: to, assignedName: names.get(to) || '', assignedAt: to ? (to === l.assignedTo && l.assignedAt ? l.assignedAt : ts) : '', updatedAt: ts, _synced: false }
+        })
       const cm = new Map(changed.map((l) => [l.id, l]))
       setLeads((prev) => prev.map((l) => cm.get(l.id) || l))
       for (let i = 0; i < changed.length; i += 200) await post({ action: 'bulk', leads: changed.slice(i, i + 200).map(strip) })

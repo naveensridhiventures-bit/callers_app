@@ -27,7 +27,10 @@ export default function LeadForm({ lead, preset, onClose }) {
     if (!isNum && !f.name.trim()) return toast("Enter the person's name", 'warn')
     if (cleanPhone(f.phone).length < 10) return toast('Enter a valid 10-digit phone number', 'warn')
     const data = { ...f, name: f.name.trim(), phone: cleanPhone(f.phone), altPhone: cleanPhone(f.altPhone) }
-    if (session?.role === 'admin' && data.assignedTo !== undefined) data.assignedName = callers.find((c) => c.id === data.assignedTo)?.name || ''
+    if (session?.role === 'admin' && data.assignedTo !== undefined) {
+      data.assignedName = callers.find((c) => c.id === data.assignedTo)?.name || ''
+      if (data.assignedTo && data.assignedTo !== lead?.assignedTo) data.assignedAt = new Date().toISOString()
+    }
     if (editing) saveDetails(lead, data)
     else addLead(data)
     toast(editing ? 'Lead updated ✓' : isNum ? 'Number saved ✓' : 'Lead added ✓')

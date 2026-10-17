@@ -5,7 +5,7 @@ import { Avatar, Confetti, Icon, Segmented, Sheet, StatusPill } from '../ui'
 import { CLOSED, NUMBER_ONLY, NUMBER_OUTCOMES, OUTCOMES, PRIORITIES, QUICK_REMARKS, STATUSES } from '../constants'
 import {
   addHours, atDay, downloadICS, fmtDur, fmtWhen, fromLocalInput, gcalLink, gmailLink,
-  nameOf, nowISO, suggestNext, telHref, toLocalInput, typeLabel, waHref,
+  assignedAtOf, fmtAssigned, nameOf, nowISO, suggestNext, telHref, toLocalInput, typeLabel, waHref,
 } from '../utils'
 
 export default function LeadDetail({ id, calling, onClose }) {
@@ -87,6 +87,8 @@ export default function LeadDetail({ id, calling, onClose }) {
     ['Type', lead.bizType], ['Area', lead.area], ['Source', lead.source], ['Priority', lead.priority],
     ['Investment', lead.investment], ['Own vehicle', lead.vehicle], ['Cold storage', lead.coldStorage],
     ['FMCG exp (yrs)', lead.experience], ['Packets / day', lead.dailyQty], ['Calls made', lead.callCount || 0],
+    ['Assigned', lead.assignedTo ? fmtAssigned(assignedAtOf(lead)) : ''],
+    ['Added on', lead.createdAt ? fmtAssigned(lead.createdAt) : ''],
     ['Notes', lead.notes],
   ].filter(([, v]) => v !== '' && v != null)
 

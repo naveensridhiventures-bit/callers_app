@@ -251,11 +251,11 @@ export async function makeXLSX(r) {
 
   // ---- All leads snapshot
   const wa = wb.addWorksheet('Leads Snapshot', { views: [{ showGridLines: false, state: 'frozen', ySplit: 4 }] })
-  banner(wa, 13, `All leads in scope  |  ${m.scopeLabel}  |  as of ${fmtDateTime(m.generatedAt)}`)
-  const e2 = table(wa, 4, ['Lead', 'Phone', 'Area', 'Business', 'Type', 'Status', 'Interest', 'Caller', 'Calls', 'Last call', 'Last outcome', 'Last remark', 'Next follow-up'],
-    r.leadRows.map((l) => [l.name, l.phone, l.area, l.company, typeName(l.type), l.status, l.interest, l.caller, l.calls, l.lastCall ? fmtDateTime(l.lastCall) : '', l.lastOutcome, l.lastRemark, l.next ? fmtDateTime(l.next) : '']),
-    [24, 14, 16, 18, 12, 14, 14, 14, 7, 17, 16, 34, 18])
-  if (r.leadRows.length) wa.autoFilter = { from: { row: 4, column: 1 }, to: { row: e2 - 1, column: 13 } }
+  banner(wa, 14, `All leads in scope  |  ${m.scopeLabel}  |  as of ${fmtDateTime(m.generatedAt)}`)
+  const e2 = table(wa, 4, ['Lead', 'Phone', 'Area', 'Business', 'Type', 'Status', 'Interest', 'Caller', 'Assigned on', 'Calls', 'Last call', 'Last outcome', 'Last remark', 'Next follow-up'],
+    r.leadRows.map((l) => [l.name, l.phone, l.area, l.company, typeName(l.type), l.status, l.interest, l.caller, l.assigned ? fmtDateTime(l.assigned) : '', l.calls, l.lastCall ? fmtDateTime(l.lastCall) : '', l.lastOutcome, l.lastRemark, l.next ? fmtDateTime(l.next) : '']),
+    [24, 14, 16, 18, 12, 14, 14, 14, 18, 7, 17, 16, 34, 18])
+  if (r.leadRows.length) wa.autoFilter = { from: { row: 4, column: 1 }, to: { row: e2 - 1, column: 14 } }
 
   const buf = await wb.xlsx.writeBuffer()
   return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })

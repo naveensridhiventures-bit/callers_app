@@ -7,6 +7,7 @@ import InstallBanner from '../components/InstallBanner'
 import { CLOSED, OUTCOMES, STATUSES } from '../constants'
 import { bucket, greeting, sameDay } from '../utils'
 import { isCall } from '../analytics'
+import { assignedAtOf, isToday } from '../utils'
 
 function Stat({ emoji, label, value, hint, color, action }) {
   const [flip, setFlip] = useState(false)
@@ -28,7 +29,8 @@ function Stat({ emoji, label, value, hint, color, action }) {
 }
 
 export default function Dashboard() {
-  const { leads, settings, go, openForm, setFilter, loadSample, session } = useApp()
+  const { leads, settings, go, openForm, setFilter, loadSample, session, filter } = useApp()
+  const freshToday = useMemo(() => leads.filter((l) => l.assignedTo && isToday(assignedAtOf(l)) && !l.callCount).length, [leads])
 
   const s = useMemo(() => {
     const now = new Date()
@@ -59,6 +61,13 @@ export default function Dashboard() {
   return (
     <div className="page">
       <InstallBanner dismissible />
+      {session?.role === 'caller' && freshToday > 0 && (
+        <motion.button className="cta-report new" whileTap={{ scale: 0.98 }} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} onClick={() => { setFilter({ ...filter, date: 'today', type: 'all', status: 'all', q: '' }); go('leads') }}>
+          <span className="cta-ico">🆕</span>
+          <span><b>{freshToday} new lead{freshToday > 1 ? 's' : ''} assigned today</b><small>Tap to see who to call first</small></span>
+          <Icon name="chevron" size={18} />
+        </motion.button>
+      )}
       <motion.button className={`cta-report ${new Date().getHours() >= 17 ? 'hot' : ''}`} whileTap={{ scale: 0.98 }} onClick={() => go('more', 'eod')} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <span className="cta-ico">📋</span>
         <span><b>{new Date().getHours() >= 17 ? 'Day done? Share your EOD report' : 'Today’s EOD report'}</b><small>Copy for WhatsApp · download PDF or Excel</small></span>

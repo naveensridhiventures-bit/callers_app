@@ -39,6 +39,17 @@ export function relDay(iso) {
   if (diff === -1) return 'Yesterday'
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 }
+/** when a lead reached the caller (assigned date; older leads fall back to the day they were added) */
+export const assignedAtOf = (l) => l.assignedAt || l.createdAt || l.updatedAt || ''
+export const isToday = (iso) => !!iso && new Date(iso).toDateString() === new Date().toDateString()
+export const dayLabel = (iso) => {
+  if (!iso) return 'Earlier'
+  const r = relDay(iso)
+  if (r === 'Today' || r === 'Yesterday') return r
+  return new Date(iso).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+}
+export const dayKeyOf = (iso) => (iso ? new Date(iso).toDateString() : 'none')
+export const fmtAssigned = (iso) => (iso ? `${relDay(iso)}, ${fmtTime(iso)}` : '')
 export const fmtWhen = (iso) => (iso ? `${relDay(iso)}, ${fmtTime(iso)}` : '—')
 export const fmtDur = (s) => `${pad(Math.floor(s / 60))}:${pad(s % 60)}`
 

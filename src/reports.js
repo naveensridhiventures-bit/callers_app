@@ -130,7 +130,7 @@ export function buildReport({ allLeads, callers, session, range, callerId = 'all
     leadRows: mineLeads.map((l) => ({
       name: nameOf(l), phone: l.phone, area: l.area || '', company: l.company || '', type: l.type, status: l.status,
       interest: INTEREST.find((i) => i.id === interestOf(l))?.label || '', priority: l.priority || '',
-      caller: nameById.get(l.assignedTo) || l.assignedName || '', calls: l.callCount || 0, lastCall: l.lastCall || '', lastOutcome: l.lastOutcome || '',
+      assigned: l.assignedTo ? (l.assignedAt || l.createdAt || '') : '', caller: nameById.get(l.assignedTo) || l.assignedName || '', calls: l.callCount || 0, lastCall: l.lastCall || '', lastOutcome: l.lastOutcome || '',
       lastRemark: l.lastRemark || '', next: l.nextFollowUp || '',
     })),
   }

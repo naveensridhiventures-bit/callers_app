@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Avatar, Counter, Icon, Segmented, StatusPill } from '../ui'
 import { STATUSES } from '../constants'
-import { fmtWhen, nameOf, nowISO, parseCSV, rowsToLeads, uid } from '../utils'
+import { assignedAtOf, fmtAssigned, fmtWhen, nameOf, nowISO, parseCSV, rowsToLeads, uid } from '../utils'
 
 const rndPin = () => String(Math.floor(1000 + Math.random() * 9000))
 
@@ -161,7 +161,7 @@ export function Assign() {
           {list.slice(0, 60).map((l) => (
             <label key={l.id} className={`arow ${sel.has(l.id) ? 'on' : ''}`}>
               <input type="checkbox" checked={sel.has(l.id)} onChange={() => toggle(l.id)} />
-              <div><b>{nameOf(l)}</b><small>{l.type === 'number' ? 'Number only' : l.phone} · {l.area || 'Bengaluru'}{l.company ? ` · ${l.company}` : ''}</small></div>
+              <div><b>{nameOf(l)}</b><small>{l.type === 'number' ? 'Number only' : l.phone} · {l.area || 'Bengaluru'}{l.company ? ` · ${l.company}` : ''}{l.assignedTo ? ` · 📥 ${fmtAssigned(assignedAtOf(l))}` : ''}</small></div>
               <span className="who-tag">{l.assignedTo ? names.get(l.assignedTo) || '—' : 'Unassigned'}</span>
             </label>
           ))}

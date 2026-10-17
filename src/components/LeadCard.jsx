@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Avatar, Icon, StatusPill } from '../ui'
-import { bucket, fmtWhen, nameOf, telHref, waHref } from '../utils'
+import { assignedAtOf, bucket, fmtAssigned, fmtWhen, isToday, nameOf, telHref, waHref } from '../utils'
 import { CLOSED, NUMBER_ONLY } from '../constants'
 
 export default function LeadCard({ lead, i = 0 }) {
@@ -13,6 +13,8 @@ export default function LeadCard({ lead, i = 0 }) {
     convertLead(lead, type)
     openLead(lead.id, { moved: true })
   }
+  const got = lead.assignedTo ? assignedAtOf(lead) : ''
+  const fresh = !!got && isToday(got) && !lead.callCount
   return (
     <motion.div
       layout
@@ -39,6 +41,8 @@ export default function LeadCard({ lead, i = 0 }) {
         <div className="lead-meta">
           {isNum ? <span className="tag num">📞 Number</span> : <StatusPill status={lead.status} />}
           {lead.type === 'sales' && <span className="tag">Sales</span>}
+          {fresh && <span className="tag new">🆕 New</span>}
+          {got && <span className="tag when" title="When this lead was assigned">📥 {fmtAssigned(got)}</span>}
           {lead.delReq === '1' && <span className="tag red">🗑 Delete requested</span>}
           {session?.role === 'admin' && <span className={`tag ${lead.assignedTo ? '' : 'amber'}`}>👤 {lead.assignedTo ? callers.find((c) => c.id === lead.assignedTo)?.name || lead.assignedName || '—' : 'Unassigned'}</span>}
           {lead.nextFollowUp && !closed && (

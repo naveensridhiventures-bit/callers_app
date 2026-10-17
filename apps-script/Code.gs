@@ -1,5 +1,5 @@
 /**
- * SRIDHI CALLER APP - Google Sheets backend  (version 3)
+ * SRIDHI CALLER APP - Google Sheets backend  (version 4)
  * ------------------------------------------------------
  * Paste this whole file into the Apps Script of your Google Sheet
  * (Extensions -> Apps Script), Save, then:
@@ -14,11 +14,11 @@
  */
 const ADMIN_PIN = 'hr@sridhi'
 const SECRET = '' // optional extra key; if you set it, enter the same in the app (Settings -> Advanced)
-const VERSION = 3
+const VERSION = 4
 
 const LEAD_HEADERS = [
   'id', 'type', 'name', 'phone', 'altPhone', 'email', 'company', 'bizType', 'area', 'city',
-  'source', 'status', 'priority', 'assignedTo', 'assignedName', 'investment', 'vehicle', 'coldStorage',
+  'source', 'status', 'priority', 'assignedTo', 'assignedName', 'assignedAt', 'investment', 'vehicle', 'coldStorage',
   'experience', 'dailyQty', 'notes', 'nextFollowUp', 'lastCall', 'lastOutcome', 'lastRemark',
   'callCount', 'createdAt', 'updatedAt', 'delReq', 'delReqBy', 'delReqAt', 'delReqNote', 'callsJson',
 ]
@@ -132,7 +132,21 @@ function doGet(e) {
 /* ---------- write ---------- */
 function upsertMany_(leads, w) {
   const sh = sheet_('Leads', LEAD_HEADERS)
-  const h = hdrs_(sh)
+  let h = hdrs_(sh)
+  // future-proof: any new simple field the app sends gets its own column automatically
+  const extra = []
+  leads.forEach(function (l) {
+    Object.keys(l).forEach(function (k) {
+      if (h.indexOf(k) < 0 && extra.indexOf(k) < 0 && /^[A-Za-z][A-Za-z0-9_]{0,30}$/.test(k) && k !== 'calls' && k !== 'callsJson' && typeof l[k] !== 'object') extra.push(k)
+    })
+  })
+  if (extra.length) {
+    const start = sh.getLastColumn() + 1
+    sh.getRange(1, start, sh.getMaxRows(), extra.length).setNumberFormat('@')
+    sh.getRange(1, start, 1, extra.length).setValues([extra])
+    style_(sh, start, extra.length)
+    h = hdrs_(sh)
+  }
   const idCol = h.indexOf('id')
   const asCol = h.indexOf('assignedTo')
   const last = sh.getLastRow()

@@ -18,7 +18,7 @@ on open, every 30 s, when the app comes back to the screen, and the moment the i
 Offline changes are queued on the phone and uploaded automatically.
 The tabs **Leads**, **Calls** and **Callers** are created by the script itself.
 
-### Update the Apps Script to v3 (needed for HR admin, callers, delete requests)
+### Update the Apps Script to v4 (needed for HR admin, callers, delete requests, assigned date)
 1. Open your Google Sheet → **Extensions → Apps Script**.
 2. Replace everything with `apps-script/Code.gs` and **change `ADMIN_PIN`** (the HR admin password).
 3. **Deploy → Manage deployments → ✏️ → Version: New version → Deploy.**
@@ -75,3 +75,6 @@ Bottom sheets are CSS-animated and can no longer get stuck on screen; after choo
 - **Admin:** sidebar **Reports** (or the card on Progress): same options for the whole team or one caller, with a caller-wise leaderboard.
 - **What counts as "called":** logging a call, **adding a new lead after speaking**, or **updating a lead's details** all mark the lead as called (the first time it is touched it counts as a call; later edits are logged as *Details updated*).
 - PDF/Excel libraries are loaded only when you press download, so the app stays fast.
+
+## Assigned date & time
+Every lead now remembers **when it was assigned** (`assignedAt`): on HR assign, import, reassign, or when a caller adds it. Callers see a **📥 Today, 2:57 pm** tag and a **🆕 New** tag on cards, leads are **grouped by day** (Today / Yesterday / date) with counts, and there are date chips (All dates, Today, Yesterday, This week, Pick date). Home shows "N new leads assigned today". The Excel report has an *Assigned on* column. Needs script **v4** (older leads fall back to the day they were added).
