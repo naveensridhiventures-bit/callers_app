@@ -42,11 +42,30 @@ export function hubsForArea(text) {
   return []
 }
 
+/** every selling area of the plan, for the picker */
+export const AREA_OPTIONS = HUBS.flatMap((h) => h.areas.map((a) => ({ label: a.a, hub: h.n, near: h.near.replace(/^near /, ''), corp: h.corp, key: norm(a.a), full: String(a.a).toLowerCase().replace(/[^a-z0-9]/g, '') })))
+  .sort((a, b) => a.label.localeCompare(b.label))
+export const hubOfArea = (label) => AREA_OPTIONS.find((o) => o.full === String(label || '').toLowerCase().replace(/[^a-z0-9]/g, ''))
+
+/** which areas of a hub already have a distributor: Map(areaName -> count) */
+export function coverage(h, items) {
+  const m = new Map(h.areas.map((a) => [a.a, 0]))
+  items.forEach(({ lead }) => {
+    const full = String(lead.area || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const base = norm(lead.area)
+    let hit = h.areas.find((a) => String(a.a).toLowerCase().replace(/[^a-z0-9]/g, '') === full)
+    if (!hit) hit = h.areas.find((a) => norm(a.a) === base) || h.areas.find((a) => base.length >= 5 && (norm(a.a).includes(base) || base.includes(norm(a.a))))
+    if (hit) m.set(hit.a, m.get(hit.a) + 1)
+  })
+  return m
+}
+
 export function mapLeadsToHubs(leads) {
   const byHub = new Map(HUBS.map((h) => [h.n, []]))
   const unmapped = []
   leads.filter((l) => l.type !== 'number').forEach((l) => {
-    const hs = hubsForArea(l.area)
+    const picked = Number(l.hub)
+    const hs = picked && byHub.has(picked) ? [{ hub: picked, via: 'picked' }] : hubsForArea(l.area)
     if (!hs.length) unmapped.push(l)
     else byHub.get(hs[0].hub).push({ lead: l, via: hs[0].via, also: hs.slice(1).map((x) => x.hub) })
   })

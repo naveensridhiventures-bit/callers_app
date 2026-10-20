@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Icon, Segmented, Sheet } from '../ui'
+import AreaPicker from './AreaPicker'
 import { AREAS, BIZ_TYPES, INVEST, PRIORITIES, SOURCES, STATUSES } from '../constants'
 import { cleanPhone, fromLocalInput, toLocalInput, atDay, addHours } from '../utils'
 
@@ -84,16 +85,7 @@ export default function LeadForm({ lead, preset, onClose }) {
         )}
 
         <div className="grid2">
-          <label className="field"><span>Area (Bengaluru)</span>
-            <select value={AREAS.includes(f.area) ? f.area : f.area ? 'Other' : ''} onChange={(e) => set('area', e.target.value === 'Other' ? ' ' : e.target.value)}>
-              <option value="">Select area</option>
-              {AREAS.map((a) => <option key={a}>{a}</option>)}
-              <option value="Other">Other…</option>
-            </select>
-            {f.area && !AREAS.includes(f.area) && (
-              <input autoFocus className="area-other" value={f.area.trim() === '' ? '' : f.area} onChange={(e) => set('area', e.target.value || ' ')} placeholder="Which area?" />
-            )}
-          </label>
+          <AreaPicker value={f.area} hub={f.hub} onChange={(area, hub) => setF((p) => ({ ...p, area, hub }))} />
           <label className="field"><span>Source</span>
             <select value={f.source} onChange={(e) => set('source', e.target.value)}>
               {SOURCES.map((s) => <option key={s}>{s}</option>)}

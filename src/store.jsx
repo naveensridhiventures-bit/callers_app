@@ -383,7 +383,7 @@ export function AppProvider({ children }) {
     [saveLead]
   )
 
-  const DETAIL_KEYS = ['type', 'name', 'altPhone', 'email', 'company', 'bizType', 'area', 'source', 'priority', 'status', 'investment', 'vehicle', 'coldStorage', 'experience', 'dailyQty', 'notes']
+  const DETAIL_KEYS = ['type', 'name', 'altPhone', 'email', 'company', 'bizType', 'area', 'hub', 'source', 'priority', 'status', 'investment', 'vehicle', 'coldStorage', 'experience', 'dailyQty', 'notes']
   const saveDetails = useCallback(
     (prev, data) => {
       const s = sessionRef.current

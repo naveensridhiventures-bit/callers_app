@@ -263,7 +263,7 @@ export async function makeXLSX(r) {
 const nameOfL = (l) => l.name || l.phone || 'Unknown'
 
 /* ============================== Hubs PDF ============================== */
-export async function makeHubsPDF({ hubs, byHub, unmapped, colors, scope = '' }) {
+export async function makeHubsPDF({ hubs, byHub, unmapped, colors, scope = '', needs = new Map() }) {
   const [{ jsPDF }, atMod] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
   const autoTable = atMod.default || atMod.autoTable
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
@@ -326,10 +326,10 @@ export async function makeHubsPDF({ hubs, byHub, unmapped, colors, scope = '' })
   section('Hub overview')
   autoTable(doc, {
     startY: y, margin: { left: M, right: M },
-    head: [['Hub', 'Near', 'Region', 'Areas', 'Max road km', 'Distributors']],
-    body: [...hubs].sort((a, b) => a.n - b.n).map((h) => [`Hub ${h.n}`, clean(h.near.replace(/^near /, '')), h.corp, h.areas.length, h.far, byHub.get(h.n).length]),
+    head: [['Hub', 'Near', 'Region', 'Areas', 'Max road km', 'Distributors', 'Areas to fill']],
+    body: [...hubs].sort((a, b) => a.n - b.n).map((h) => [`Hub ${h.n}`, clean(h.near.replace(/^near /, '')), h.corp, h.areas.length, h.far, byHub.get(h.n).length, (needs.get(h.n) || []).length]),
     headStyles: head, styles: base, alternateRowStyles: { fillColor: [247, 250, 246] },
-    columnStyles: { 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center', fontStyle: 'bold' } },
+    columnStyles: { 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center', fontStyle: 'bold' }, 6: { halign: 'center', textColor: [180, 83, 9] } },
     didParseCell: (d) => {
       if (d.section === 'body' && d.column.index === 2) d.cell.styles.textColor = hex(colors[d.cell.raw] || '#475569')
       if (d.section === 'body' && d.column.index === 5 && Number(d.cell.raw) === 0) d.cell.styles.textColor = [160, 170, 165]
@@ -351,7 +351,14 @@ export async function makeHubsPDF({ hubs, byHub, unmapped, colors, scope = '' })
     y += 14
     doc.setTextColor(...MUTED); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5)
     const areas = doc.splitTextToSize(clean(`Areas: ${h.areas.map((a) => a.a).join(', ')}`), W - 2 * M)
-    doc.text(areas, M, y + 2); y += areas.length * 3.4 + 3
+    doc.text(areas, M, y + 2); y += areas.length * 3.4 + 2
+    const nd = needs.get(h.n) || []
+    if (nd.length) {
+      doc.setTextColor(180, 83, 9); doc.setFont('helvetica', 'bold')
+      const nl = doc.splitTextToSize(clean(`Still needed (${nd.length}): ${nd.join(', ')}`), W - 2 * M)
+      doc.text(nl, M, y + 2); y += nl.length * 3.4 + 2
+    }
+    y += 1
     autoTable(doc, {
       startY: y, margin: { left: M, right: M },
       head: [['Distributor', 'Phone', 'Area', 'Status', 'Last outcome']],

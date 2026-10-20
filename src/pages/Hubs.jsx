@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Avatar, Counter, Icon, StatusPill } from '../ui'
-import { CORP_COLORS, HUBS, mapLeadsToHubs, mapLink } from '../hubs'
+import { CORP_COLORS, HUBS, coverage, mapLeadsToHubs, mapLink } from '../hubs'
 import { nameOf, telHref } from '../utils'
 
 const CORPS = ['All', 'North', 'South', 'East', 'West', 'Central']
@@ -30,7 +30,7 @@ export default function Hubs() {
     setBusy(true)
     try {
       const mod = await import('../exporters')
-      const blob = await mod.makeHubsPDF({ hubs: HUBS, byHub, unmapped, colors: CORP_COLORS, scope: session?.role === 'admin' ? 'All callers' : session?.name || '' })
+      const blob = await mod.makeHubsPDF({ hubs: HUBS, byHub, unmapped, colors: CORP_COLORS, needs: new Map(HUBS.map((h) => [h.n, [...coverage(h, byHub.get(h.n)).entries()].filter(([, n]) => !n).map(([a]) => a)])), scope: session?.role === 'admin' ? 'All callers' : session?.name || '' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a'); a.href = url; a.download = `Sridhi-Hubs-${new Date().toISOString().slice(0, 10)}.pdf`
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500)
@@ -73,7 +73,7 @@ export default function Hubs() {
               initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 12) * 0.03 }}>
               <button className="hub-head" onClick={() => setOpen(isOpen ? null : h.n)}>
                 <span className="hub-no">{h.n}</span>
-                <span className="hub-ttl"><b>Hub {h.n}</b><small>near {h.near.replace(/^near /, '')} · {h.corp}</small></span>
+                <span className="hub-ttl"><b>Hub {h.n}</b><small>near {h.near.replace(/^near /, '')} · {h.corp}{(() => { const c = coverage(h, items); const n = [...c.values()].filter((v) => !v).length; return n ? <span className="hub-need">{n} to fill</span> : null })()}</small></span>
                 <span className="hub-count"><b>{items.length}</b><small>{items.length === 1 ? 'distributor' : 'distributors'}</small></span>
                 <span className="hub-chev"><Icon name="chevron" size={16} /></span>
               </button>
@@ -84,12 +84,18 @@ export default function Hubs() {
                     <span>{h.areas.length} areas</span><span>up to {h.far} km by road</span>
                     <a href={mapLink(h)} target="_blank" rel="noreferrer">📍 Open map</a>
                   </div>
-                  <div className="hub-areas">
-                    {h.areas.map((a) => {
-                      const n = items.filter((x) => (x.lead.area || '').toLowerCase().replace(/[^a-z0-9]/g, '') && a.a.toLowerCase().replace(/[^a-z0-9]/g, '').includes((x.lead.area || '').toLowerCase().replace(/[^a-z0-9]/g, ''))).length
-                      return <span key={a.a} className={n ? 'has' : ''}>{a.a}{n ? <em>{n}</em> : null}</span>
-                    })}
-                  </div>
+                  {(() => {
+                    const cov = coverage(h, items); const done = [...cov.values()].filter((n) => n > 0).length
+                    return (
+                      <>
+                        <div className="hub-cover"><b>{done}/{h.areas.length}</b> areas have a distributor<i><u style={{ width: `${(done / h.areas.length) * 100}%` }} /></i></div>
+                        <div className="hub-legend"><span><s style={{ background: col }} />Filled</span><span><s style={{ background: '#fcd34d' }} />Distributor still needed</span></div>
+                        <div className="hub-areas">
+                          {h.areas.map((a) => { const n = cov.get(a.a); return <span key={a.a} className={n ? 'has' : 'need'}>{a.a}{n ? <em>{n}</em> : null}</span> })}
+                        </div>
+                      </>
+                    )
+                  })()}
                   <h4 className="lbl">Distributors under this hub</h4>
                   {!items.length && <p className="hub-empty">No distributors in this hub yet.</p>}
                   {items.map(({ lead, also }) => (

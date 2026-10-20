@@ -91,3 +91,4 @@ Every lead now remembers **when it was assigned** (`assignedAt`): on HR assign, 
 ## Hubs
 - `src/hubData.js` holds the 40 hubs and 408 areas (5 km by road) from the hub plan workbook. The **Hubs** page (admin dock/sidebar, caller More → Hubs) shows each hub with its distributor count, areas and distributors, matched by the lead's Area. Leads with no area, or an area outside the plan, show under "No hub yet".
 - Hubs page has a **Download PDF** button: summary tiles, region bars, hub overview, distributors per hub, and an all-areas appendix.
+- **Accurate area:** the lead form's area is now a searchable picker of the exact selling areas from the hub plan (each shows its Hub). Picking one stores the area and the hub on the lead. Typing something not in the plan shows a warning. The Hubs page (and PDF) shows per hub which areas already have a distributor and which are **still needed**.
