@@ -85,8 +85,14 @@ export default function LeadForm({ lead, preset, onClose }) {
 
         <div className="grid2">
           <label className="field"><span>Area (Bengaluru)</span>
-            <input list="areas" value={f.area} onChange={(e) => set('area', e.target.value)} placeholder="Type or pick" />
-            <datalist id="areas">{AREAS.map((a) => <option key={a} value={a} />)}</datalist>
+            <select value={AREAS.includes(f.area) ? f.area : f.area ? 'Other' : ''} onChange={(e) => set('area', e.target.value === 'Other' ? ' ' : e.target.value)}>
+              <option value="">Select area</option>
+              {AREAS.map((a) => <option key={a}>{a}</option>)}
+              <option value="Other">Other…</option>
+            </select>
+            {f.area && !AREAS.includes(f.area) && (
+              <input autoFocus className="area-other" value={f.area.trim() === '' ? '' : f.area} onChange={(e) => set('area', e.target.value || ' ')} placeholder="Which area?" />
+            )}
           </label>
           <label className="field"><span>Source</span>
             <select value={f.source} onChange={(e) => set('source', e.target.value)}>

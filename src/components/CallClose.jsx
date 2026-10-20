@@ -54,7 +54,7 @@ export default function CallClose() {
 
   const isNum = lead.type === 'number'
   const ring = isNum ? NUMBER_OUTCOMES.filter((o) => o !== 'Call Back Later' && o !== 'Wrong Number') : ['Not Answered', 'Busy']
-  const extra = isNum ? ['Wrong Number'] : ['Wrong Number']
+  const extra = ['Wrong Number']
 
   const quickLog = (outcome) => {
     const next = NO_ANSWER.includes(outcome) ? suggestNext(outcome) : ''
@@ -82,6 +82,10 @@ export default function CallClose() {
           {extra.map((o) => (
             <button key={o} className="cc-opt" onClick={() => quickLog(o)}><i>{EMO[o]}</i>{o}</button>
           ))}
+        </div>
+        <div className="cc-grid cc-more">
+          <button className="cc-opt" onClick={() => openLead(lead.id, { outcome: 'Wrong Audience' })}><i>🎯</i>Wrong Audience</button>
+          <button className="cc-opt" onClick={() => openLead(lead.id, { outcome: 'Other' })}><i>✏️</i>Other</button>
         </div>
         <button className="cc-spoke" onClick={spoke}><Icon name="phone" size={18} /> Spoke to the person · add details</button>
         <div className="cc-foot">

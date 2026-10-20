@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Avatar, Confetti, Icon, Segmented, Sheet, StatusPill } from '../ui'
-import { CLOSED, NUMBER_ONLY, NUMBER_OUTCOMES, OUTCOMES, PRIORITIES, QUICK_REMARKS, STATUSES } from '../constants'
+import { AUDIENCES, CLOSED, NUMBER_ONLY, NUMBER_OUTCOMES, OUTCOMES, PRIORITIES, QUICK_REMARKS, STATUSES } from '../constants'
 import {
   addHours, atDay, downloadICS, fmtDur, fmtWhen, fromLocalInput, gcalLink, gmailLink,
   assignedAtOf, fmtAssigned, nameOf, nowISO, suggestNext, telHref, toLocalInput, typeLabel, waHref,
@@ -22,6 +22,10 @@ export default function LeadDetail({ id, calling, preset, onClose }) {
   const [next, setNext] = useState(preset ? suggestNext(preset) : '')
   const [done, setDone] = useState(null)
   const [delOpen, setDelOpen] = useState(false)
+  const [otherText, setOtherText] = useState('')
+  const [audience, setAudience] = useState('')
+  const [audOther, setAudOther] = useState('')
+  const [audOpen, setAudOpen] = useState(preset === 'Wrong Audience')
   const [delNote, setDelNote] = useState('')
 
   useEffect(() => {
@@ -44,6 +48,7 @@ export default function LeadDetail({ id, calling, preset, onClose }) {
 
   const pick = (o) => {
     setOutcome(o.id)
+    if (o.id === 'Wrong Audience') setAudOpen(true)
     if (o.status) setStatus(o.status)
     setNext(suggestNext(o.id))
     // bring the remark + follow-up section up so nobody has to scroll to find it
@@ -58,7 +63,17 @@ export default function LeadDetail({ id, calling, preset, onClose }) {
 
   const save = () => {
     if (!outcome) return toast('Pick the call outcome first', 'warn')
-    const updated = logCall(lead, { outcome, remark: remark.trim(), next, status, priority, duration: secs })
+    if (outcome === 'Other' && !otherText.trim()) return toast('Tell us what happened in "Other"', 'warn')
+    if (outcome === 'Wrong Audience' && !audience) { setAudOpen(true); return toast('Pick the audience type first', 'warn') }
+    const audLabel = audience === 'Other' ? (audOther.trim() || 'Other') : audience
+    const parts = []
+    if (outcome === 'Other') parts.push(`Other: ${otherText.trim()}`)
+    if (outcome === 'Wrong Audience') parts.push(`Wrong audience: ${audLabel}`)
+    if (remark.trim()) parts.push(remark.trim())
+    const updated = logCall(lead, {
+      outcome, remark: parts.join(' · '), next, status, priority, duration: secs,
+      extra: outcome === 'Wrong Audience' ? { audience: audLabel } : undefined,
+    })
     setDone({ lead: updated, outcome })
     setStarted(null)
     setTimeout(() => document.querySelector('.sheet-scroll')?.scrollTo({ top: 0, behavior: 'smooth' }), 60)
@@ -182,6 +197,28 @@ export default function LeadDetail({ id, calling, preset, onClose }) {
                 </div>
               )}
               {lead.lastRemark && <div className="last-remark">Last: <b>{lead.lastOutcome}</b> — {lead.lastRemark}</div>}
+              {audOpen && (
+                <div className="ov-back aud-back" onClick={() => setAudOpen(false)}>
+                  <div className="cc-card aud-card" onClick={(e) => e.stopPropagation()}>
+                    <h3>Who did you reach?</h3>
+                    <p className="cc-sub">Wrong audience · choose the audience type</p>
+                    <div className="cc-grid">
+                      {AUDIENCES.map((a) => (
+                        <button key={a.id} type="button" className={`cc-opt ${audience === a.id ? 'sel' : ''}`}
+                          onClick={() => { setAudience(a.id); if (a.id !== 'Other') setAudOpen(false) }}>
+                          <i>{a.icon}</i>{a.id}
+                        </button>
+                      ))}
+                    </div>
+                    {audience === 'Other' && (
+                      <div className="aud-other">
+                        <input autoFocus value={audOther} onChange={(e) => setAudOther(e.target.value)} placeholder="What type of audience?" />
+                        <button type="button" className="btn3d" onClick={() => audOther.trim() ? setAudOpen(false) : toast('Type the audience', 'warn')}>Done</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               <h4 className="lbl">What happened?</h4>
               <div className="outcomes">
                 {outcomeList.map((o, i) => (
@@ -194,6 +231,17 @@ export default function LeadDetail({ id, calling, preset, onClose }) {
                   </motion.button>
                 ))}
               </div>
+
+              {outcome === 'Other' && (
+                <label className="field other-box"><span>What happened? <em>(required)</em></span>
+                  <input autoFocus value={otherText} onChange={(e) => setOtherText(e.target.value)} placeholder="e.g. Shop closed, owner travelling…" />
+                </label>
+              )}
+              {outcome === 'Wrong Audience' && (
+                <button type="button" className="aud-chip" onClick={() => setAudOpen(true)}>
+                  🎯 Audience: <b>{audience ? (audience === 'Other' ? audOther || 'Other' : audience) : 'tap to choose'}</b> <small>change</small>
+                </button>
+              )}
 
               <h4 className="lbl" ref={remarkRef} style={{ scrollMarginTop: 8 }}>Remark &amp; follow-up</h4>
               <div className="chips small">

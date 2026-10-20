@@ -39,14 +39,24 @@ export const OUTCOMES = [
   { id: 'No Response', icon: '☎️', status: null, connected: false },
   { id: 'Switched Off', icon: '📴', status: null, connected: false },
   { id: 'Not Reachable', icon: '🚫', status: null, connected: false },
+  { id: 'Wrong Audience', icon: '🎯', status: 'Not Interested', connected: true },
+  { id: 'Other', icon: '✏️', status: null, connected: true },
   // automatic activity entries (not offered in the outcome picker)
   { id: 'Details Updated', icon: '📝', status: null, connected: true, hidden: true },
   { id: 'Lead Added', icon: '➕', status: null, connected: true, hidden: true },
 ]
 
 // outcomes offered for a bare number (before the caller knows who it is)
-export const NUMBER_OUTCOMES = ['No Response', 'Switched Off', 'Not Reachable', 'Busy', 'Wrong Number', 'Call Back Later']
+export const NUMBER_OUTCOMES = ['No Response', 'Switched Off', 'Not Reachable', 'Busy', 'Wrong Number', 'Call Back Later', 'Wrong Audience', 'Other']
 export const NUMBER_ONLY = ['No Response', 'Switched Off', 'Not Reachable']
+
+// who she actually reached when the lead was the wrong audience
+export const AUDIENCES = [
+  { id: 'Household / Individual', icon: '🏠' }, { id: 'Student / Job seeker', icon: '🎓' },
+  { id: 'Hotel / Restaurant', icon: '🍽️' }, { id: 'Kirana / Retailer', icon: '🏪' },
+  { id: 'Already a distributor', icon: '🚚' }, { id: 'Company / Office', icon: '🏢' },
+  { id: 'Other', icon: '✏️' },
+]
 
 export const PRIORITIES = ['Cold', 'Warm', 'Hot']
 

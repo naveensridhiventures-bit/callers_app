@@ -83,3 +83,7 @@ Every lead now remembers **when it was assigned** (`assignedAt`): on HR assign, 
 - Tapping **Call** records a pending call. When the caller comes back from the dialer (or reopens the app) a popup forces her to close it: **No Response / Switched Off / Not Reachable / Busy** (one tap, follow-up auto-set, can be changed with chips) or **Spoke to the person** (opens the lead with the outcome pre-selected).
 - Another call cannot be started until the pending one is closed. "Later" snoozes 10 min and a red banner stays on Home.
 - After login/open, and after 30+ min away, a **Follow-ups need you** popup lists overdue and today's leads with Call, WhatsApp, +1h and +1d snooze. "Remind me in 30 min" re-shows it later.
+
+## Other + Wrong Audience
+- Call outcomes now include **Other** (asks "What happened?", required) and **Wrong Audience** (popup: Household, Student, Hotel/Restaurant, Kirana, Already a distributor, Company, Other + type). The audience is saved on the lead and in the remark; the lead moves to Not Interested.
+- Area in the lead form is a dropdown with **Other…**, which asks "Which area?".

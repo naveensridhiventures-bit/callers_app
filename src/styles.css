@@ -611,3 +611,11 @@ textarea { resize: vertical; margin-top: 10px; }
 .due-acts .round { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #e7efe5; font-size: 11px; font-weight: 700; color: var(--g800); }
 .due-acts .round.call { background: var(--g600); color: #fff; } .due-acts .round.wa { background: #25d366; color: #fff; }
 .due-card > .btn3d { margin: 6px 16px 0; } .due-later { margin: 8px 0 14px; color: var(--muted); font-weight: 600; font-size: 13px; }
+
+/* other / wrong audience */
+.cc-more { margin-top: 10px; } .cc-opt.sel { border-color: var(--g600); background: var(--g100); }
+.aud-back { z-index: 95; } .aud-card h3 { font-size: 19px; } .aud-card .cc-sub { margin-bottom: 12px; }
+.aud-other { display: flex; gap: 8px; margin-top: 12px; } .aud-other input, .area-other, .other-box input { flex: 1; width: 100%; padding: 12px 14px; border-radius: 14px; border: 2px solid var(--line); background: #fff; }
+.aud-other .btn3d { padding: 10px 16px; } .area-other { margin-top: 8px; } .other-box { margin: 12px 0 0; }
+.aud-chip { display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 10px; padding: 12px 14px; border-radius: 14px; background: #fff7e6; border: 2px solid #fcd34d; text-align: left; font-size: 14px; }
+.aud-chip small { margin-left: auto; color: var(--muted); }

@@ -407,7 +407,7 @@ export function AppProvider({ children }) {
   )
 
   const logCall = useCallback(
-    (lead, { outcome, remark, next, status, priority, duration }) => {
+    (lead, { outcome, remark, next, status, priority, duration, extra }) => {
       const o = OUTCOMES.find((x) => x.id === outcome)
       const newStatus = status || o?.status || lead.status
       const call = {
@@ -416,6 +416,7 @@ export function AppProvider({ children }) {
       }
       const updated = {
         ...lead,
+        ...(extra || {}),
         calls: [call, ...(lead.calls || [])],
         callCount: (lead.callCount || 0) + 1,
         lastCall: call.at,
