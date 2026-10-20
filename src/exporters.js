@@ -263,14 +263,14 @@ export async function makeXLSX(r) {
 const nameOfL = (l) => l.name || l.phone || 'Unknown'
 
 /* ============================== Hubs PDF ============================== */
-export async function makeHubsPDF({ hubs, byHub, unmapped, colors, scope = '', needs = new Map() }) {
+export async function makeHubsPDF({ hubs, byHub, unmapped, other = [], colors, scope = '', needs = new Map() }) {
   const [{ jsPDF }, atMod] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
   const autoTable = atMod.default || atMod.autoTable
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const W = 210, M = 14
   const now = new Date().toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
   const nm = (l) => clean(l.name || l.company || l.phone || 'Unknown')
-  const total = [...byHub.values()].reduce((n, v) => n + v.length, 0)
+  const total = [...byHub.values()].reduce((n, v) => n + v.length, 0) + other.length
   let y = 0
 
   // header band
@@ -297,7 +297,7 @@ export async function makeHubsPDF({ hubs, byHub, unmapped, colors, scope = '', n
 
   // KPI tiles
   const withLeads = hubs.filter((h) => byHub.get(h.n).length).length
-  const tiles = [['Hubs', hubs.length, GREEN], ['Areas covered', hubs.reduce((n, h) => n + h.areas.length, 0), GREEN], ['Distributors placed', total, [234, 88, 12]], ['No hub yet', unmapped.length, unmapped.length ? [180, 83, 9] : GREEN]]
+  const tiles = [['Hubs', hubs.length, GREEN], ['Areas covered', hubs.reduce((n, h) => n + h.areas.length, 0), GREEN], ['Distributors placed', total, [234, 88, 12]], ['Other / no area', other.length + unmapped.length, other.length + unmapped.length ? [180, 83, 9] : GREEN]]
   const tw = (W - 2 * M - 3 * 4) / 4
   tiles.forEach(([label, val, col], i) => {
     const x = M + i * (tw + 4)
@@ -369,8 +369,18 @@ export async function makeHubsPDF({ hubs, byHub, unmapped, colors, scope = '', n
     y = doc.lastAutoTable.finalY + 8
   })
 
+  if (other.length) {
+    ensure(30); section('Other (area not in the hub plan)')
+    autoTable(doc, {
+      startY: y, margin: { left: M, right: M },
+      head: [['Distributor', 'Phone', 'Area', 'Status']],
+      body: other.map((l) => [nm(l), clean(l.phone), clean(l.area), clean(l.status)]),
+      headStyles: { ...head, fillColor: [124, 58, 237] }, styles: base,
+    })
+    y = doc.lastAutoTable.finalY + 8
+  }
   if (unmapped.length) {
-    ensure(30); section('No hub yet (area empty or outside the hub plan)')
+    ensure(30); section('Area not filled yet')
     autoTable(doc, {
       startY: y, margin: { left: M, right: M },
       head: [['Distributor', 'Phone', 'Area typed', 'Status']],

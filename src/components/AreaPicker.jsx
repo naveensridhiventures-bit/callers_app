@@ -11,7 +11,7 @@ export default function AreaPicker({ value, hub, onChange }) {
   const [open, setOpen] = useState(false)
   const [hubSel, setHubSel] = useState(0)
   const exact = hubOfArea(value)
-  const hubNo = exact?.hub || Number(hub) || hubsForArea(value)[0]?.hub || null
+  const hubNo = exact?.hub || Number(hub) || (hub === 'Other' ? null : hubsForArea(value)[0]?.hub) || null
 
   const filled = useMemo(() => new Set(leads.filter((l) => l.type !== 'number' && l.area).map((l) => key(l.area))), [leads])
 
@@ -25,7 +25,9 @@ export default function AreaPicker({ value, hub, onChange }) {
   }, [q, hubSel, exact, value])
 
   const pick = (h, a) => { onChange(a.a, h.n); setQ(a.a); setOpen(false) }
-  const typed = (v) => { setQ(v); setOpen(true); const h = hubOfArea(v); onChange(v, h ? h.hub : '') }
+  const typed = (v) => { setQ(v); setOpen(true); const h = hubOfArea(v); onChange(v, h ? h.hub : v.trim() ? 'Other' : '') }
+  const pickOther = () => { setOpen(false); onChange(q.trim() && !hubOfArea(q) ? q : '', 'Other'); if (hubOfArea(q)) setQ('') ; setTimeout(() => document.querySelector('.area-other-in')?.focus(), 60) }
+  const isOther = hub === 'Other' || (value && !hubNo)
 
   return (
     <div className="field area-pick">
@@ -35,6 +37,7 @@ export default function AreaPicker({ value, hub, onChange }) {
         <div className="area-list" onMouseDown={(e) => e.preventDefault()}>
           <div className="area-hubs">
             <button type="button" className={!hubSel ? 'on' : ''} onClick={() => setHubSel(0)}>All hubs</button>
+            <button type="button" className="oth" onClick={pickOther}>✏️ Other</button>
             {HUBS.map((h) => <button type="button" key={h.n} className={hubSel === h.n ? 'on' : ''} style={{ '--c': CORP_COLORS[h.corp] }} onClick={() => setHubSel(h.n)}>Hub {h.n}</button>)}
           </div>
           {groups.map(({ h, areas }) => (
@@ -48,12 +51,17 @@ export default function AreaPicker({ value, hub, onChange }) {
               ))}
             </div>
           ))}
-          {!groups.length && <p>No such area in the hub plan. Keep typing to use it as “Other”.</p>}
+          {!groups.length && <p>No such area in the hub plan.</p>}
+          <button type="button" className="area-row other-row" onClick={pickOther}><b>✏️ My area is not in this list</b><small className="need">Other</small></button>
         </div>
       )}
-      {value && (hubNo
-        ? <em className="area-hub ok">📍 Hub {hubNo}{exact ? ` · near ${exact.near}` : ''}</em>
-        : <em className="area-hub warn">Not in the hub plan. Pick the exact area from the list so this lead gets a hub.</em>)}
+      {hubNo && <em className="area-hub ok">📍 Hub {hubNo}{exact ? ` · near ${exact.near}` : ''}</em>}
+      {isOther && !hubNo && (
+        <div className="area-other">
+          <em className="area-hub warn">Not in the hub plan → goes under <b>Other</b></em>
+          <input className="area-other-in" value={value} onChange={(e) => { setQ(e.target.value); onChange(e.target.value, 'Other') }} placeholder="Which area? (type the exact area)" />
+        </div>
+      )}
     </div>
   )
 }

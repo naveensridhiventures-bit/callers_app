@@ -62,14 +62,16 @@ export function coverage(h, items) {
 
 export function mapLeadsToHubs(leads) {
   const byHub = new Map(HUBS.map((h) => [h.n, []]))
-  const unmapped = []
+  const other = [] // area filled but not in the hub plan
+  const unmapped = [] // no area at all
   leads.filter((l) => l.type !== 'number').forEach((l) => {
     const picked = Number(l.hub)
-    const hs = picked && byHub.has(picked) ? [{ hub: picked, via: 'picked' }] : hubsForArea(l.area)
-    if (!hs.length) unmapped.push(l)
-    else byHub.get(hs[0].hub).push({ lead: l, via: hs[0].via, also: hs.slice(1).map((x) => x.hub) })
+    const hs = picked && byHub.has(picked) ? [{ hub: picked, via: 'picked' }] : l.hub === 'Other' ? [] : hubsForArea(l.area)
+    if (hs.length) byHub.get(hs[0].hub).push({ lead: l, via: hs[0].via, also: hs.slice(1).map((x) => x.hub) })
+    else if (String(l.area || '').trim()) other.push(l)
+    else unmapped.push(l)
   })
-  return { byHub, unmapped }
+  return { byHub, unmapped, other }
 }
 
 export const mapLink = (h) => `https://www.google.com/maps?q=${h.lat},${h.lng}`

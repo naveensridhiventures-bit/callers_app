@@ -14,9 +14,9 @@ export default function Hubs() {
   const [q, setQ] = useState('')
   const [onlyLeads, setOnlyLeads] = useState(false)
   const [open, setOpen] = useState(null)
-  const { byHub, unmapped } = useMemo(() => mapLeadsToHubs(leads), [leads])
+  const { byHub, unmapped, other } = useMemo(() => mapLeadsToHubs(leads), [leads])
   const total = leads.filter((l) => l.type !== 'number').length
-  const mapped = total - unmapped.length
+  const mapped = total - unmapped.length - other.length
   const max = Math.max(1, ...[...byHub.values()].map((v) => v.length))
 
   const list = useMemo(() => {
@@ -30,7 +30,7 @@ export default function Hubs() {
     setBusy(true)
     try {
       const mod = await import('../exporters')
-      const blob = await mod.makeHubsPDF({ hubs: HUBS, byHub, unmapped, colors: CORP_COLORS, needs: new Map(HUBS.map((h) => [h.n, [...coverage(h, byHub.get(h.n)).entries()].filter(([, n]) => !n).map(([a]) => a)])), scope: session?.role === 'admin' ? 'All callers' : session?.name || '' })
+      const blob = await mod.makeHubsPDF({ hubs: HUBS, byHub, unmapped, other, colors: CORP_COLORS, needs: new Map(HUBS.map((h) => [h.n, [...coverage(h, byHub.get(h.n)).entries()].filter(([, n]) => !n).map(([a]) => a)])), scope: session?.role === 'admin' ? 'All callers' : session?.name || '' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a'); a.href = url; a.download = `Sridhi-Hubs-${new Date().toISOString().slice(0, 10)}.pdf`
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500)
@@ -47,7 +47,7 @@ export default function Hubs() {
         <div><b><Counter value={HUBS.length} /></b><span>Hubs</span></div>
         <div><b><Counter value={HUBS.reduce((n, h) => n + h.areas.length, 0)} /></b><span>Areas covered</span></div>
         <div><b><Counter value={mapped} /></b><span>Distributors placed</span></div>
-        <div className={unmapped.length ? 'warn' : ''}><b><Counter value={unmapped.length} /></b><span>No hub yet</span></div>
+        <div className={other.length + unmapped.length ? 'warn' : ''}><b><Counter value={other.length + unmapped.length} /></b><span>Other / no area</span></div>
         <p>Every area is within <b>5 km by road</b> of its hub. Tap a hub to see its areas and distributors.</p>
       </div>
 
@@ -117,11 +117,34 @@ export default function Hubs() {
         {!list.length && <p className="hub-empty">No hubs match.</p>}
       </div>
 
+      {other.length > 0 && !q && corp === 'All' && !onlyLeads && (
+        <div className="hub-card unmapped other">
+          <button className="hub-head" onClick={() => setOpen(open === 'o' ? null : 'o')}>
+            <span className="hub-no">✏️</span>
+            <span className="hub-ttl"><b>Other areas</b><small>areas not in the hub plan</small></span>
+            <span className="hub-count"><b>{other.length}</b><small>distributors</small></span>
+            <span className="hub-chev"><Icon name="chevron" size={16} /></span>
+          </button>
+          {open === 'o' && (
+            <div className="hub-body">
+              {other.map((lead) => (
+                <div key={lead.id} className="hub-lead" onClick={() => openLead(lead.id)}>
+                  <Avatar name={nameOf(lead)} size={36} />
+                  <div className="hl-info"><b>{nameOf(lead)}</b><span>{lead.area}</span></div>
+                  <StatusPill status={lead.status} />
+                  <a className="round call" href={telHref(lead.phone)} onClick={(e) => e.stopPropagation()} aria-label="Call"><Icon name="phone" size={15} /></a>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {unmapped.length > 0 && !q && corp === 'All' && !onlyLeads && (
         <div className="hub-card unmapped">
           <button className="hub-head" onClick={() => setOpen(open === 'x' ? null : 'x')}>
             <span className="hub-no">?</span>
-            <span className="hub-ttl"><b>No hub yet</b><small>area empty or outside the hub plan</small></span>
+            <span className="hub-ttl"><b>No area yet</b><small>area not filled</small></span>
             <span className="hub-count"><b>{unmapped.length}</b><small>distributors</small></span>
             <span className="hub-chev"><Icon name="chevron" size={16} /></span>
           </button>
