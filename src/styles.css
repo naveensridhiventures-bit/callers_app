@@ -619,3 +619,30 @@ textarea { resize: vertical; margin-top: 10px; }
 .aud-other .btn3d { padding: 10px 16px; } .area-other { margin-top: 8px; } .other-box { margin: 12px 0 0; }
 .aud-chip { display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 10px; padding: 12px 14px; border-radius: 14px; background: #fff7e6; border: 2px solid #fcd34d; text-align: left; font-size: 14px; }
 .aud-chip small { margin-left: auto; color: var(--muted); }
+
+/* ---------- hubs ---------- */
+.hub-hero { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 16px; border-radius: 26px; color: #fff; background: radial-gradient(500px 200px at 100% 0, rgba(212, 232, 58, .28), transparent 60%), linear-gradient(135deg, var(--g900), var(--g700)); box-shadow: var(--shadow); margin-bottom: 12px; overflow: hidden; }
+.hub-hero div { text-align: center; } .hub-hero b { display: block; font-size: 26px; font-weight: 800; line-height: 1.1; } .hub-hero span { font-size: 11px; opacity: .8; }
+.hub-hero .warn b { color: #fde68a; }
+.hub-hero p { grid-column: 1 / -1; font-size: 12.5px; opacity: .88; text-align: center; margin-top: 4px; } .hub-hero p b { display: inline; font-size: inherit; color: var(--lime); }
+.hub-tools { display: grid; gap: 8px; margin-bottom: 10px; } .chip i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+.hub-grid { display: grid; grid-template-columns: 1fr; gap: 10px; align-items: start; }
+@media (min-width: 760px) { .hub-grid { grid-template-columns: 1fr 1fr; } .hub-hero b { font-size: 32px; } }
+.hub-card { background: #fff; border-radius: 22px; box-shadow: var(--shadow); overflow: hidden; border: 2px solid transparent; transition: border-color .2s, transform .15s; }
+.hub-card.open { border-color: var(--c, var(--g600)); }
+.hub-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px; text-align: left; }
+.hub-no { flex: none; width: 46px; height: 46px; border-radius: 15px; display: grid; place-items: center; font-weight: 800; font-size: 19px; color: #fff; background: linear-gradient(135deg, var(--c, #64748b), color-mix(in srgb, var(--c, #64748b) 60%, #000)); box-shadow: 0 6px 12px -4px var(--c, #64748b); }
+.hub-ttl { flex: 1; min-width: 0; display: flex; flex-direction: column; } .hub-ttl b { font-size: 15px; } .hub-ttl small { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hub-count { text-align: center; line-height: 1.1; } .hub-count b { display: block; font-size: 22px; font-weight: 800; color: var(--c, var(--g700)); } .hub-count small { font-size: 10px; color: var(--muted); }
+.hub-chev { color: var(--muted); transition: transform .2s; } .hub-card.open .hub-chev { transform: rotate(90deg); }
+.hub-bar { height: 4px; background: #eef3ec; margin: 0 14px 12px; border-radius: 4px; overflow: hidden; } .hub-bar i { display: block; height: 100%; border-radius: 4px; background: var(--c, var(--g600)); transition: width .6s cubic-bezier(.2, .9, .3, 1); }
+.hub-body { padding: 0 14px 14px; animation: fadeIn .22s ease-out; }
+.hub-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; color: var(--muted); margin-bottom: 10px; } .hub-meta a { margin-left: auto; color: var(--g700); font-weight: 700; }
+.hub-areas { display: flex; flex-wrap: wrap; gap: 6px; } .hub-areas span { font-size: 12px; padding: 4px 10px; border-radius: 99px; background: #f1f5ef; color: #3d5547; }
+.hub-areas span.has { background: var(--c, var(--g600)); color: #fff; font-weight: 600; } .hub-areas span em { font-style: normal; margin-left: 5px; background: rgba(255, 255, 255, .28); border-radius: 9px; padding: 0 6px; }
+.hub-card .lbl { margin: 14px 0 6px; }
+.hub-lead { display: flex; align-items: center; gap: 10px; padding: 9px 10px; margin-top: 6px; border-radius: 14px; background: #f6f9f5; cursor: pointer; } .hub-lead:active { transform: scale(.98); }
+.hl-info { flex: 1; min-width: 0; display: flex; flex-direction: column; } .hl-info b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .hl-info span { font-size: 11.5px; color: var(--muted); }
+.hub-lead .round.call { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--g600); color: #fff; }
+.hub-empty { color: var(--muted); font-size: 13px; padding: 8px 2px; text-align: center; }
+.hub-card.unmapped { margin-top: 12px; --c: #94a3b8; }

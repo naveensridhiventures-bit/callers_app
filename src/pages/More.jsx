@@ -5,13 +5,15 @@ import Reports from './Reports'
 import Scripts from './Scripts'
 import Settings from './Settings'
 import ReportCenter from './ReportCenter'
+import Hubs from './Hubs'
 
 export default function More() {
   const { sub, go } = useApp()
-  const key = ['eod', 'reports', 'scripts', 'settings'].includes(sub) ? sub : 'eod'
-  const C = { eod: ReportCenter, reports: Reports, scripts: Scripts, settings: Settings }[key]
+  const key = ['eod', 'hubs', 'reports', 'scripts', 'settings'].includes(sub) ? sub : 'eod'
+  const C = { eod: ReportCenter, hubs: Hubs, reports: Reports, scripts: Scripts, settings: Settings }[key]
   const options = [
     { value: 'eod', label: '📋 EOD' },
+    { value: 'hubs', label: '🗺 Hubs' },
     { value: 'reports', label: '📊 Stats' },
     { value: 'scripts', label: '🎙 Scripts' },
     { value: 'settings', label: '⚙️ Settings' },

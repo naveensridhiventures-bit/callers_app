@@ -18,6 +18,7 @@ import Settings from './pages/Settings'
 import AdminOverview from './pages/AdminOverview'
 import AdminTeam from './pages/AdminTeam'
 import ReportCenter from './pages/ReportCenter'
+import Hubs from './pages/Hubs'
 import { Assign, Requests } from './pages/Admin'
 import { bucket, fmtTime, nameOf } from './utils'
 
@@ -26,12 +27,13 @@ const AdminAssign = () => <div className="page adm"><div className="page-h"><h1>
 const AdminRequests = () => <div className="page adm"><div className="page-h"><h1>Delete requests</h1></div><Requests /></div>
 const AdminSettings = () => <div className="page adm"><div className="page-h"><h1>Settings</h1></div><Settings /></div>
 const AdminReports = () => <div className="page adm"><div className="page-h"><h1>Reports</h1></div><ReportCenter admin /></div>
-const ADMIN_PAGES = { reports: AdminReports, overview: AdminOverview, team: AdminTeam, assign: AdminAssign, leads: Leads, requests: AdminRequests, settings: AdminSettings }
+const ADMIN_PAGES = { hubs: Hubs, reports: AdminReports, overview: AdminOverview, team: AdminTeam, assign: AdminAssign, leads: Leads, requests: AdminRequests, settings: AdminSettings }
 const ADMIN_TABS = [
   { id: 'overview', icon: 'chart', label: 'Progress' },
   { id: 'team', icon: 'users', label: 'Callers' },
   { id: 'assign', icon: 'send', label: 'Assign' },
   { id: 'leads', icon: 'list', label: 'Leads' },
+  { id: 'hubs', icon: 'grid', label: 'Hubs' },
   { id: 'requests', icon: 'trash', label: 'Requests' },
 ]
 const TABS = [
@@ -133,7 +135,7 @@ function Shell() {
         </motion.button>
       )}
 
-      <nav className="dock">
+      <nav className="dock" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
         {tabs.map((t) => (
           <button key={t.id} className={`${active === t.id ? 'on' : ''} ${t.fab ? 'fab' : ''}`} onClick={() => go(t.id)}>
             {active === t.id && !t.fab && <motion.span layoutId="dock-pill" className="dock-pill" transition={{ type: 'spring', stiffness: 380, damping: 30 }} />}
