@@ -646,3 +646,5 @@ textarea { resize: vertical; margin-top: 10px; }
 .hub-lead .round.call { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--g600); color: #fff; }
 .hub-empty { color: var(--muted); font-size: 13px; padding: 8px 2px; text-align: center; }
 .hub-card.unmapped { margin-top: 12px; --c: #94a3b8; }
+.hub-pdf { display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border-radius: 14px; color: #fff; font-weight: 700; font-size: 13px; background: linear-gradient(180deg, var(--g500), var(--g600)); box-shadow: 0 3px 0 var(--g800); } .hub-pdf:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--g800); } .hub-pdf:disabled { opacity: .7; }
+.hubs .page-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; }

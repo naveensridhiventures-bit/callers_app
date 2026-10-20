@@ -261,3 +261,135 @@ export async function makeXLSX(r) {
   return new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
 }
 const nameOfL = (l) => l.name || l.phone || 'Unknown'
+
+/* ============================== Hubs PDF ============================== */
+export async function makeHubsPDF({ hubs, byHub, unmapped, colors, scope = '' }) {
+  const [{ jsPDF }, atMod] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
+  const autoTable = atMod.default || atMod.autoTable
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const W = 210, M = 14
+  const now = new Date().toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
+  const nm = (l) => clean(l.name || l.company || l.phone || 'Unknown')
+  const total = [...byHub.values()].reduce((n, v) => n + v.length, 0)
+  let y = 0
+
+  // header band
+  doc.setFillColor(...DARK); doc.rect(0, 0, W, 40, 'F')
+  doc.setFillColor(...GREEN); doc.rect(0, 0, W, 34, 'F')
+  doc.setFillColor(...LIME); doc.rect(0, 34, W, 2.2, 'F')
+  doc.setFillColor(...LIME); doc.roundedRect(M, 8, 20, 20, 5, 5, 'F')
+  doc.setTextColor(...DARK); doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.text('S', M + 10, 22, { align: 'center' })
+  doc.setTextColor(255, 255, 255); doc.setFontSize(19); doc.text('HUB-WISE DISTRIBUTORS', M + 26, 17)
+  doc.setFontSize(10); doc.setTextColor(...LIME); doc.text('Every area within 5 km by road of its hub', M + 26, 23.5)
+  doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text(clean(`${scope ? scope + '  |  ' : ''}Bengaluru`), M + 26, 29)
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.text('SRIDHI PREMIUM IDLI & DOSA BATTER', W - M, 15, { align: 'right' })
+  y = 46
+
+  const ensure = (h) => { if (y + h > 278) { doc.addPage(); y = 16 } }
+  const section = (title) => {
+    ensure(14)
+    doc.setFillColor(...LIME); doc.roundedRect(M, y - 4.2, 1.8, 5.6, 0.9, 0.9, 'F')
+    doc.setTextColor(...DARK); doc.setFont('helvetica', 'bold'); doc.setFontSize(11.5); doc.text(clean(title), M + 4.5, y)
+    y += 5
+  }
+  const head = { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 }
+  const base = { font: 'helvetica', fontSize: 8, cellPadding: 2, textColor: INK }
+
+  // KPI tiles
+  const withLeads = hubs.filter((h) => byHub.get(h.n).length).length
+  const tiles = [['Hubs', hubs.length, GREEN], ['Areas covered', hubs.reduce((n, h) => n + h.areas.length, 0), GREEN], ['Distributors placed', total, [234, 88, 12]], ['No hub yet', unmapped.length, unmapped.length ? [180, 83, 9] : GREEN]]
+  const tw = (W - 2 * M - 3 * 4) / 4
+  tiles.forEach(([label, val, col], i) => {
+    const x = M + i * (tw + 4)
+    doc.setFillColor(...SOFT); doc.roundedRect(x, y, tw, 21, 3.5, 3.5, 'F')
+    doc.setFillColor(...col); doc.roundedRect(x, y + 3, 1.6, 15, 0.8, 0.8, 'F')
+    doc.setTextColor(...col); doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.text(String(val), x + 6, y + 11.5)
+    doc.setTextColor(...MUTED); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.text(label, x + 6, y + 17)
+  })
+  y += 30
+
+  // by region bars
+  section('Distributors by region')
+  const regions = ['North', 'South', 'East', 'West', 'Central']
+  const rc = regions.map((r) => [r, hubs.filter((h) => h.corp === r).reduce((n, h) => n + byHub.get(h.n).length, 0)])
+  const mx = Math.max(1, ...rc.map((x) => x[1]))
+  rc.forEach(([r, n]) => {
+    doc.setTextColor(...INK); doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.text(r, M, y + 3.4)
+    doc.setFillColor(...SOFT); doc.roundedRect(M + 24, y, W - 2 * M - 34, 4.6, 2.3, 2.3, 'F')
+    if (n) { doc.setFillColor(...hex(colors[r])); doc.roundedRect(M + 24, y, Math.max(4.6, (W - 2 * M - 34) * (n / mx)), 4.6, 2.3, 2.3, 'F') }
+    doc.setTextColor(...MUTED); doc.setFont('helvetica', 'normal'); doc.text(String(n), W - M, y + 3.4, { align: 'right' })
+    y += 7.5
+  })
+  y += 4
+
+  // overview table
+  section('Hub overview')
+  autoTable(doc, {
+    startY: y, margin: { left: M, right: M },
+    head: [['Hub', 'Near', 'Region', 'Areas', 'Max road km', 'Distributors']],
+    body: [...hubs].sort((a, b) => a.n - b.n).map((h) => [`Hub ${h.n}`, clean(h.near.replace(/^near /, '')), h.corp, h.areas.length, h.far, byHub.get(h.n).length]),
+    headStyles: head, styles: base, alternateRowStyles: { fillColor: [247, 250, 246] },
+    columnStyles: { 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center', fontStyle: 'bold' } },
+    didParseCell: (d) => {
+      if (d.section === 'body' && d.column.index === 2) d.cell.styles.textColor = hex(colors[d.cell.raw] || '#475569')
+      if (d.section === 'body' && d.column.index === 5 && Number(d.cell.raw) === 0) d.cell.styles.textColor = [160, 170, 165]
+    },
+  })
+  y = doc.lastAutoTable.finalY + 8
+
+  // per-hub detail
+  const active = hubs.filter((h) => byHub.get(h.n).length).sort((a, b) => byHub.get(b.n).length - byHub.get(a.n).length || a.n - b.n)
+  if (active.length) { doc.addPage(); y = 16; section('Distributors under each hub') ; y += 2 }
+  active.forEach((h) => {
+    const items = byHub.get(h.n); const col = hex(colors[h.corp])
+    ensure(40)
+    doc.setFillColor(...col); doc.roundedRect(M, y, W - 2 * M, 12, 3, 3, 'F')
+    doc.setFillColor(255, 255, 255); doc.roundedRect(M + 2, y + 2, 8, 8, 2, 2, 'F')
+    doc.setTextColor(...col); doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.text(String(h.n), M + 6, y + 7.6, { align: 'center' })
+    doc.setTextColor(255, 255, 255); doc.setFontSize(11); doc.text(clean(`Hub ${h.n}  -  near ${h.near.replace(/^near /, '')}`), M + 13, y + 7.6)
+    doc.setFontSize(9); doc.text(`${items.length} distributor${items.length > 1 ? 's' : ''}  |  ${h.corp}`, W - M - 3, y + 7.6, { align: 'right' })
+    y += 14
+    doc.setTextColor(...MUTED); doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5)
+    const areas = doc.splitTextToSize(clean(`Areas: ${h.areas.map((a) => a.a).join(', ')}`), W - 2 * M)
+    doc.text(areas, M, y + 2); y += areas.length * 3.4 + 3
+    autoTable(doc, {
+      startY: y, margin: { left: M, right: M },
+      head: [['Distributor', 'Phone', 'Area', 'Status', 'Last outcome']],
+      body: items.map(({ lead: l, also }) => [nm(l), clean(l.phone), clean(l.area) + (also.length ? ` (also Hub ${also.join(',')})` : ''), clean(l.status), clean(l.lastOutcome || '-')]),
+      headStyles: { ...head, fillColor: col }, styles: base, alternateRowStyles: { fillColor: [247, 250, 246] },
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 44 }, 1: { cellWidth: 28 } },
+    })
+    y = doc.lastAutoTable.finalY + 8
+  })
+
+  if (unmapped.length) {
+    ensure(30); section('No hub yet (area empty or outside the hub plan)')
+    autoTable(doc, {
+      startY: y, margin: { left: M, right: M },
+      head: [['Distributor', 'Phone', 'Area typed', 'Status']],
+      body: unmapped.map((l) => [nm(l), clean(l.phone), clean(l.area) || 'Not filled', clean(l.status)]),
+      headStyles: { ...head, fillColor: [100, 116, 139] }, styles: base,
+    })
+    y = doc.lastAutoTable.finalY + 8
+  }
+
+  // appendix: every area under its hub
+  doc.addPage(); y = 16; section('All areas under each hub'); y += 1
+  autoTable(doc, {
+    startY: y, margin: { left: M, right: M },
+    head: [['Hub', 'Areas (nearest first)']],
+    body: [...hubs].sort((a, b) => a.n - b.n).map((h) => [`Hub ${h.n}\n${clean(h.near.replace(/^near /, ''))}`, clean(h.areas.map((a) => a.a).join(', '))]),
+    headStyles: head, styles: { ...base, fontSize: 7.2 }, alternateRowStyles: { fillColor: [247, 250, 246] },
+    columnStyles: { 0: { cellWidth: 34, fontStyle: 'bold' } },
+  })
+
+  const pages = doc.getNumberOfPages()
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i)
+    doc.setDrawColor(...LIME); doc.setLineWidth(0.6); doc.line(M, 288, W - M, 288)
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...MUTED)
+    doc.text(`Sridhi Premium Idli & Dosa Batter  |  Generated ${now}`, M, 292.5)
+    doc.text(`Page ${i} of ${pages}`, W - M, 292.5, { align: 'right' })
+  }
+  return doc.output('blob')
+}

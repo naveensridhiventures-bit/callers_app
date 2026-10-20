@@ -8,7 +8,8 @@ import { nameOf, telHref } from '../utils'
 const CORPS = ['All', 'North', 'South', 'East', 'West', 'Central']
 
 export default function Hubs() {
-  const { leads, openLead } = useApp()
+  const { leads, openLead, toast, session } = useApp()
+  const [busy, setBusy] = useState(false)
   const [corp, setCorp] = useState('All')
   const [q, setQ] = useState('')
   const [onlyLeads, setOnlyLeads] = useState(false)
@@ -25,9 +26,22 @@ export default function Hubs() {
       .sort((a, b) => byHub.get(b.n).length - byHub.get(a.n).length || a.n - b.n)
   }, [corp, q, onlyLeads, byHub])
 
+  const downloadPDF = async () => {
+    setBusy(true)
+    try {
+      const mod = await import('../exporters')
+      const blob = await mod.makeHubsPDF({ hubs: HUBS, byHub, unmapped, colors: CORP_COLORS, scope: session?.role === 'admin' ? 'All callers' : session?.name || '' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a'); a.href = url; a.download = `Sridhi-Hubs-${new Date().toISOString().slice(0, 10)}.pdf`
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500)
+      toast('Hub PDF downloaded ✓')
+    } catch (e) { console.error(e); toast('Could not create the PDF. Try again', 'warn') }
+    setBusy(false)
+  }
+
   return (
     <div className="page hubs">
-      <div className="page-h"><h1>Hubs</h1></div>
+      <div className="page-h"><h1>Hubs</h1><button className="hub-pdf" onClick={downloadPDF} disabled={busy}><Icon name="download" size={16} /> {busy ? 'Preparing…' : 'Download PDF'}</button></div>
 
       <div className="hub-hero">
         <div><b><Counter value={HUBS.length} /></b><span>Hubs</span></div>
