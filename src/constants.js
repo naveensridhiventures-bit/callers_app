@@ -82,7 +82,7 @@ export const AREAS = [
 ]
 
 export const SOURCES = [
-  'Company Data', 'Referral', 'Walk-in', 'Facebook / Instagram',
+  'Company Data', 'Field visit', 'Referral', 'Walk-in', 'Facebook / Instagram',
   'JustDial / IndiaMART', 'Cold Call', 'Existing Customer', 'Other',
 ]
 

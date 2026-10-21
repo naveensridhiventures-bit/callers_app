@@ -4,6 +4,8 @@ const pad = (n) => String(n).padStart(2, '0')
 
 /** a bare number has no name yet, so show the phone instead */
 export const nameOf = (l) => l.name || l.phone || 'Unknown'
+/** hotels are Chennai field-sales leads; the distributor / sales leads are Bengaluru */
+export const cityOf = (l) => (l && l.type === 'hotel' ? 'Chennai' : 'Bengaluru')
 export const typeLabel = (t) => (t === 'sales' ? 'Sales' : t === 'number' ? 'Number' : t === 'hotel' ? 'Hotel' : 'Distributor')
 
 export const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4)
@@ -114,7 +116,7 @@ export function gcalLink(lead) {
     `&text=${encodeURIComponent(e.title)}` +
     `&details=${encodeURIComponent(e.details)}` +
     `&dates=${icsStamp(e.start)}/${icsStamp(e.end)}` +
-    `&location=${encodeURIComponent(lead.area ? lead.area + ', Bengaluru' : 'Bengaluru')}`
+    `&location=${encodeURIComponent(lead.area ? lead.area + ', ' + cityOf(lead) : cityOf(lead))}`
   )
 }
 
@@ -270,7 +272,7 @@ export function hotelPoint(l) {
 }
 export const hotelQuery = (l) => {
   const p = hotelPoint(l)
-  return p ? `${p.lat},${p.lng}` : [l.name, l.address, l.area, 'Bengaluru'].filter(Boolean).join(', ')
+  return p ? `${p.lat},${p.lng}` : [l.name, l.address, l.area, 'Chennai'].filter(Boolean).join(', ')
 }
 export const mapEmbed = (l) => `https://maps.google.com/maps?q=${encodeURIComponent(hotelQuery(l))}&z=16&output=embed`
 export const mapOpen = (l) => (l.mapUrl && /^https?:/i.test(l.mapUrl) ? l.mapUrl : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotelQuery(l))}`)
@@ -303,7 +305,7 @@ export function rowsToHotels(rows) {
     return {
       id: uid(), type: 'hotel', name: g('name'), phone: cleanPhone(g('phone')), contactName: g('contactName'), area: g('area'), address: g('address'),
       mapUrl: g('mapUrl'), lat: g('lat') || (pt ? String(pt.lat) : ''), lng: g('lng') || (pt ? String(pt.lng) : ''), lastOrderOn: g('lastOrderOn'),
-      stopReason: g('stopReason'), monthlyQty: g('monthlyQty'), notes: g('notes'), source: 'Lapsed hotel', city: 'Bengaluru', status: 'New', priority: 'Warm',
+      stopReason: g('stopReason'), monthlyQty: g('monthlyQty'), notes: g('notes'), source: 'Lapsed hotel', city: 'Chennai', status: 'New', priority: 'Warm',
       calls: [], callCount: 0, nextFollowUp: '', createdAt: now, updatedAt: now,
     }
   }).filter((l) => l.name)

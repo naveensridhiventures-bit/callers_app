@@ -3,15 +3,18 @@ import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Icon, Segmented, Sheet } from '../ui'
 import AreaPicker from './AreaPicker'
+import ChennaiAreaPicker from './ChennaiAreaPicker'
+import { lastKnown } from '../useGeo'
 import { AREAS, BIZ_TYPES, INVEST, PRIORITIES, SOURCES, STATUSES, STOP_REASONS } from '../constants'
 import { coordsFromLink, cleanPhone, fromLocalInput, toLocalInput, atDay, addHours } from '../utils'
 
 export default function LeadForm({ lead, preset, onClose }) {
   const { leads, addLead, saveDetails, toast, session, callers } = useApp()
   const editing = !!lead
+  const isField = session?.role === 'field'
   const [f, setF] = useState(() => ({
-    type: 'distributor', name: '', phone: '', altPhone: '', email: '', company: '', bizType: '',
-    area: '', source: 'Company Data', priority: 'Warm', status: 'New', investment: '', vehicle: '',
+    type: isField ? 'hotel' : 'distributor', name: '', phone: '', altPhone: '', email: '', company: '', bizType: '',
+    area: '', source: isField ? 'Field visit' : 'Company Data', priority: 'Warm', status: 'New', investment: '', vehicle: '',
     coldStorage: '', experience: '', dailyQty: '', notes: '', nextFollowUp: '',
     ...preset, ...lead,
   }))
@@ -28,14 +31,14 @@ export default function LeadForm({ lead, preset, onClose }) {
     if (!isNum && !f.name.trim()) return toast("Enter the person's name", 'warn')
     if (f.type !== 'hotel' && cleanPhone(f.phone).length < 10) return toast('Enter a valid 10-digit phone number', 'warn')
     const data = { ...f, name: f.name.trim(), phone: cleanPhone(f.phone), altPhone: cleanPhone(f.altPhone) }
-    if (f.type === 'hotel') { const pt = coordsFromLink(f.mapUrl || ''); if (pt && !f.lat) { data.lat = String(pt.lat); data.lng = String(pt.lng) } }
+    if (f.type === 'hotel') { data.city = 'Chennai'; const pt = coordsFromLink(f.mapUrl || ''); if (pt && !f.lat) { data.lat = String(pt.lat); data.lng = String(pt.lng) } }
     if (session?.role === 'admin' && data.assignedTo !== undefined) {
       data.assignedName = callers.find((c) => c.id === data.assignedTo)?.name || ''
       if (data.assignedTo && data.assignedTo !== lead?.assignedTo) data.assignedAt = new Date().toISOString()
     }
     if (editing) saveDetails(lead, data)
     else addLead(data)
-    toast(editing ? 'Lead updated ✓' : isNum ? 'Number saved ✓' : 'Lead added ✓')
+    toast(editing ? (f.type === 'hotel' ? 'Hotel updated ✓' : 'Lead updated ✓') : isNum ? 'Number saved ✓' : f.type === 'hotel' ? 'Hotel added ✓' : 'Lead added ✓')
     onClose()
   }
 
@@ -45,7 +48,7 @@ export default function LeadForm({ lead, preset, onClose }) {
     <Sheet onClose={onClose}>
       <form className="sheet-body" onSubmit={submit}>
         <div className="sheet-title">
-          <h2>{editing ? (lead.name ? 'Edit lead' : "Add the person's details") : 'New lead'}</h2>
+          <h2>{editing ? (lead.name ? (f.type === 'hotel' ? 'Edit hotel' : 'Edit lead') : "Add the person's details") : f.type === 'hotel' ? 'New hotel' : 'New lead'}</h2>
           <button type="button" className="icon-btn" onClick={onClose}><Icon name="x" /></button>
         </div>
 
@@ -86,7 +89,9 @@ export default function LeadForm({ lead, preset, onClose }) {
         )}
 
         <div className="grid2">
-          <AreaPicker value={f.area} hub={f.hub} onChange={(area, hub) => setF((p) => ({ ...p, area, hub }))} />
+          {f.type === 'hotel'
+            ? <ChennaiAreaPicker value={f.area} onChange={(area) => setF((p) => ({ ...p, area }))} />
+            : <AreaPicker value={f.area} hub={f.hub} onChange={(area, hub) => setF((p) => ({ ...p, area, hub }))} />}
           <label className="field"><span>Source</span>
             <select value={f.source} onChange={(e) => set('source', e.target.value)}>
               {SOURCES.map((s) => <option key={s}>{s}</option>)}
@@ -107,10 +112,15 @@ export default function LeadForm({ lead, preset, onClose }) {
 
         {f.type === 'hotel' && (
           <div className="extra">
-            <h4>🏨 Hotel &amp; location</h4>
+            <h4>🏨 Hotel &amp; location (Chennai)</h4>
             <label className="field"><span>Contact person</span><input value={f.contactName || ''} onChange={(e) => set('contactName', e.target.value)} placeholder="Owner / manager / chef" /></label>
             <label className="field"><span>Address</span><input value={f.address || ''} onChange={(e) => set('address', e.target.value)} placeholder="Street, landmark" /></label>
             <label className="field"><span>Google Maps link</span><input value={f.mapUrl || ''} onChange={(e) => set('mapUrl', e.target.value)} placeholder="Paste the share link from Google Maps" /></label>
+            <button type="button" className="btn-soft wide" onClick={() => {
+              const use = (p) => { setF((x) => ({ ...x, lat: String(p.lat), lng: String(p.lng) })); toast('📍 Pin saved at your location') }
+              if (!navigator.geolocation) return toast('GPS is not available', 'warn')
+              navigator.geolocation.getCurrentPosition((p) => use({ lat: p.coords.latitude, lng: p.coords.longitude }), () => { const k = lastKnown(); k ? use(k) : toast('Allow location access to pin this hotel', 'warn') }, { enableHighAccuracy: true, timeout: 12000 })
+            }}>📍 {f.lat && f.lng ? 'Pin saved · update to my location' : 'Standing at the hotel? Pin my location'}</button>
             <div className="grid2">
               <label className="field"><span>Last order on</span><input value={f.lastOrderOn || ''} onChange={(e) => set('lastOrderOn', e.target.value)} placeholder="e.g. 12 Aug" /></label>
               <label className="field"><span>Packets / month before</span><input inputMode="numeric" value={f.monthlyQty || ''} onChange={(e) => set('monthlyQty', e.target.value)} /></label>
@@ -187,7 +197,7 @@ export default function LeadForm({ lead, preset, onClose }) {
         </label>
 
         <motion.button whileTap={{ scale: 0.97, y: 3 }} className="btn3d big" type="submit">
-          <Icon name="check" /> {editing ? 'Save changes' : isNum ? 'Save number' : 'Add lead'}
+          <Icon name="check" /> {editing ? 'Save changes' : isNum ? 'Save number' : f.type === 'hotel' ? 'Add hotel' : 'Add lead'}
         </motion.button>
       </form>
     </Sheet>

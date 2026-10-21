@@ -3,10 +3,11 @@ import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Avatar, Confetti, Icon, Segmented, Sheet, StatusPill } from '../ui'
 import MapButton from './MapPopup'
+import { RATING_LABEL, Stars, ratingToPriority } from './Stars'
 import { AUDIENCES, HOTEL_OUTCOMES, CLOSED, NUMBER_ONLY, NUMBER_OUTCOMES, OUTCOMES, PRIORITIES, QUICK_REMARKS, STATUSES } from '../constants'
 import {
   addHours, atDay, downloadICS, fmtDur, fmtWhen, fromLocalInput, gcalLink, gmailLink,
-  assignedAtOf, fmtAssigned, nameOf, nowISO, suggestNext, telHref, toLocalInput, typeLabel, waHref,
+  assignedAtOf, cityOf, fmtAssigned, nameOf, nowISO, suggestNext, telHref, toLocalInput, typeLabel, waHref,
 } from '../utils'
 
 export default function LeadDetail({ id, calling, preset, onClose }) {
@@ -22,6 +23,8 @@ export default function LeadDetail({ id, calling, preset, onClose }) {
   const [status, setStatus] = useState(() => (preset && OUTCOMES.find((o) => o.id === preset)?.status) || lead?.status || 'New')
   const [next, setNext] = useState(preset ? suggestNext(preset) : '')
   const [done, setDone] = useState(null)
+  const [rating, setRating] = useState(() => Number(lead?.rating) || 0)
+  const [mode, setMode] = useState(calling ? 'call' : 'visit')
   const [delOpen, setDelOpen] = useState(false)
   const [otherText, setOtherText] = useState('')
   const [audience, setAudience] = useState('')
@@ -37,6 +40,7 @@ export default function LeadDetail({ id, calling, preset, onClose }) {
 
   if (!lead) return null
   const isAdmin = session?.role === 'admin'
+  const isField = session?.role === 'field'
   const pending = lead.delReq === '1'
   const secs = started ? Math.floor((Date.now() - started) / 1000) : 0
   const isNum = lead.type === 'number'
@@ -75,7 +79,9 @@ export default function LeadDetail({ id, calling, preset, onClose }) {
     if (outcome === 'Wrong Audience') parts.push(`Wrong audience: ${audLabel}`)
     if (remark.trim()) parts.push(remark.trim())
     const updated = logCall(lead, {
-      outcome, remark: parts.join(' · '), next, status, priority, duration: secs,
+      outcome, remark: parts.join(' · '), next, status, duration: secs,
+      priority: isField && rating ? ratingToPriority(rating) : priority,
+      ...(isField ? { mode: started ? 'call' : mode, rating: rating || undefined } : {}),
       extra: outcome === 'Wrong Audience' ? { audience: audLabel } : undefined,
     })
     setDone({ lead: updated, outcome })
@@ -103,7 +109,7 @@ export default function LeadDetail({ id, calling, preset, onClose }) {
 
   const info = [
     ['Phone', lead.phone], ['Alt phone', lead.altPhone], ['Email', lead.email], ['Business', lead.company],
-    ['Type', lead.bizType], ['Area', lead.area], ['Source', lead.source], ['Priority', lead.priority],
+    ['Type', lead.bizType], ['Area', lead.area], ['Source', lead.source], ['Priority', lead.priority], ['Interest rating', Number(lead.rating) ? `${lead.rating} / 5 ⭐` : ''],
     ['Investment', lead.investment], ['Own vehicle', lead.vehicle], ['Cold storage', lead.coldStorage],
     ['FMCG exp (yrs)', lead.experience], ['Packets / day', lead.dailyQty], ['Calls made', lead.callCount || 0],
     ['Assigned', lead.assignedTo ? fmtAssigned(assignedAtOf(lead)) : ''],
@@ -131,13 +137,13 @@ export default function LeadDetail({ id, calling, preset, onClose }) {
           <Avatar name={nameOf(lead)} size={56} icon={isNum || !lead.name} />
           <div className="dh-main">
             <h2>{isNum ? lead.phone : lead.name || lead.phone}</h2>
-            <p>{isHotel ? [lead.contactName, lead.address || lead.area || 'Bengaluru'].filter(Boolean).join(' · ') : isNum ? 'New number · who is this?' : `${lead.company ? `${lead.company} · ` : ''}${lead.area || 'Bengaluru'}`}</p>
+            <p>{isHotel ? [lead.contactName, lead.address || lead.area || cityOf(lead)].filter(Boolean).join(' · ') : isNum ? 'New number · who is this?' : `${lead.company ? `${lead.company} · ` : ''}${lead.area || cityOf(lead)}`}</p>
             <div className="dh-tags">{!isNum && <StatusPill status={lead.status} />}<span className="tag light">{typeLabel(lead.type)}</span></div>
           </div>
         </div>
         {isHotel && <div className="dh-actions"><MapButton lead={lead} className="act" label="Location"><Icon name="pin" /> Location &amp; Navigate</MapButton></div>}
         {!isAdmin && (!isHotel || lead.phone) && <div className="dh-actions">
-          <motion.a whileTap={{ scale: 0.94 }} className="act call" href={telHref(lead.phone)} onClick={(e) => { if (!startCall(lead)) return e.preventDefault(); setStarted(Date.now()); setTab('call') }}>
+          <motion.a whileTap={{ scale: 0.94 }} className="act call" href={telHref(lead.phone)} onClick={(e) => { if (!startCall(lead)) return e.preventDefault(); setStarted(Date.now()); setMode('call'); setTab('call') }}>
             <Icon name="phone" /> {started ? <span className="live"><i />{fmtDur(secs)}</span> : 'Call'}
           </motion.a>
           <motion.a whileTap={{ scale: 0.94 }} className="act wa" href={waHref(lead.phone, waText)} target="_blank" rel="noreferrer"><Icon name="whatsapp" /> WhatsApp</motion.a>
@@ -256,11 +262,20 @@ export default function LeadDetail({ id, calling, preset, onClose }) {
               </div>
               <textarea rows={3} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Type what the person said…" />
 
-              {!isNum && <div className="grid2">
-                <div className="field"><span>Temperature</span>
+              {isField && (
+                <>
+                  <h4 className="lbl">Was this a visit or a call?</h4>
+                  <Segmented id="ld-mode" value={started ? 'call' : mode} onChange={setMode} options={[{ value: 'visit', label: '📍 Visit' }, { value: 'call', label: '📞 Call' }]} />
+                  <h4 className="lbl">Interest rating</h4>
+                  <div className="vm-rate"><Stars value={rating} size={38} onChange={setRating} /><span className={`vm-rate-l r${rating}`}>{RATING_LABEL[rating]}</span></div>
+                </>
+              )}
+
+              {!isNum && <div className={isField ? '' : 'grid2'}>
+                {!isField && <div className="field"><span>Temperature</span>
                   <Segmented id="ld-pri" value={priority} onChange={setPriority}
                     options={PRIORITIES.map((p) => ({ value: p, label: p === 'Hot' ? '🔥' : p === 'Warm' ? '🌤' : '❄️' }))} />
-                </div>
+                </div>}
                 <label className="field"><span>Status</span>
                   <select value={status} onChange={(e) => setStatus(e.target.value)}>
                     {STATUSES.map((s) => <option key={s.id}>{s.id}</option>)}

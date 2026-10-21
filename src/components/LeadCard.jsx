@@ -1,9 +1,10 @@
 import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Avatar, Icon, StatusPill } from '../ui'
-import { assignedAtOf, bucket, fmtAssigned, fmtWhen, isToday, nameOf, telHref, waHref } from '../utils'
+import { assignedAtOf, bucket, cityOf, fmtAssigned, fmtWhen, isToday, nameOf, telHref, waHref } from '../utils'
 import { CLOSED } from '../constants'
 import MapButton from './MapPopup'
+import { StarsRO } from './Stars'
 
 export default function LeadCard({ lead, i = 0 }) {
   const { openLead, session, callers, convertLead, startCall } = useApp()
@@ -37,15 +38,16 @@ export default function LeadCard({ lead, i = 0 }) {
         </div>
         <div className="lead-sub">
           {isHotel
-            ? [lead.contactName, lead.phone, lead.address || lead.area || 'Bengaluru'].filter(Boolean).join(' · ')
+            ? [lead.contactName, lead.phone, lead.address || lead.area || cityOf(lead)].filter(Boolean).join(' · ')
             : isNum
             ? lead.lastOutcome ? `${lead.lastOutcome}${lead.lastRemark ? ` · ${lead.lastRemark}` : ''}` : 'New number · call and find out who it is'
-            : `${lead.company ? `${lead.company} · ` : ''}${lead.area || 'Bengaluru'}`}
+            : `${lead.company ? `${lead.company} · ` : ''}${lead.area || cityOf(lead)}`}
         </div>
         <div className="lead-meta">
           {isNum ? <span className="tag num">📞 Number</span> : <StatusPill status={lead.status} />}
           {lead.type === 'sales' && <span className="tag">Sales</span>}
-          {isHotel && <span className="tag">🏨 Lapsed hotel</span>}
+          {isHotel && <span className="tag">{lead.source === 'Lapsed hotel' ? '🏨 Lapsed hotel' : '🏨 Hotel'}</span>}
+          {isHotel && Number(lead.rating) > 0 && <span className="tag rate"><StarsRO value={Number(lead.rating)} size={11} /></span>}
           {isHotel && lead.stopReason && <span className="tag amber">⚠️ {lead.stopReason}</span>}
           {isHotel && session?.role === 'admin' && lead.fieldId && <span className="tag">🚶 {callers.find((c) => c.id === lead.fieldId)?.name || lead.fieldName}</span>}
           {fresh && <span className="tag new">🆕 New</span>}

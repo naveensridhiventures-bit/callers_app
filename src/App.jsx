@@ -20,17 +20,18 @@ import AdminTeam from './pages/AdminTeam'
 import ReportCenter from './pages/ReportCenter'
 import Hubs from './pages/Hubs'
 import FieldHome from './pages/FieldHome'
+import FieldReport from './pages/FieldReport'
 import AdminHotels from './pages/AdminHotels'
 import GmailGate from './components/GmailGate'
 import { Assign, Requests } from './pages/Admin'
-import { bucket, fmtTime, nameOf } from './utils'
+import { bucket, cityOf, fmtTime, nameOf } from './utils'
 
 const PAGES = { home: Dashboard, leads: Leads, call: CallMode, follow: Followups, more: More }
 const AdminAssign = () => <div className="page adm"><div className="page-h"><h1>Assign leads</h1></div><Assign /></div>
 const AdminRequests = () => <div className="page adm"><div className="page-h"><h1>Delete requests</h1></div><Requests /></div>
 const AdminSettings = () => <div className="page adm"><div className="page-h"><h1>Settings</h1></div><Settings /></div>
 const AdminReports = () => <div className="page adm"><div className="page-h"><h1>Reports</h1></div><ReportCenter admin /></div>
-const FIELD_PAGES = { home: FieldHome, leads: Leads, follow: Followups, more: More }
+const FIELD_PAGES = { home: FieldHome, leads: Leads, follow: Followups, report: FieldReport, more: More }
 const ADMIN_PAGES = { hotels: AdminHotels, hubs: Hubs, reports: AdminReports, overview: AdminOverview, team: AdminTeam, assign: AdminAssign, leads: Leads, requests: AdminRequests, settings: AdminSettings }
 const ADMIN_TABS = [
   { id: 'overview', icon: 'chart', label: 'Progress' },
@@ -45,7 +46,7 @@ const FIELD_TABS = [
   { id: 'home', icon: 'home', label: 'Today' },
   { id: 'leads', icon: 'pin', label: 'Hotels' },
   { id: 'follow', icon: 'calendar', label: 'Follow-ups' },
-  { id: 'more', icon: 'grid', label: 'More' },
+  { id: 'report', icon: 'download', label: 'Report' },
 ]
 const TABS = [
   { id: 'home', icon: 'home', label: 'Home' },
@@ -78,7 +79,7 @@ function Shell() {
         toast(`⏰ Call ${nameOf(l)} now (${fmtTime(l.nextFollowUp)})`, 'warn')
         navigator.vibrate?.([120, 60, 120])
         if ('Notification' in window && Notification.permission === 'granted') {
-          const n = new Notification('Follow-up due', { body: `${nameOf(l)} · ${l.area || 'Bengaluru'}\n${l.lastRemark || ''}`, icon: '/icon-192.png' })
+          const n = new Notification('Follow-up due', { body: `${nameOf(l)} · ${l.area || cityOf(l)}\n${l.lastRemark || ''}`, icon: '/icon-192.png' })
           n.onclick = () => { window.focus(); openLead(l.id) }
         }
       })
@@ -127,7 +128,7 @@ function Shell() {
 
       <div className="content">
         <header className="top">
-          <div className="brand"><i>S</i><b>Sridhi <span>{isAdmin ? 'HR Control' : isField ? 'Field' : 'Caller'}</span></b></div>
+          <div className="brand"><i>S</i><b>Sridhi <span>{isAdmin ? 'HR Control' : isField ? 'Field · Chennai' : 'Caller'}</span></b></div>
           <div className="top-r">
             {session && !isAdmin && <span className="who">👤 {session.name.split(' ')[0]}</span>}
             <span className={`sync ${sync.state}`} title={sync.msg || 'Google Sheets auto-sync'} onClick={() => go(isAdmin ? 'settings' : 'more', isAdmin ? undefined : 'settings')}>

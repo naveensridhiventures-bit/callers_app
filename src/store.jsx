@@ -374,7 +374,7 @@ export function AppProvider({ children }) {
     (data) => {
       const s = sessionRef.current
       const base = {
-        id: uid(), type: 'distributor', status: 'New', priority: 'Warm', city: 'Bengaluru',
+        id: uid(), type: s?.role === 'field' ? 'hotel' : 'distributor', status: 'New', priority: 'Warm', city: s?.role === 'field' ? 'Chennai' : 'Bengaluru',
         calls: [], callCount: 0, createdAt: nowISO(), nextFollowUp: '',
         ...(s?.role === 'caller' ? { assignedTo: s.id, assignedName: s.name, assignedAt: nowISO() } : s?.role === 'field' ? { fieldId: s.id, fieldName: s.name, fieldAt: nowISO() } : {}),
         ...data,
@@ -415,13 +415,17 @@ export function AppProvider({ children }) {
   )
 
   const logCall = useCallback(
-    (lead, { outcome, remark, next, status, priority, duration, extra, visit }) => {
+    (lead, { outcome, remark, next, status, priority, duration, extra, visit, mode, rating }) => {
       const o = OUTCOMES.find((x) => x.id === outcome)
       const newStatus = status || o?.status || lead.status
+      // a field person's entry is a physical 'visit' or a phone 'call'; callers only ever call
+      const m = visit ? 'visit' : mode || (sessionRef.current?.role === 'field' ? 'visit' : '')
       const call = {
         id: uid(), at: nowISO(), outcome, remark: remark || '', next: next || '',
         by: sessionRef.current?.name || settingsRef.current.name || '', duration: duration || 0,
-        ...(visit ? { mode: 'visit', lat: visit.lat ?? '', lng: visit.lng ?? '' } : sessionRef.current?.role === 'field' ? { mode: 'visit' } : {}),
+        ...(m ? { mode: m } : {}),
+        ...(visit && visit.lat != null ? { lat: visit.lat, lng: visit.lng } : {}),
+        ...(rating ? { rating } : {}),
       }
       const updated = {
         ...lead,
@@ -433,10 +437,11 @@ export function AppProvider({ children }) {
         lastRemark: remark || lead.lastRemark || '',
         status: newStatus,
         priority: priority || lead.priority,
+        ...(rating ? { rating } : {}),
         nextFollowUp: CLOSED.includes(newStatus) ? '' : next || '',
       }
       if (pendingRef.current?.leadId === lead.id) writePending(null)
-      return saveLead(updated, { ...call, leadId: lead.id, name: lead.name, phone: lead.phone })
+      return saveLead(updated, { ...call, leadId: lead.id, name: lead.name, phone: lead.phone, area: lead.area || '' })
     },
     [saveLead, writePending]
   )

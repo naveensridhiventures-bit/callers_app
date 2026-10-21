@@ -1,5 +1,5 @@
 /**
- * SRIDHI CALLER APP - Google Sheets backend  (version 5)
+ * SRIDHI CALLER APP - Google Sheets backend  (version 6)
  * ------------------------------------------------------
  * Paste this whole file into the Apps Script of your Google Sheet
  * (Extensions -> Apps Script), Save, then:
@@ -15,7 +15,7 @@
 const ADMIN_PIN = 'hr@sridhi'
 const SECRET = '' // optional extra key; if you set it, enter the same in the app (Settings -> Advanced)
 const ADMIN_EMAIL = '' // HR Gmail: gets an alert when a follow-up is 2+ hours overdue (leave '' to switch off)
-const VERSION = 5
+const VERSION = 6
 
 const LEAD_HEADERS = [
   'id', 'type', 'name', 'phone', 'altPhone', 'email', 'company', 'bizType', 'area', 'city',
@@ -24,10 +24,12 @@ const LEAD_HEADERS = [
   'callCount', 'createdAt', 'updatedAt', 'delReq', 'delReqBy', 'delReqAt', 'delReqNote', 'callsJson',
   // lapsed-hotel / field-person fields (v5)
   'fieldId', 'fieldName', 'fieldAt', 'contactName', 'address', 'mapUrl', 'lat', 'lng', 'lastOrderOn', 'stopReason', 'monthlyQty',
+  // field sales (v6): star rating 1-5 of the hotel's interest
+  'rating',
   'mailedFor', 'escalatedFor',
 ]
 const SERVER_ONLY = ['mailedFor', 'escalatedFor'] // owned by the reminder job, never overwritten by the app
-const CALL_HEADERS = ['at', 'leadId', 'name', 'phone', 'outcome', 'remark', 'next', 'by', 'duration', 'mode', 'lat', 'lng']
+const CALL_HEADERS = ['at', 'leadId', 'name', 'phone', 'outcome', 'remark', 'next', 'by', 'duration', 'mode', 'lat', 'lng', 'rating', 'area'] // mode: visit | call
 const CALLER_HEADERS = ['id', 'name', 'pin', 'active', 'createdAt', 'role', 'email'] // role: caller | field
 
 /* ---------- sheet helpers ---------- */
@@ -312,7 +314,7 @@ function sendFollowupMails() {
       return '<li style="margin-bottom:10px"><b>' + x.name + '</b> (' + fmt(x.when) + ')<br>' +
         (x.phone ? '<a href="tel:+91' + x.phone.slice(-10) + '">Call ' + x.phone + '</a> ' : '') +
         (x.area || x.addr ? ' · ' + (x.addr || x.area) : '') +
-        (x.type === 'hotel' ? ' · <a href="' + (x.map || 'https://www.google.com/maps/search/' + encodeURIComponent((x.name + ' ' + (x.addr || x.area) + ' Bengaluru'))) + '">📍 Map</a>' : '') +
+        (x.type === 'hotel' ? ' · <a href="' + (x.map || 'https://www.google.com/maps/search/' + encodeURIComponent((x.name + ' ' + (x.addr || x.area) + ' Chennai'))) + '">📍 Map</a>' : '') +
         (x.remark ? '<br><i>Last: ' + x.remark + '</i>' : '') + '</li>'
     }
     Object.keys(mails).forEach(function (to) {

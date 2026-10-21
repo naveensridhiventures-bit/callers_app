@@ -8,7 +8,15 @@ import ReportCenter from './ReportCenter'
 import Hubs from './Hubs'
 
 export default function More() {
-  const { sub, go } = useApp()
+  const { sub, go, session } = useApp()
+  if (session?.role === 'field') {
+    return (
+      <div className="page">
+        <div className="page-h"><h1>Settings</h1></div>
+        <Settings />
+      </div>
+    )
+  }
   const key = ['eod', 'hubs', 'reports', 'scripts', 'settings'].includes(sub) ? sub : 'eod'
   const C = { eod: ReportCenter, hubs: Hubs, reports: Reports, scripts: Scripts, settings: Settings }[key]
   const options = [

@@ -100,3 +100,14 @@ Every lead now remembers **when it was assigned** (`assignedAt`): on HR assign, 
 - **HR → Hotels:** import hotels that stopped ordering (CSV/paste: hotel name, phone optional, map link optional), or convert existing Hotel/Restaurant leads, then **bulk assign to a caller and a field person** at once.
 - **Caller + field person** see hotel name, contact (if given), address and a 📍 button → location popup (live map, Navigate, Open in Maps, Share, GPS check-in). Visits and win-back outcomes (Order Restarted, Will Order Soon, Revisit Needed, Hotel Closed…) are logged like calls, with follow-ups.
 - **First login:** a popup asks for the Gmail ID used for follow-up mails.
+
+## Field sales (Chennai) - v6
+
+A person added as **Field** in HR Control gets a Chennai-only app: no Bengaluru hubs, distributors or scripts.
+
+- **Today**: visits and calls so far, average interest, follow-ups due. Pick a Chennai area, then **Start visits**.
+- **Visit run**: one hotel at a time, nearest first from the live GPS position (nearest-neighbour + 2-opt route), with a map, Navigate, call/WhatsApp, check-in, outcome, **1-5 star interest rating** and follow-up. The next hotel is re-planned from where you stand after every save.
+- **Hotels**: filter by area. Add a hotel on the road with the + button and pin your current location.
+- **Report**: pick a day, week, month or custom dates, filter by area and visits / calls, then download **PDF, Excel or CSV**, or copy the WhatsApp message.
+
+Paste the new `apps-script/Code.gs` (version 6) and deploy a new version so ratings, visit/call type and area are saved to the Sheet.

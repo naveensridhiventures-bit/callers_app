@@ -36,7 +36,7 @@ export function MapPopup({ lead, onClose }) {
           <button className="icon-btn light" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
           <span className="mp-pin">🏨</span>
           <h2>{lead.name}</h2>
-          <p>{[lead.area, 'Bengaluru'].filter(Boolean).join(' · ')}</p>
+          <p>{[lead.area, 'Chennai'].filter(Boolean).join(' · ')}</p>
           <div className="mp-chips">
             {lead.lastOrderOn && <span>🕒 Last order {lead.lastOrderOn}</span>}
             {lead.stopReason && <span>⚠️ {lead.stopReason}</span>}

@@ -20,6 +20,9 @@ const matchDate = (l, f) => {
 
 export default function Leads() {
   const { leads, filter, setFilter, openForm, session, callers } = useApp()
+  const isField = session?.role === 'field'
+  const [areaSel, setAreaSel] = useState('all')
+  const myAreas = useMemo(() => (isField ? [...new Set(leads.map((l) => (l.area || '').trim()).filter(Boolean))].sort() : []), [leads, isField])
   const [sort, setSort] = useState(() => (session?.role === 'admin' ? 'recent' : 'assigned'))
   const [limit, setLimit] = useState(40)
 
@@ -27,6 +30,7 @@ export default function Leads() {
     const q = filter.q.trim().toLowerCase()
     const digits = cleanPhone(filter.q)
     let r = leads.filter((l) => {
+      if (isField && areaSel !== 'all' && (l.area || '').trim() !== areaSel) return false
       if (filter.type !== 'all' && l.type !== filter.type) return false
       if (filter.status !== 'all' && l.status !== filter.status) return false
       if (!matchDate(l, filter.date)) return false
@@ -45,7 +49,7 @@ export default function Leads() {
       hot: (a, b) => ['Hot', 'Warm', 'Cold'].indexOf(a.priority) - ['Hot', 'Warm', 'Cold'].indexOf(b.priority),
     }
     return [...r].sort(by[sort])
-  }, [leads, filter, sort])
+  }, [leads, filter, sort, areaSel, isField])
 
   const counts = useMemo(() => ({
     today: leads.filter((l) => matchDate(l, 'today')).length,
@@ -60,7 +64,7 @@ export default function Leads() {
   return (
     <div className="page">
       <div className="page-h">
-        <h1>Leads <small>{list.length}</small></h1>
+        <h1>{isField ? 'Hotels' : 'Leads'} <small>{list.length}</small></h1>
         <select className="mini-sel" value={sort} onChange={(e) => setSort(e.target.value)}>
           <option value="assigned">Newly assigned</option>
           <option value="recent">Recently updated</option>
@@ -72,12 +76,19 @@ export default function Leads() {
 
       <div className="search">
         <Icon name="search" size={18} />
-        <input value={filter.q} onChange={(e) => set({ q: e.target.value })} placeholder="Search name, phone, area, shop…" />
+        <input value={filter.q} onChange={(e) => set({ q: e.target.value })} placeholder={isField ? 'Search hotel, phone, area…' : 'Search name, phone, area, shop…'} />
         {filter.q && <button onClick={() => set({ q: '' })}><Icon name="x" size={16} /></button>}
       </div>
 
-      <Segmented id="lead-type" value={filter.type} onChange={(v) => set({ type: v })}
-        options={[{ value: 'all', label: 'All' }, { value: 'distributor', label: '🤝 Distributors' }, { value: 'sales', label: '🛒 Sales' }, { value: 'number', label: '📞 Numbers' }, ...(leads.some((l) => l.type === 'hotel') ? [{ value: 'hotel', label: '🏨 Hotels' }] : [])]} />
+      {isField && myAreas.length > 0 && (
+        <div className="chips scroll">
+          <button className={`chip ${areaSel === 'all' ? 'on' : ''}`} onClick={() => { setAreaSel('all'); setLimit(40) }}>🗺 All areas</button>
+          {myAreas.map((a) => <button key={a} className={`chip ${areaSel === a ? 'on' : ''}`} onClick={() => { setAreaSel(a); setLimit(40) }}>{a}</button>)}
+        </div>
+      )}
+
+      {!isField && <Segmented id="lead-type" value={filter.type} onChange={(v) => set({ type: v })}
+        options={[{ value: 'all', label: 'All' }, { value: 'distributor', label: '🤝 Distributors' }, { value: 'sales', label: '🛒 Sales' }, { value: 'number', label: '📞 Numbers' }, ...(leads.some((l) => l.type === 'hotel') ? [{ value: 'hotel', label: '🏨 Hotels' }] : [])]} />}
 
       {session?.role === 'admin' && (
         <select className="mini-sel wide-sel" value={filter.caller || 'all'} onChange={(e) => set({ caller: e.target.value })}>
@@ -131,8 +142,8 @@ export default function Leads() {
       {list.length === 0 && (
         <motion.div className="card empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <div className="empty-ico">🔍</div>
-          <h3>{leads.length ? 'No leads match' : 'No leads yet'}</h3>
-          <button className="btn3d" onClick={() => openForm()}><Icon name="plus" /> Add a lead</button>
+          <h3>{leads.length ? (isField ? 'No hotels match' : 'No leads match') : isField ? 'No hotels yet' : 'No leads yet'}</h3>
+          <button className="btn3d" onClick={() => openForm()}><Icon name="plus" /> {isField ? 'Add a hotel' : 'Add a lead'}</button>
         </motion.div>
       )}
       {list.length > limit && <button className="btn-soft wide" onClick={() => setLimit((l) => l + 60)}>Show more ({list.length - limit})</button>}
