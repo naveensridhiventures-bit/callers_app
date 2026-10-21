@@ -58,37 +58,21 @@ function RouteMap({ me, plan }) {
   )
 }
 
-/* ---------- one hotel: the pop-up card ---------- */
-function StopCard({ lead, me, index, total, last, onSave, onSkip, busy }) {
-  const { toast } = useApp()
+/* the few nearest hotels from a point: these are the "proper alignment" choices */
+function nearest(origin, pool, exclude = []) {
+  let list = pool.filter((l) => !exclude.includes(l.id))
+  if (!list.length) list = pool
+  if (!origin) return planRoute(null, list).map((x) => ({ l: x.l, pt: x.pt, d: null }))
+  return list
+    .map((l) => { const pt = pointOf(l); return { l, pt, d: pt ? km(origin, pt) : null } })
+    .sort((a, b) => (a.d ?? 1e9) - (b.d ?? 1e9))
+}
+
+/* ---------- one hotel: where to go, and the "I have reached" button ---------- */
+function StopCard({ lead, me, index, total, onReach, onSkip, canSkip, busy }) {
   const pt = pointOf(lead)
   const d = me && pt ? km(me, pt) : null
   const here = d != null && !pt.approx && d < 0.15
-  const [outcome, setOutcome] = useState('')
-  const [rating, setRating] = useState(0)
-  const [manual, setManual] = useState(false)
-  const [remark, setRemark] = useState('')
-  const [next, setNext] = useState('')
-  const [reached, setReached] = useState(null)
-  const remarks = QUICK_REMARKS.hotel
-
-  const pick = (id) => {
-    setOutcome(id)
-    if (!manual) setRating(DEFAULT_RATING[id] || 0)
-    setNext(suggestNext(id))
-  }
-  const toggleRemark = (r) => setRemark((cur) => (cur.includes(r) ? cur.replace(r, '').replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,/g, ',') : cur ? `${cur}, ${r}` : r))
-  const reach = () => {
-    if (!me) return toast('Turn on location to check in', 'warn')
-    setReached({ dist: d })
-    toast(d != null && !pt.approx ? (d < 0.25 ? '✅ You are at the hotel' : `📍 ${fmtKm(d)} from the hotel pin`) : '✅ Checked in')
-  }
-  const save = () => {
-    if (!outcome) return toast('Pick how the visit went first', 'warn')
-    if (NEEDS_RATING.includes(outcome) && !rating) return toast('Give the interest a star rating ⭐', 'warn')
-    const note = [reached && d != null && !pt.approx ? `Checked in ${fmtKm(d)} from the pin` : '', remark.trim()].filter(Boolean).join(' · ')
-    onSave({ outcome, rating, remark: note, next })
-  }
   const share = `📍 ${lead.name}\n${[lead.address, lead.area].filter(Boolean).join(', ')}\n${mapOpen(lead)}`
 
   return (
@@ -109,9 +93,16 @@ function StopCard({ lead, me, index, total, last, onSave, onSkip, busy }) {
         {here && <motion.div className="vm-here" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>📍 You are here</motion.div>}
       </div>
 
+      <div className="vm-actions first">
+        <motion.a whileTap={{ scale: 0.95 }} className="go" href={mapDirections(lead)} target="_blank" rel="noreferrer"><Icon name="send" /> Navigate</motion.a>
+        {lead.phone && <motion.a whileTap={{ scale: 0.95 }} href={telHref(lead.phone)}><Icon name="phone" /> Call</motion.a>}
+        {lead.phone && <motion.a whileTap={{ scale: 0.95 }} href={waHref(lead.phone)} target="_blank" rel="noreferrer"><Icon name="whatsapp" /> Chat</motion.a>}
+        <motion.a whileTap={{ scale: 0.95 }} href={`https://wa.me/?text=${encodeURIComponent(share)}`} target="_blank" rel="noreferrer"><Icon name="copy" /> Share pin</motion.a>
+      </div>
+
       <div className="vm-map">
         <iframe title={`Map of ${lead.name}`} src={mapEmbed(lead)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-        <div className="mp-offline">Map needs internet. Use <b>Navigate</b> below.</div>
+        <div className="mp-offline">Map needs internet. Use <b>Navigate</b> above.</div>
       </div>
 
       <div className="vm-info">
@@ -123,99 +114,245 @@ function StopCard({ lead, me, index, total, last, onSave, onSkip, busy }) {
         {lead.lastRemark && <p className="mp-muted">Last time: {lead.lastOutcome ? `${lead.lastOutcome} · ` : ''}{lead.lastRemark}</p>}
       </div>
 
-      <div className="vm-actions">
-        <motion.a whileTap={{ scale: 0.95 }} className="go" href={mapDirections(lead)} target="_blank" rel="noreferrer"><Icon name="send" /> Navigate</motion.a>
-        {lead.phone && <motion.a whileTap={{ scale: 0.95 }} href={telHref(lead.phone)}><Icon name="phone" /> Call</motion.a>}
-        {lead.phone && <motion.a whileTap={{ scale: 0.95 }} href={waHref(lead.phone)} target="_blank" rel="noreferrer"><Icon name="whatsapp" /> Chat</motion.a>}
-        <motion.a whileTap={{ scale: 0.95 }} href={`https://wa.me/?text=${encodeURIComponent(share)}`} target="_blank" rel="noreferrer"><Icon name="copy" /> Share pin</motion.a>
-      </div>
-
-      <button type="button" className={`vm-reach ${reached || here ? 'done' : ''}`} onClick={reach}>
-        {reached ? (reached.dist != null && !pt.approx ? (reached.dist < 0.25 ? `✅ Checked in · at the hotel (${fmtKm(reached.dist)})` : `⚠️ Checked in · ${fmtKm(reached.dist)} from the pin`) : '✅ Checked in') : '📍 I have reached · check in'}
+      <button type="button" className={`vm-reach ${here ? 'done' : ''}`} disabled={busy} onClick={onReach}>
+        {here ? '📍 You are here · log the visit' : '📍 I have reached · log the visit'}
       </button>
-
-      <div className="vm-form">
-        <h4>How did the visit go?</h4>
-        <div className="vm-outcomes">
-          {VISIT_OUTCOMES.map((id) => (
-            <motion.button type="button" key={id} whileTap={{ scale: 0.93 }} className={outcome === id ? 'on' : ''} onClick={() => pick(id)}>
-              <em>{OUTCOMES.find((o) => o.id === id)?.icon}</em>{id}
-            </motion.button>
-          ))}
-        </div>
-
-        <h4>Interest rating</h4>
-        <div className="vm-rate">
-          <Stars value={rating} size={40} onChange={(n) => { setRating(n); setManual(true) }} />
-          <span className={`vm-rate-l r${rating}`}>{RATING_LABEL[rating]}</span>
-        </div>
-
-        <h4>Remark</h4>
-        <div className="chips small">
-          {remarks.map((r) => <button type="button" key={r} className={`chip ${remark.includes(r) ? 'on' : ''}`} onClick={() => toggleRemark(r)}>{r}</button>)}
-        </div>
-        <textarea rows={2} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="What did the owner or chef say?" />
-
-        {!['Order Restarted', 'Hotel Closed', 'Not Interested'].includes(outcome) && (
-          <>
-            <h4>Next follow-up {next && <small>· {fmtWhen(next)}</small>}</h4>
-            <div className="chips small">
-              {QUICK_NEXT.map(([l, f]) => <button type="button" key={l} className="chip" onClick={() => setNext(f())}>{l}</button>)}
-              <button type="button" className={`chip ${!next ? 'on' : ''}`} onClick={() => setNext('')}>None</button>
-            </div>
-            <input type="datetime-local" value={toLocalInput(next)} onChange={(e) => setNext(fromLocalInput(e.target.value))} />
-          </>
-        )}
-
-        <motion.button whileTap={{ scale: 0.97, y: 3 }} className={`btn3d big ${outcome ? '' : 'off'}`} disabled={busy} onClick={save}>
-          <Icon name="check" /> {outcome ? (last ? 'Save & finish' : 'Save & go to next hotel') : 'Pick what happened ↑'}
-        </motion.button>
-        {!last && <button type="button" className="vm-skip" disabled={busy} onClick={onSkip}>Skip this hotel for now</button>}
-      </div>
+      <p className="vm-reach-hint">The remark pop-up opens by itself when you arrive.</p>
+      {canSkip && <button type="button" className="vm-skip" disabled={busy} onClick={onSkip}>Skip this hotel for now</button>}
     </motion.div>
   )
 }
 
-/** Full-screen visit run: one hotel at a time, nearest first, from the person's live location. */
+/* ---------- pop-up 1: the remark, as soon as the person has reached ---------- */
+function RemarkSheet({ lead, reached, last, busy, onSave, onBack }) {
+  const { toast } = useApp()
+  const [outcome, setOutcome] = useState('')
+  const [rating, setRating] = useState(0)
+  const [manual, setManual] = useState(false)
+  const [remark, setRemark] = useState('')
+  const [next, setNext] = useState('')
+  const pt = pointOf(lead)
+  const d = reached?.dist
+  const remarks = QUICK_REMARKS.hotel
+
+  const pick = (id) => {
+    setOutcome(id)
+    if (!manual) setRating(DEFAULT_RATING[id] || 0)
+    setNext(suggestNext(id))
+  }
+  const toggleRemark = (r) => setRemark((cur) => (cur.includes(r) ? cur.replace(r, '').replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,/g, ',') : cur ? `${cur}, ${r}` : r))
+  const save = () => {
+    if (!outcome) return toast('Pick how the visit went first', 'warn')
+    if (NEEDS_RATING.includes(outcome) && !rating) return toast('Give the interest a star rating ⭐', 'warn')
+    const note = [d != null && pt && !pt.approx ? `Checked in ${fmtKm(d)} from the pin` : '', remark.trim()].filter(Boolean).join(' · ')
+    onSave({ outcome, rating, remark: note, next })
+  }
+
+  return (
+    <motion.div className="vm-sheet-ov" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div className="vm-sheet" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 280, damping: 30 }}>
+        <div className="vm-grab" />
+        <div className="vm-sheet-h">
+          <div>
+            <b>✅ Reached {lead.name}</b>
+            <small>{d != null && pt && !pt.approx ? (d < 0.25 ? `Checked in · at the hotel (${fmtKm(d)})` : `Checked in · ${fmtKm(d)} from the pin`) : 'Checked in'}</small>
+          </div>
+          <button type="button" className="vm-sheet-x" onClick={onBack} aria-label="Back"><Icon name="x" /></button>
+        </div>
+
+        <div className="vm-form">
+          <h4>How did the visit go?</h4>
+          <div className="vm-outcomes">
+            {VISIT_OUTCOMES.map((id) => (
+              <motion.button type="button" key={id} whileTap={{ scale: 0.93 }} className={outcome === id ? 'on' : ''} onClick={() => pick(id)}>
+                <em>{OUTCOMES.find((o) => o.id === id)?.icon}</em>{id}
+              </motion.button>
+            ))}
+          </div>
+
+          <h4>Interest rating</h4>
+          <div className="vm-rate">
+            <Stars value={rating} size={40} onChange={(n) => { setRating(n); setManual(true) }} />
+            <span className={`vm-rate-l r${rating}`}>{RATING_LABEL[rating]}</span>
+          </div>
+
+          <h4>Remark</h4>
+          <div className="chips small">
+            {remarks.map((r) => <button type="button" key={r} className={`chip ${remark.includes(r) ? 'on' : ''}`} onClick={() => toggleRemark(r)}>{r}</button>)}
+          </div>
+          <textarea rows={2} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="What did the owner or chef say?" />
+
+          {!['Order Restarted', 'Hotel Closed', 'Not Interested'].includes(outcome) && (
+            <>
+              <h4>Next follow-up {next && <small>· {fmtWhen(next)}</small>}</h4>
+              <div className="chips small">
+                {QUICK_NEXT.map(([l, f]) => <button type="button" key={l} className="chip" onClick={() => setNext(f())}>{l}</button>)}
+                <button type="button" className={`chip ${!next ? 'on' : ''}`} onClick={() => setNext('')}>None</button>
+              </div>
+              <input type="datetime-local" value={toLocalInput(next)} onChange={(e) => setNext(fromLocalInput(e.target.value))} />
+            </>
+          )}
+
+          <motion.button whileTap={{ scale: 0.97, y: 3 }} className={`btn3d big ${outcome ? '' : 'off'}`} disabled={busy} onClick={save}>
+            <Icon name="check" /> {outcome ? (last ? 'Save & finish' : 'Save & see next hotel') : 'Pick what happened ↑'}
+          </motion.button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+/* ---------- pop-up 2: the next hotel, accept or choose another ---------- */
+function NextSheet({ kind, options, fromLabel, waiting, onAccept, onFinish }) {
+  const [sel, setSel] = useState(0)
+  const pick = options[Math.min(sel, options.length - 1)]
+  if (!pick) return null
+  const title = kind === 'start' ? 'Nearest hotels to you' : kind === 'skip' ? 'Pick another hotel' : '✅ Saved! Next nearest hotel'
+  const sub = kind === 'start' ? 'Start with the closest one' : `Distance from ${fromLabel || 'where you are'}`
+
+  return (
+    <motion.div className="vm-sheet-ov" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div className="vm-sheet" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 280, damping: 30 }}>
+        <div className="vm-grab" />
+        <div className="vm-sheet-h"><div><b>{title}</b><small>{sub}</small></div></div>
+        <div className="vm-opts">
+          {options.map((o, i) => (
+            <motion.button type="button" key={o.l.id} whileTap={{ scale: 0.97 }} className={`vm-opt ${sel === i ? 'on' : ''}`} onClick={() => setSel(i)}>
+              <i>{i + 1}</i>
+              <span className="vm-opt-t">
+                <b>{o.l.name}</b>
+                <small>{[o.l.area, o.pt?.approx ? '≈ area centre' : ''].filter(Boolean).join(' · ')}</small>
+              </span>
+              <span className="vm-opt-d">
+                {o.d != null ? <><b>{fmtKm(o.d)}</b><small>~{fmtEta(etaMin(o.d))}</small></> : <small>no pin</small>}
+                {i === 0 && <em>Nearest</em>}
+              </span>
+            </motion.button>
+          ))}
+        </div>
+        {waiting > 0 && <small className="vm-more dark">+ {waiting} more hotel{waiting > 1 ? 's' : ''} after these</small>}
+        <div className="vm-sheet-act">
+          <a className="btn3d big lime" href={mapDirections(pick.l)} target="_blank" rel="noreferrer" onClick={() => onAccept(pick.l.id)}>
+            <Icon name="send" /> Accept &amp; navigate
+          </a>
+          <button type="button" className="btn-soft" onClick={() => onAccept(pick.l.id)}>Accept, I will navigate myself</button>
+          <button type="button" className="vm-skip" onClick={onFinish}>Not now · finish for today</button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+/**
+ * Full-screen visit run, one hotel at a time:
+ *  1. nearest hotels to the person's live location are offered (accept or choose another)
+ *  2. person reaches the hotel (tap, or auto-detected) → remark pop-up
+ *  3. after saving, the next nearest hotels from THAT hotel are offered (accept or choose another)
+ */
 export default function VisitMode({ stops, areaLabel, onClose }) {
   const { leads, logCall, toast, go } = useApp()
   const { me, state, locate } = useGeo({ watch: true })
   const meRef = useRef(me); meRef.current = me
   const total = useRef(stops.length).current
-  const [queue, setQueue] = useState(null)
+  const first = useRef(stops).current
+  const arrived = useRef(new Set())
+
+  const [ready, setReady] = useState(false)
+  const [pool, setPool] = useState(() => first.map((l) => l.id)) // hotels still to visit (not the current one)
+  const [curId, setCurId] = useState(null)
+  const [phase, setPhase] = useState('pick') // pick | go | form
+  const [pickKind, setPickKind] = useState('start') // start | next | skip
+  const [origin, setOrigin] = useState(null) // where the next-nearest is measured from
+  const [skipped, setSkipped] = useState([])
+  const [reached, setReached] = useState(null)
   const [log, setLog] = useState([])
   const [busy, setBusy] = useState(false)
   const [party, setParty] = useState(0)
   const byId = useMemo(() => new Map(leads.map((l) => [l.id, l])), [leads])
-  const first = useRef(stops).current
 
   useEffect(() => {
     let dead = false
     ;(async () => {
       const pos = await withTimeout(locate(), 7000)
-      if (!dead) setQueue(planRoute(pos || meRef.current, first).map((x) => x.l.id))
+      if (dead) return
+      const p = pos || meRef.current
+      setOrigin(p ? { lat: p.lat, lng: p.lng, label: 'your location' } : null)
+      setReady(true)
     })()
     return () => { dead = true }
-  }, [first, locate])
+  }, [locate])
 
-  const cur = queue?.length ? byId.get(queue[0]) : null
-  const plan = useMemo(() => (queue || []).map((id) => byId.get(id)).filter(Boolean).map((l) => ({ l, pt: pointOf(l) })), [queue, byId])
-  const nextUp = plan.slice(1, 4)
+  const cur = curId ? byId.get(curId) : null
+  const poolLeads = useMemo(() => pool.map((id) => byId.get(id)).filter(Boolean), [pool, byId])
+  const options = useMemo(() => (phase === 'pick' ? nearest(origin, poolLeads, skipped).slice(0, 3) : []), [phase, origin, poolLeads, skipped])
+  const plan = useMemo(() => {
+    if (phase === 'pick') return planRoute(origin, poolLeads).map((x) => ({ l: x.l, pt: x.pt }))
+    if (!cur) return []
+    const curPt = pointOf(cur)
+    return [{ l: cur, pt: curPt }, ...planRoute(curPt || origin, poolLeads).map((x) => ({ l: x.l, pt: x.pt }))]
+  }, [phase, origin, poolLeads, cur])
+  const nextUp = phase === 'pick' ? [] : plan.slice(1, 4)
+  const done = ready && !cur && pool.length === 0
 
-  const advance = async (skip) => {
+  const accept = (id) => {
+    setCurId(id)
+    setPool((p) => p.filter((x) => x !== id))
+    setSkipped([])
+    setReached(null)
+    setPhase('go')
+  }
+
+  const reachNow = () => {
+    if (!cur) return
+    const pt = pointOf(cur)
+    const pos = meRef.current
+    const dist = pos && pt && !pt.approx ? km(pos, pt) : null
+    setReached({ dist, pos: pos ? { lat: pos.lat, lng: pos.lng } : null })
+    setPhase('form')
+    toast(dist != null ? (dist < 0.25 ? '✅ You are at the hotel' : `📍 ${fmtKm(dist)} from the hotel pin`) : '✅ Checked in')
+  }
+
+  // arriving within ~120 m of an exact pin opens the remark pop-up by itself (once per hotel)
+  useEffect(() => {
+    if (phase !== 'go' || !cur || !me) return
+    const pt = pointOf(cur)
+    if (!pt || pt.approx || arrived.current.has(cur.id)) return
+    if (km(me, pt) < 0.12) { arrived.current.add(cur.id); reachNow() }
+  }, [me, phase, cur]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onSkip = async () => {
     setBusy(true)
-    const [head, ...rest] = queue
-    const pos = rest.length ? await withTimeout(locate(), 2500) : null
-    const ordered = planRoute(pos || meRef.current, rest.map((id) => byId.get(id)).filter(Boolean)).map((x) => x.l.id)
-    setQueue(skip ? [...ordered, head] : ordered)
+    const id = curId
+    const pos = await withTimeout(locate(), 2500)
+    const p = pos || meRef.current
+    setOrigin(p ? { lat: p.lat, lng: p.lng, label: 'your location' } : origin)
+    setPool((l) => [...l, id])
+    setSkipped([id])
+    setCurId(null)
+    setPickKind('skip')
+    setPhase('pick')
     setBusy(false)
   }
+
   const onSave = async ({ outcome, rating, remark, next }) => {
+    setBusy(true)
     const here = meRef.current
-    logCall(cur, { outcome, rating, remark, next, priority: ratingToPriority(rating) || undefined, mode: 'visit', visit: here ? { lat: here.lat, lng: here.lng } : undefined })
-    setLog((l) => [...l, { id: cur.id, name: nameOf(cur), area: cur.area, outcome, rating }])
+    const visited = cur
+    logCall(visited, { outcome, rating, remark, next, priority: ratingToPriority(rating) || undefined, mode: 'visit', visit: here ? { lat: here.lat, lng: here.lng } : undefined })
+    setLog((l) => [...l, { id: visited.id, name: nameOf(visited), area: visited.area, outcome, rating }])
     if (outcome === 'Order Restarted') { setParty((n) => n + 1); toast('🎉 Order restarted. Great work!') } else toast('Visit saved ✓')
-    await advance(false)
+    setCurId(null)
+    if (pool.length) {
+      // measure the next hotels from the place just reached: the hotel pin, else where the check-in happened
+      const pt = pointOf(visited)
+      const o = pt && !pt.approx ? { lat: pt.lat, lng: pt.lng } : reached?.pos || meRef.current || (pt && { lat: pt.lat, lng: pt.lng }) || null
+      setOrigin(o ? { ...o, label: nameOf(visited) } : null)
+      setSkipped([])
+      setPickKind('next')
+      setPhase('pick')
+    }
+    setReached(null)
+    setBusy(false)
   }
 
   const doneN = log.length
@@ -233,34 +370,37 @@ export default function VisitMode({ stops, areaLabel, onClose }) {
 
       <div className="vm-body">
         {party > 0 && <Confetti key={party} />}
-        {queue === null && (
+        {!ready && (
           <div className="vm-wait">
             <div className="radar"><i /><i /><i /><span>📍</span></div>
-            <h3>Finding the shortest route…</h3>
-            <p>Reading your location and ordering the hotels from nearest to farthest.</p>
+            <h3>Finding the nearest hotel…</h3>
+            <p>Reading your location and measuring every hotel from where you stand.</p>
           </div>
         )}
 
-        {queue && cur && (
+        {ready && !done && (
           <>
             {state === 'denied' && <div className="vm-note">Location is off, so hotels are ordered by area. Allow location for nearest-first routing.</div>}
             <RouteMap me={me} plan={plan} />
-            <AnimatePresence mode="wait">
-              <StopCard key={cur.id} lead={cur} me={me} index={doneN + 1} total={total} last={queue.length === 1} busy={busy} onSave={onSave} onSkip={() => advance(true)} />
-            </AnimatePresence>
+            {phase === 'pick' && <div className="vm-note soft">Choose where to go next in the pop-up 👇</div>}
+            {phase !== 'pick' && cur && (
+              <AnimatePresence mode="wait">
+                <StopCard key={cur.id} lead={cur} me={me} index={doneN + 1} total={total} busy={busy} canSkip={pool.length > 0} onReach={reachNow} onSkip={onSkip} />
+              </AnimatePresence>
+            )}
             {nextUp.length > 0 && (
               <div className="vm-next">
-                <h4>Up next</h4>
+                <h4>Then</h4>
                 {nextUp.map((s, i) => (
                   <div key={s.l.id} className="vm-nx"><i>{doneN + i + 2}</i><b>{s.l.name}</b><small>{[s.l.area, me && s.pt ? fmtKm(km(me, s.pt)) : ''].filter(Boolean).join(' · ')}</small></div>
                 ))}
-                {queue.length > 4 && <small className="vm-more">+ {queue.length - 4} more after these</small>}
+                {plan.length > 4 && <small className="vm-more">+ {plan.length - 4} more after these</small>}
               </div>
             )}
           </>
         )}
 
-        {queue && !cur && (
+        {done && (
           <motion.div className="vm-done" initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}>
             <Confetti />
             <div className="vm-trophy">🏁</div>
@@ -278,6 +418,15 @@ export default function VisitMode({ stops, areaLabel, onClose }) {
           </motion.div>
         )}
       </div>
+
+      <AnimatePresence>
+        {ready && !done && phase === 'pick' && options.length > 0 && (
+          <NextSheet key={`${pickKind}-${doneN}-${skipped.join('')}`} kind={pickKind} options={options} fromLabel={origin?.label} waiting={Math.max(0, poolLeads.length - options.length)} onAccept={accept} onFinish={() => { setPool([]); setCurId(null) }} />
+        )}
+        {phase === 'form' && cur && (
+          <RemarkSheet key={cur.id} lead={cur} reached={reached} last={pool.length === 0} busy={busy} onSave={onSave} onBack={() => setPhase('go')} />
+        )}
+      </AnimatePresence>
     </motion.div>,
     document.body
   )

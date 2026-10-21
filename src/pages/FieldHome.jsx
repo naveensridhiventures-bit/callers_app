@@ -67,7 +67,7 @@ export default function FieldHome() {
         <motion.button whileTap={{ scale: 0.97, y: 3 }} className="btn3d lime big fh-go" disabled={!inArea.length} onClick={() => setRun(true)}>
           <Icon name="play" size={20} /> {inArea.length ? `Start visits · ${label} (${inArea.length} hotel${inArea.length > 1 ? 's' : ''})` : 'No hotels left to visit here'}
         </motion.button>
-        <p className="mini-note">You get one hotel at a time, nearest first from where you stand, with the map, Navigate, and a star rating for their interest.</p>
+        <p className="mini-note">You get the nearest hotels to where you stand to accept, then a remark pop-up when you reach, then the next nearest from that hotel.</p>
       </section>
 
       {(t.visits > 0 || t.calls > 0) && (
