@@ -19,6 +19,9 @@ import AdminOverview from './pages/AdminOverview'
 import AdminTeam from './pages/AdminTeam'
 import ReportCenter from './pages/ReportCenter'
 import Hubs from './pages/Hubs'
+import FieldHome from './pages/FieldHome'
+import AdminHotels from './pages/AdminHotels'
+import GmailGate from './components/GmailGate'
 import { Assign, Requests } from './pages/Admin'
 import { bucket, fmtTime, nameOf } from './utils'
 
@@ -27,14 +30,22 @@ const AdminAssign = () => <div className="page adm"><div className="page-h"><h1>
 const AdminRequests = () => <div className="page adm"><div className="page-h"><h1>Delete requests</h1></div><Requests /></div>
 const AdminSettings = () => <div className="page adm"><div className="page-h"><h1>Settings</h1></div><Settings /></div>
 const AdminReports = () => <div className="page adm"><div className="page-h"><h1>Reports</h1></div><ReportCenter admin /></div>
-const ADMIN_PAGES = { hubs: Hubs, reports: AdminReports, overview: AdminOverview, team: AdminTeam, assign: AdminAssign, leads: Leads, requests: AdminRequests, settings: AdminSettings }
+const FIELD_PAGES = { home: FieldHome, leads: Leads, follow: Followups, more: More }
+const ADMIN_PAGES = { hotels: AdminHotels, hubs: Hubs, reports: AdminReports, overview: AdminOverview, team: AdminTeam, assign: AdminAssign, leads: Leads, requests: AdminRequests, settings: AdminSettings }
 const ADMIN_TABS = [
   { id: 'overview', icon: 'chart', label: 'Progress' },
   { id: 'team', icon: 'users', label: 'Callers' },
   { id: 'assign', icon: 'send', label: 'Assign' },
   { id: 'leads', icon: 'list', label: 'Leads' },
+  { id: 'hotels', icon: 'pin', label: 'Hotels' },
   { id: 'hubs', icon: 'grid', label: 'Hubs' },
   { id: 'requests', icon: 'trash', label: 'Requests' },
+]
+const FIELD_TABS = [
+  { id: 'home', icon: 'home', label: 'Today' },
+  { id: 'leads', icon: 'pin', label: 'Hotels' },
+  { id: 'follow', icon: 'calendar', label: 'Follow-ups' },
+  { id: 'more', icon: 'grid', label: 'More' },
 ]
 const TABS = [
   { id: 'home', icon: 'home', label: 'Home' },
@@ -47,8 +58,10 @@ const TABS = [
 function Shell() {
   const { route, page, go, sheet, closeSheet, openForm, leads, allLeads, toasts, sync, session, gate, openLead, toast, logout } = useApp()
   const isAdmin = session?.role === 'admin'
-  const Page = isAdmin ? ADMIN_PAGES[page] || AdminOverview : PAGES[page] || Dashboard
-  const curPage = isAdmin ? (ADMIN_PAGES[page] ? page : 'overview') : PAGES[page] ? page : 'home'
+  const isField = session?.role === 'field'
+  const PG = isField ? FIELD_PAGES : PAGES
+  const Page = isAdmin ? ADMIN_PAGES[page] || AdminOverview : PG[page] || (isField ? FieldHome : Dashboard)
+  const curPage = isAdmin ? (ADMIN_PAGES[page] ? page : 'overview') : PG[page] ? page : 'home'
   const notified = useRef(new Set(JSON.parse(localStorage.getItem('sridhi.notified') || '[]')))
 
   /* due-follow-up reminders while the app is open */
@@ -87,7 +100,7 @@ function Shell() {
   const due = leads.filter((l) => ['overdue', 'today'].includes(bucket(l))).length
   const formLead = sheet?.type === 'form' && sheet.leadId ? allLeads.find((l) => l.id === sheet.leadId) || null : null
 
-  const tabs = isAdmin ? ADMIN_TABS : TABS
+  const tabs = isAdmin ? ADMIN_TABS : isField ? FIELD_TABS : TABS
   const active = curPage
 
   return (
@@ -114,7 +127,7 @@ function Shell() {
 
       <div className="content">
         <header className="top">
-          <div className="brand"><i>S</i><b>Sridhi <span>{isAdmin ? 'HR Control' : 'Caller'}</span></b></div>
+          <div className="brand"><i>S</i><b>Sridhi <span>{isAdmin ? 'HR Control' : isField ? 'Field' : 'Caller'}</span></b></div>
           <div className="top-r">
             {session && !isAdmin && <span className="who">👤 {session.name.split(' ')[0]}</span>}
             <span className={`sync ${sync.state}`} title={sync.msg || 'Google Sheets auto-sync'} onClick={() => go(isAdmin ? 'settings' : 'more', isAdmin ? undefined : 'settings')}>
@@ -152,7 +165,7 @@ function Shell() {
       {sheet?.type === 'form' && <LeadForm key="form" lead={formLead} preset={sheet.preset} onClose={closeSheet} />}
       {sheet?.type === 'detail' && <LeadDetail key={`d-${sheet.id}`} id={sheet.id} calling={sheet.calling} preset={sheet.outcome} onClose={closeSheet} />}
 
-      {!isAdmin && <><DueModal /><CallClose /></>}
+      {!isAdmin && <><DueModal /><CallClose /><GmailGate /></>}
 
       <div className="toasts">
         {toasts.map((t) => <div key={t.id} className={`toast ${t.type}`}>{t.msg}</div>)}

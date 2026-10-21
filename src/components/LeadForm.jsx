@@ -3,8 +3,8 @@ import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Icon, Segmented, Sheet } from '../ui'
 import AreaPicker from './AreaPicker'
-import { AREAS, BIZ_TYPES, INVEST, PRIORITIES, SOURCES, STATUSES } from '../constants'
-import { cleanPhone, fromLocalInput, toLocalInput, atDay, addHours } from '../utils'
+import { AREAS, BIZ_TYPES, INVEST, PRIORITIES, SOURCES, STATUSES, STOP_REASONS } from '../constants'
+import { coordsFromLink, cleanPhone, fromLocalInput, toLocalInput, atDay, addHours } from '../utils'
 
 export default function LeadForm({ lead, preset, onClose }) {
   const { leads, addLead, saveDetails, toast, session, callers } = useApp()
@@ -26,8 +26,9 @@ export default function LeadForm({ lead, preset, onClose }) {
   const submit = (e) => {
     e.preventDefault()
     if (!isNum && !f.name.trim()) return toast("Enter the person's name", 'warn')
-    if (cleanPhone(f.phone).length < 10) return toast('Enter a valid 10-digit phone number', 'warn')
+    if (f.type !== 'hotel' && cleanPhone(f.phone).length < 10) return toast('Enter a valid 10-digit phone number', 'warn')
     const data = { ...f, name: f.name.trim(), phone: cleanPhone(f.phone), altPhone: cleanPhone(f.altPhone) }
+    if (f.type === 'hotel') { const pt = coordsFromLink(f.mapUrl || ''); if (pt && !f.lat) { data.lat = String(pt.lat); data.lng = String(pt.lng) } }
     if (session?.role === 'admin' && data.assignedTo !== undefined) {
       data.assignedName = callers.find((c) => c.id === data.assignedTo)?.name || ''
       if (data.assignedTo && data.assignedTo !== lead?.assignedTo) data.assignedAt = new Date().toISOString()
@@ -48,19 +49,19 @@ export default function LeadForm({ lead, preset, onClose }) {
           <button type="button" className="icon-btn" onClick={onClose}><Icon name="x" /></button>
         </div>
 
-        <Segmented
+        {f.type !== 'hotel' && <Segmented
           id="lf-type" value={f.type} onChange={(v) => set('type', v)}
           options={[{ value: 'distributor', label: '🤝 Distributor' }, { value: 'sales', label: '🛒 Sales' }, { value: 'number', label: '📞 Number' }]}
-        />
+        />}
         {isNum && <p className="mini-note">Just save the number now. Call it, and when the person picks up, move it to a Distributor or Sales lead.</p>}
 
         <div className="grid2">
           {!isNum && (
-            <label className="field"><span>Name *</span>
-              <input value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="Contact person" autoFocus={!editing || !lead?.name} />
+            <label className="field"><span>{f.type === 'hotel' ? 'Hotel name *' : 'Name *'}</span>
+              <input value={f.name} onChange={(e) => set('name', e.target.value)} placeholder={f.type === 'hotel' ? 'Hotel / restaurant name' : 'Contact person'} autoFocus={!editing || !lead?.name} />
             </label>
           )}
-          <label className="field"><span>Phone *</span>
+          <label className="field"><span>{f.type === 'hotel' ? 'Phone (if given)' : 'Phone *'}</span>
             <input inputMode="numeric" value={f.phone} onChange={(e) => set('phone', e.target.value)} placeholder="10-digit mobile" maxLength={14} autoFocus={isNum} />
           </label>
         </div>
@@ -100,6 +101,22 @@ export default function LeadForm({ lead, preset, onClose }) {
             </label>
             <label className="field"><span>Email</span>
               <input type="email" value={f.email} onChange={(e) => set('email', e.target.value)} placeholder="optional" />
+            </label>
+          </div>
+        )}
+
+        {f.type === 'hotel' && (
+          <div className="extra">
+            <h4>🏨 Hotel &amp; location</h4>
+            <label className="field"><span>Contact person</span><input value={f.contactName || ''} onChange={(e) => set('contactName', e.target.value)} placeholder="Owner / manager / chef" /></label>
+            <label className="field"><span>Address</span><input value={f.address || ''} onChange={(e) => set('address', e.target.value)} placeholder="Street, landmark" /></label>
+            <label className="field"><span>Google Maps link</span><input value={f.mapUrl || ''} onChange={(e) => set('mapUrl', e.target.value)} placeholder="Paste the share link from Google Maps" /></label>
+            <div className="grid2">
+              <label className="field"><span>Last order on</span><input value={f.lastOrderOn || ''} onChange={(e) => set('lastOrderOn', e.target.value)} placeholder="e.g. 12 Aug" /></label>
+              <label className="field"><span>Packets / month before</span><input inputMode="numeric" value={f.monthlyQty || ''} onChange={(e) => set('monthlyQty', e.target.value)} /></label>
+            </div>
+            <label className="field"><span>Why did they stop?</span>
+              <div className="chips">{STOP_REASONS.map((v) => <button type="button" key={v} className={`chip ${f.stopReason === v ? 'on' : ''}`} onClick={() => set('stopReason', f.stopReason === v ? '' : v)}>{v}</button>)}</div>
             </label>
           </div>
         )}

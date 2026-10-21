@@ -23,9 +23,10 @@ export const STATUSES = [
   { id: 'Onboarded', color: '#16a34a' },
   { id: 'Not Interested', color: '#ef4444' },
   { id: 'Not Reachable', color: '#94a3b8' },
+  { id: 'Reactivated', color: '#059669' },
 ]
 
-export const CLOSED = ['Onboarded', 'Not Interested']
+export const CLOSED = ['Onboarded', 'Not Interested', 'Reactivated']
 
 export const OUTCOMES = [
   { id: 'Interested', icon: '🔥', status: 'Interested', connected: true },
@@ -41,6 +42,14 @@ export const OUTCOMES = [
   { id: 'Not Reachable', icon: '🚫', status: null, connected: false },
   { id: 'Wrong Audience', icon: '🎯', status: 'Not Interested', connected: true },
   { id: 'Other', icon: '✏️', status: null, connected: true },
+  // lapsed-hotel win-back outcomes (shown only on hotel leads)
+  { id: 'Order Restarted', icon: '🎉', status: 'Reactivated', connected: true, hotel: true },
+  { id: 'Will Order Soon', icon: '🕒', status: 'Interested', connected: true, hotel: true },
+  { id: 'Revisit Needed', icon: '🔁', status: 'Contacted', connected: true, hotel: true },
+  { id: 'Owner Not Available', icon: '🚪', status: null, connected: false, hotel: true },
+  { id: 'Hotel Closed', icon: '🏚️', status: 'Not Interested', connected: true, hotel: true },
+  { id: 'Visited', icon: '📍', status: 'Contacted', connected: true, hotel: true },
+  { id: 'Checked In', icon: '✅', status: null, connected: true, hidden: true },
   // automatic activity entries (not offered in the outcome picker)
   { id: 'Details Updated', icon: '📝', status: null, connected: true, hidden: true },
   { id: 'Lead Added', icon: '➕', status: null, connected: true, hidden: true },
@@ -58,6 +67,8 @@ export const AUDIENCES = [
   { id: 'Other', icon: '✏️' },
 ]
 
+export const HOTEL_OUTCOMES = ['Order Restarted', 'Will Order Soon', 'Revisit Needed', 'Owner Not Available', 'Visited', 'Hotel Closed', 'Interested', 'Not Interested', 'Not Answered', 'Busy', 'Other']
+export const STOP_REASONS = ['Quality issue', 'Price too high', 'Delivery delays', 'Payment / credit issue', 'Switched to competitor', 'Low demand', 'Owner changed', 'Hotel closed', 'Other']
 export const PRIORITIES = ['Cold', 'Warm', 'Hot']
 
 export const AREAS = [
@@ -90,6 +101,10 @@ export const QUICK_REMARKS = {
     'Asked to call in evening', 'Will discuss with family', 'Needs agreement details',
     'Already distributes another brand', 'Wants a meeting', 'Area not available',
     'Send details on WhatsApp',
+  ],
+  hotel: [
+    'Wants better price', 'Complained about quality - fixed', 'Needs credit period', 'Will order next week',
+    'Owner away - come back', 'Chef wants a sample', 'Switched supplier', 'Send details on WhatsApp',
   ],
   sales: [
     'Wants price list', 'Will try sample', 'Stock available - call later',

@@ -93,3 +93,10 @@ Every lead now remembers **when it was assigned** (`assignedAt`): on HR assign, 
 - Hubs page has a **Download PDF** button: summary tiles, region bars, hub overview, distributors per hub, and an all-areas appendix.
 - **Accurate area:** the lead form's area is now a searchable picker of the exact selling areas from the hub plan (each shows its Hub). Picking one stores the area and the hub on the lead. Typing something not in the plan shows a warning. The Hubs page (and PDF) shows per hub which areas already have a distributor and which are **still needed**.
 - **Other area:** an area not in the hub plan goes under **Other** (hub = Other). The Hubs page and PDF list these in an 'Other areas' group; leads with no area show under 'No area yet'.
+
+## Lapsed hotels, field person, Gmail follow-up mails (script v5)
+- **Update Apps Script to v5** (paste `apps-script/Code.gs`, deploy a new version), set `ADMIN_EMAIL`, then in the Apps Script editor run **`setupFollowupMails`** once and accept the permissions. This starts a 10-minute timer that e-mails follow-ups (name, phone, map link) 30 min before they are due, even when the app is closed. HR gets an alert for follow-ups 2+ hours overdue.
+- **HR → Callers → Add** now has a role: *Caller* or *Field person* (same name + PIN login).
+- **HR → Hotels:** import hotels that stopped ordering (CSV/paste: hotel name, phone optional, map link optional), or convert existing Hotel/Restaurant leads, then **bulk assign to a caller and a field person** at once.
+- **Caller + field person** see hotel name, contact (if given), address and a 📍 button → location popup (live map, Navigate, Open in Maps, Share, GPS check-in). Visits and win-back outcomes (Order Restarted, Will Order Soon, Revisit Needed, Hotel Closed…) are logged like calls, with follow-ups.
+- **First login:** a popup asks for the Gmail ID used for follow-up mails.

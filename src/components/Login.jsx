@@ -44,7 +44,7 @@ export default function Login() {
               {loginList.map((c, i) => (
                 <Tilt key={c.id} className="cg" max={12} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} whileTap={{ scale: 0.94 }} onClick={() => { setPick(c); setPin(''); setErr('') }}>
                   <Avatar name={c.name} size={54} />
-                  <b>{c.name}</b>
+                  <b>{c.name}</b>{c.role === 'field' && <small className="role-tag">🚶 Field</small>}
                 </Tilt>
               ))}
             </div>

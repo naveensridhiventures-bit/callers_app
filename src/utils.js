@@ -4,7 +4,7 @@ const pad = (n) => String(n).padStart(2, '0')
 
 /** a bare number has no name yet, so show the phone instead */
 export const nameOf = (l) => l.name || l.phone || 'Unknown'
-export const typeLabel = (t) => (t === 'sales' ? 'Sales' : t === 'number' ? 'Number' : 'Distributor')
+export const typeLabel = (t) => (t === 'sales' ? 'Sales' : t === 'number' ? 'Number' : t === 'hotel' ? 'Hotel' : 'Distributor')
 
 export const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4)
 export const nowISO = () => new Date().toISOString()
@@ -255,4 +255,56 @@ export function rowsToLeads(rows) {
       }
     })
     .filter((l) => (l.type === 'number' ? l.phone.length === 10 : l.name || l.phone))
+}
+
+/* ---------- lapsed hotels: map, distance, import ---------- */
+const num = (v) => (v === '' || v == null || isNaN(Number(v)) ? null : Number(v))
+/** pull lat/lng out of any pasted Google Maps link (…@12.9,77.6 · ?q=12.9,77.6 · !3d12.9!4d77.6) */
+export function coordsFromLink(url = '') {
+  const m = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || url.match(/[?&](?:q|ll|query|destination)=(-?\d+\.\d+)(?:,|%2C)(-?\d+\.\d+)/) || url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
+  return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null
+}
+export function hotelPoint(l) {
+  const lat = num(l.lat), lng = num(l.lng)
+  return lat != null && lng != null ? { lat, lng } : coordsFromLink(l.mapUrl || '')
+}
+export const hotelQuery = (l) => {
+  const p = hotelPoint(l)
+  return p ? `${p.lat},${p.lng}` : [l.name, l.address, l.area, 'Bengaluru'].filter(Boolean).join(', ')
+}
+export const mapEmbed = (l) => `https://maps.google.com/maps?q=${encodeURIComponent(hotelQuery(l))}&z=16&output=embed`
+export const mapOpen = (l) => (l.mapUrl && /^https?:/i.test(l.mapUrl) ? l.mapUrl : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(hotelQuery(l))}`)
+export const mapDirections = (l) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(hotelQuery(l))}&travelmode=driving`
+export function km(a, b) {
+  const r = (x) => (x * Math.PI) / 180, R = 6371
+  const dLat = r(b.lat - a.lat), dLng = r(b.lng - a.lng)
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(h))
+}
+export const fmtKm = (d) => (d < 1 ? `${Math.round(d * 1000)} m` : `${d.toFixed(1)} km`)
+
+const HOTEL_MAP = {
+  name: ['hotel', 'hotel name', 'name', 'restaurant', 'business name'], phone: ['phone', 'mobile', 'contact', 'contact no', 'contact number', 'number'],
+  contactName: ['contact person', 'owner', 'owner name', 'manager', 'person'], area: ['area', 'locality', 'location name'],
+  address: ['address', 'full address'], mapUrl: ['map', 'map link', 'location', 'location link', 'google map', 'maps link', 'gmap'],
+  lat: ['lat', 'latitude'], lng: ['lng', 'long', 'longitude'], lastOrderOn: ['last order', 'last order date', 'stopped on', 'stopped since'],
+  stopReason: ['reason', 'stop reason', 'reason stopped'], monthlyQty: ['qty', 'monthly qty', 'avg order', 'packets'], notes: ['notes', 'remark', 'remarks'],
+}
+/** CSV / Excel paste -> hotel leads. Needs a header row with at least "hotel name". Phone is optional. */
+export function rowsToHotels(rows) {
+  if (rows.length < 2) return []
+  const head = rows[0].map((h) => h.trim().toLowerCase()), idx = {}
+  Object.entries(HOTEL_MAP).forEach(([k, names]) => { const i = head.findIndex((h) => names.includes(h)); if (i >= 0) idx[k] = i })
+  if (idx.name == null) return []
+  const now = nowISO()
+  return rows.slice(1).map((r) => {
+    const g = (k) => (idx[k] != null ? (r[idx[k]] || '').trim() : '')
+    const pt = coordsFromLink(g('mapUrl'))
+    return {
+      id: uid(), type: 'hotel', name: g('name'), phone: cleanPhone(g('phone')), contactName: g('contactName'), area: g('area'), address: g('address'),
+      mapUrl: g('mapUrl'), lat: g('lat') || (pt ? String(pt.lat) : ''), lng: g('lng') || (pt ? String(pt.lng) : ''), lastOrderOn: g('lastOrderOn'),
+      stopReason: g('stopReason'), monthlyQty: g('monthlyQty'), notes: g('notes'), source: 'Lapsed hotel', city: 'Bengaluru', status: 'New', priority: 'Warm',
+      calls: [], callCount: 0, nextFollowUp: '', createdAt: now, updatedAt: now,
+    }
+  }).filter((l) => l.name)
 }

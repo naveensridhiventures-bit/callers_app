@@ -1,5 +1,5 @@
 /**
- * SRIDHI CALLER APP - Google Sheets backend  (version 4)
+ * SRIDHI CALLER APP - Google Sheets backend  (version 5)
  * ------------------------------------------------------
  * Paste this whole file into the Apps Script of your Google Sheet
  * (Extensions -> Apps Script), Save, then:
@@ -14,16 +14,21 @@
  */
 const ADMIN_PIN = 'hr@sridhi'
 const SECRET = '' // optional extra key; if you set it, enter the same in the app (Settings -> Advanced)
-const VERSION = 4
+const ADMIN_EMAIL = '' // HR Gmail: gets an alert when a follow-up is 2+ hours overdue (leave '' to switch off)
+const VERSION = 5
 
 const LEAD_HEADERS = [
   'id', 'type', 'name', 'phone', 'altPhone', 'email', 'company', 'bizType', 'area', 'city',
   'source', 'status', 'priority', 'assignedTo', 'assignedName', 'assignedAt', 'investment', 'vehicle', 'coldStorage',
   'experience', 'dailyQty', 'notes', 'nextFollowUp', 'lastCall', 'lastOutcome', 'lastRemark',
   'callCount', 'createdAt', 'updatedAt', 'delReq', 'delReqBy', 'delReqAt', 'delReqNote', 'callsJson',
+  // lapsed-hotel / field-person fields (v5)
+  'fieldId', 'fieldName', 'fieldAt', 'contactName', 'address', 'mapUrl', 'lat', 'lng', 'lastOrderOn', 'stopReason', 'monthlyQty',
+  'mailedFor', 'escalatedFor',
 ]
-const CALL_HEADERS = ['at', 'leadId', 'name', 'phone', 'outcome', 'remark', 'next', 'by', 'duration']
-const CALLER_HEADERS = ['id', 'name', 'pin', 'active', 'createdAt']
+const SERVER_ONLY = ['mailedFor', 'escalatedFor'] // owned by the reminder job, never overwritten by the app
+const CALL_HEADERS = ['at', 'leadId', 'name', 'phone', 'outcome', 'remark', 'next', 'by', 'duration', 'mode', 'lat', 'lng']
+const CALLER_HEADERS = ['id', 'name', 'pin', 'active', 'createdAt', 'role', 'email'] // role: caller | field
 
 /* ---------- sheet helpers ---------- */
 function style_(sh, from, count) {
@@ -71,6 +76,7 @@ function callers_() {
     const o = {}
     h.forEach(function (k, i) { o[k] = r[i] === '' ? '' : String(r[i]) })
     o.active = o.active !== 'false'
+    o.role = o.role === 'field' ? 'field' : 'caller'
     return o
   }).filter(function (c) { return c.id })
 }
@@ -82,7 +88,7 @@ function who_(auth) {
   if (!cs.length) return { role: 'open' }
   if (auth && auth.role === 'caller') {
     const c = cs.filter(function (x) { return x.id === auth.id && String(x.pin) === String(auth.pin) })[0]
-    if (c) return { role: 'caller', id: c.id, name: c.name }
+    if (c) return { role: c.role, id: c.id, name: c.name, email: c.email || '' }
   }
   return null
 }
@@ -97,7 +103,7 @@ function doGet(e) {
       const cs = callers_().filter(function (c) { return c.active })
       return json_({
         version: VERSION, open: cs.length === 0,
-        callers: cs.map(function (c) { return { id: c.id, name: c.name } }),
+        callers: cs.map(function (c) { return { id: c.id, name: c.name, role: c.role } }),
       })
     }
 
@@ -119,10 +125,11 @@ function doGet(e) {
         o.callCount = Number(o.callCount) || 0
         return o
       }).filter(function (o) {
-        return o.id && (w.role !== 'caller' || o.assignedTo === w.id)
+        return o.id && (w.role === 'admin' || w.role === 'open' || o.assignedTo === w.id || o.fieldId === w.id)
       })
     }
     if (w.role === 'admin') out.callers = callers_()
+    else if (w.id) out.me = { email: w.email || '', role: w.role }
     return json_(out)
   } catch (err) {
     return json_({ error: String(err) })
@@ -149,25 +156,33 @@ function upsertMany_(leads, w) {
   }
   const idCol = h.indexOf('id')
   const asCol = h.indexOf('assignedTo')
+  const fCol = h.indexOf('fieldId')
   const last = sh.getLastRow()
   const data = last > 1 ? sh.getRange(2, 1, last - 1, h.length).getValues() : []
   const index = {}
   const owner = {}
-  data.forEach(function (r, i) { index[String(r[idCol])] = i + 2; owner[String(r[idCol])] = String(r[asCol]) })
+  const fowner = {}
+  const OWNED = ['assignedTo', 'assignedName', 'assignedAt', 'fieldId', 'fieldName', 'fieldAt']
+  data.forEach(function (r, i) { index[String(r[idCol])] = i + 2; owner[String(r[idCol])] = String(r[asCol]); fowner[String(r[idCol])] = fCol >= 0 ? String(r[fCol]) : '' })
 
   const fresh = []
   let rejected = 0
   leads.forEach(function (l) {
-    if (w.role === 'caller') {
-      if (index[l.id] && owner[l.id] !== w.id) { rejected++; return } // not her lead
-      l.assignedTo = w.id
-      l.assignedName = w.name
+    const at = index[l.id]
+    const mine = w.role === 'caller' || w.role === 'field'
+    if (mine) {
+      if (at && owner[l.id] !== w.id && fowner[l.id] !== w.id) { rejected++; return } // not her lead
+      if (!at) { // a brand-new lead she created herself
+        if (w.role === 'field') { l.fieldId = w.id; l.fieldName = w.name } else { l.assignedTo = w.id; l.assignedName = w.name }
+      }
     }
-    const row = h.map(function (k) {
+    const old = at ? data[at - 2] : null
+    const row = h.map(function (k, i) {
+      if (old && (SERVER_ONLY.indexOf(k) >= 0 || (mine && OWNED.indexOf(k) >= 0))) return old[i] // callers/field people cannot change owners or reminder marks
       if (k === 'callsJson') return JSON.stringify(l.calls || [])
       return l[k] === undefined || l[k] === null ? '' : String(l[k])
     })
-    if (index[l.id]) sh.getRange(index[l.id], 1, 1, row.length).setValues([row])
+    if (at) sh.getRange(at, 1, 1, row.length).setValues([row])
     else fresh.push(row)
   })
   if (fresh.length) sh.getRange(sh.getLastRow() + 1, 1, fresh.length, h.length).setValues(fresh)
@@ -189,11 +204,24 @@ function doPost(e) {
       const c = callers_().filter(function (x) {
         return x.active && x.id === body.callerId && String(x.pin) === String(body.pin)
       })[0]
-      return c ? json_({ ok: true, name: c.name }) : json_({ error: 'Wrong PIN' })
+      return c ? json_({ ok: true, name: c.name, role: c.role, email: c.email || '' }) : json_({ error: 'Wrong PIN' })
     }
 
     const w = who_(body.auth)
     if (!w) return json_({ error: 'Login required' })
+
+    if (body.action === 'setEmail') {
+      if (!w.id) return json_({ error: 'Login required' })
+      const em = String(body.email || '').trim().toLowerCase()
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return json_({ error: 'Enter a valid email' })
+      const csh = sheet_('Callers', CALLER_HEADERS), ch = hdrs_(csh), cl = csh.getLastRow()
+      const ids = cl > 1 ? csh.getRange(2, 1, cl - 1, 1).getValues().map(function (r) { return String(r[0]) }) : []
+      const at = ids.indexOf(String(w.id))
+      if (at < 0) return json_({ error: 'Caller not found' })
+      csh.getRange(at + 2, ch.indexOf('email') + 1).setValue(em)
+      try { ensureTrigger_() } catch (x) {} // needs the one-time authorisation described in the README
+      return json_({ ok: true, email: em })
+    }
 
     if (body.action === 'upsert') {
       const rejected = upsertMany_([body.lead], w)
@@ -207,7 +235,7 @@ function doPost(e) {
     } else if (body.action === 'bulk') {
       upsertMany_(body.leads || [], w)
     } else if (body.action === 'delete') {
-      if (w.role === 'caller') return json_({ error: 'Only HR can delete leads' })
+      if (w.role === 'caller' || w.role === 'field') return json_({ error: 'Only HR can delete leads' })
       const sh = sheet_('Leads', LEAD_HEADERS)
       const last = sh.getLastRow()
       if (last > 1) {
@@ -239,4 +267,57 @@ function doPost(e) {
   } finally {
     lock.releaseLock()
   }
+}
+
+
+/* ---------- follow-up e-mails: they go out even if the phone is off or the app is closed ---------- */
+function ensureTrigger_() {
+  const have = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'sendFollowupMails' })
+  if (!have) ScriptApp.newTrigger('sendFollowupMails').timeBased().everyMinutes(10).create()
+}
+/** Run this ONCE from the Apps Script editor (Run -> setupFollowupMails) and accept the permissions. */
+function setupFollowupMails() { ensureTrigger_(); sendFollowupMails() }
+
+function sendFollowupMails() {
+  const lock = LockService.getScriptLock()
+  lock.waitLock(20000)
+  try {
+    const sh = sheet_('Leads', LEAD_HEADERS), last = sh.getLastRow()
+    if (last < 2) return
+    const h = hdrs_(sh), rows = sh.getRange(2, 1, last - 1, h.length).getValues()
+    const col = function (k) { return h.indexOf(k) }
+    const people = {}
+    callers_().forEach(function (c) { people[c.id] = c })
+    const now = Date.now(), CLOSED = ['Onboarded', 'Not Interested', 'Reactivated']
+    const mails = {}, late = []
+    rows.forEach(function (r, i) {
+      const g = function (k) { return String(r[col(k)] || '') }
+      const nf = g('nextFollowUp'), t = new Date(nf).getTime()
+      if (!nf || isNaN(t) || CLOSED.indexOf(g('status')) >= 0 || now - t > 48 * 3600e3) return
+      const item = { name: g('name') || g('phone'), phone: g('phone'), area: g('area'), addr: g('address'), map: g('mapUrl'), remark: g('lastRemark'), when: nf, type: g('type') }
+      if (t - now <= 30 * 60000 && g('mailedFor') !== nf) {
+        [g('assignedTo'), g('fieldId')].forEach(function (id) {
+          const p = people[id]
+          if (p && p.email) (mails[p.email] = mails[p.email] || []).push(item)
+        })
+        sh.getRange(i + 2, col('mailedFor') + 1).setValue(nf)
+      }
+      if (ADMIN_EMAIL && now - t > 2 * 3600e3 && g('escalatedFor') !== nf) {
+        late.push(item)
+        sh.getRange(i + 2, col('escalatedFor') + 1).setValue(nf)
+      }
+    })
+    const fmt = function (iso) { return Utilities.formatDate(new Date(iso), 'Asia/Kolkata', 'dd MMM, h:mm a') }
+    const li = function (x) {
+      return '<li style="margin-bottom:10px"><b>' + x.name + '</b> (' + fmt(x.when) + ')<br>' +
+        (x.phone ? '<a href="tel:+91' + x.phone.slice(-10) + '">Call ' + x.phone + '</a> ' : '') +
+        (x.area || x.addr ? ' · ' + (x.addr || x.area) : '') +
+        (x.type === 'hotel' ? ' · <a href="' + (x.map || 'https://www.google.com/maps/search/' + encodeURIComponent((x.name + ' ' + (x.addr || x.area) + ' Bengaluru'))) + '">📍 Map</a>' : '') +
+        (x.remark ? '<br><i>Last: ' + x.remark + '</i>' : '') + '</li>'
+    }
+    Object.keys(mails).forEach(function (to) {
+      MailApp.sendEmail({ to: to, subject: '⏰ Follow-up due: ' + mails[to].length + ' to call / visit', htmlBody: '<p>Your follow-ups are due:</p><ul>' + mails[to].map(li).join('') + '</ul><p>— Sridhi Caller App</p>' })
+    })
+    if (late.length) MailApp.sendEmail({ to: ADMIN_EMAIL, subject: '🚨 ' + late.length + ' follow-up(s) overdue by 2+ hours', htmlBody: '<ul>' + late.map(li).join('') + '</ul>' })
+  } finally { lock.releaseLock() }
 }

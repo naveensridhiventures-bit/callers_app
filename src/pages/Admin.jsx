@@ -12,6 +12,7 @@ export function AddCaller({ onDone }) {
   const { saveCaller, toast } = useApp()
   const [name, setName] = useState('')
   const [pin, setPin] = useState(rndPin())
+  const [role, setRole] = useState('caller')
   const [busy, setBusy] = useState(false)
 
   const add = async (e) => {
@@ -19,7 +20,7 @@ export function AddCaller({ onDone }) {
     if (!name.trim()) return toast('Enter the caller name', 'warn')
     if (!/^\d{4}$/.test(pin)) return toast('PIN must be 4 digits', 'warn')
     setBusy(true)
-    const ok = await saveCaller({ id: uid(), name: name.trim(), pin, active: true, createdAt: nowISO() })
+    const ok = await saveCaller({ id: uid(), name: name.trim(), pin, role, active: true, createdAt: nowISO() })
     setBusy(false)
     if (ok) { toast(`${name.trim()} added ✓  PIN ${pin}`); setName(''); setPin(rndPin()); onDone?.() }
     else toast('Could not save. Check internet / Apps Script v3', 'warn')
@@ -37,7 +38,8 @@ export function AddCaller({ onDone }) {
             </div>
           </label>
         </div>
-        <motion.button whileTap={{ scale: 0.97, y: 3 }} className="btn3d" disabled={busy}><Icon name="plus" /> {busy ? 'Saving…' : 'Add caller'}</motion.button>
+        <Segmented id="add-role" value={role} onChange={setRole} options={[{ value: 'caller', label: '📞 Caller' }, { value: 'field', label: '🚶 Field person' }]} />
+        <motion.button whileTap={{ scale: 0.97, y: 3 }} className="btn3d" disabled={busy}><Icon name="plus" /> {busy ? 'Saving…' : `Add ${role === 'field' ? 'field person' : 'caller'}`}</motion.button>
         <small className="hint">Tell the caller her name and PIN. She signs in with these on her phone and sees only the numbers you assign to her.</small>
       </form>
   )

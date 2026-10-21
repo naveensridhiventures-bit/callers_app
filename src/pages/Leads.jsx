@@ -77,7 +77,7 @@ export default function Leads() {
       </div>
 
       <Segmented id="lead-type" value={filter.type} onChange={(v) => set({ type: v })}
-        options={[{ value: 'all', label: 'All' }, { value: 'distributor', label: '🤝 Distributors' }, { value: 'sales', label: '🛒 Sales' }, { value: 'number', label: '📞 Numbers' }]} />
+        options={[{ value: 'all', label: 'All' }, { value: 'distributor', label: '🤝 Distributors' }, { value: 'sales', label: '🛒 Sales' }, { value: 'number', label: '📞 Numbers' }, ...(leads.some((l) => l.type === 'hotel') ? [{ value: 'hotel', label: '🏨 Hotels' }] : [])]} />
 
       {session?.role === 'admin' && (
         <select className="mini-sel wide-sel" value={filter.caller || 'all'} onChange={(e) => set({ caller: e.target.value })}>

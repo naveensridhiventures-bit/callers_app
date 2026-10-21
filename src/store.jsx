@@ -53,7 +53,7 @@ export function AppProvider({ children }) {
 
   const settings = useMemo(() => ({ ...rawSettings, name: session?.name || rawSettings.name }), [rawSettings, session])
   const leads = useMemo(
-    () => (session?.role === 'caller' ? allLeads.filter((l) => l.assignedTo === session.id) : allLeads),
+    () => (session?.role === 'caller' ? allLeads.filter((l) => l.assignedTo === session.id || l.fieldId === session.id) : session?.role === 'field' ? allLeads.filter((l) => l.fieldId === session.id || l.assignedTo === session.id) : allLeads),
     [allLeads, session]
   )
 
@@ -202,6 +202,7 @@ export function AppProvider({ children }) {
       }
       if (j.version) setScriptVersion(j.version)
       if (Array.isArray(j.callers)) setCallers(j.callers)
+      if (j.me && sessionRef.current && (j.me.email || '') !== (sessionRef.current.email || '')) setSession((s) => (s ? { ...s, email: j.me.email } : s))
 
       const remote = (j.leads || []).map((l) => ({ ...l, _synced: true }))
       const rmap = new Map(remote.map((l) => [l.id, l]))
@@ -235,7 +236,7 @@ export function AppProvider({ children }) {
         if (!res) return false
       }
       setSync({ state: 'ok', at: nowISO(), msg: `${merged.length} leads` })
-      if (added > 0 && sessionRef.current?.role === 'caller') {
+      if (added > 0 && ['caller', 'field'].includes(sessionRef.current?.role)) {
         toast(`📥 ${added} new lead${added > 1 ? 's' : ''} assigned to you`)
         navigator.vibrate?.(150)
       }
@@ -303,7 +304,7 @@ export function AppProvider({ children }) {
     try {
       const j = await rpc(sheetUrl, { action: 'login', callerId, pin, token })
       if (j.error) return { ok: false, error: j.error }
-      setSession({ role: 'caller', id: callerId, name: j.name, pin })
+      setSession({ role: j.role === 'field' ? 'field' : 'caller', id: callerId, name: j.name, pin, email: j.email || '' })
       return { ok: true }
     } catch {
       return { ok: false, error: 'No internet connection' }
@@ -368,10 +369,10 @@ export function AppProvider({ children }) {
       const base = {
         id: uid(), type: 'distributor', status: 'New', priority: 'Warm', city: 'Bengaluru',
         calls: [], callCount: 0, createdAt: nowISO(), nextFollowUp: '',
-        ...(s?.role === 'caller' ? { assignedTo: s.id, assignedName: s.name, assignedAt: nowISO() } : {}),
+        ...(s?.role === 'caller' ? { assignedTo: s.id, assignedName: s.name, assignedAt: nowISO() } : s?.role === 'field' ? { fieldId: s.id, fieldName: s.name, fieldAt: nowISO() } : {}),
         ...data,
       }
-      if (s?.role === 'caller' && base.type !== 'number') {
+      if ((s?.role === 'caller' || s?.role === 'field') && base.type !== 'number') {
         const call = activityEntry(base, 'Lead Added', 'New lead entered after speaking')
         return saveLead(
           { ...base, calls: [call], callCount: 1, lastCall: call.at, lastOutcome: 'Lead Added', status: base.status === 'New' ? 'Contacted' : base.status },
@@ -383,7 +384,7 @@ export function AppProvider({ children }) {
     [saveLead]
   )
 
-  const DETAIL_KEYS = ['type', 'name', 'altPhone', 'email', 'company', 'bizType', 'area', 'hub', 'source', 'priority', 'status', 'investment', 'vehicle', 'coldStorage', 'experience', 'dailyQty', 'notes']
+  const DETAIL_KEYS = ['type', 'name', 'altPhone', 'email', 'company', 'bizType', 'area', 'hub', 'source', 'priority', 'status', 'investment', 'vehicle', 'coldStorage', 'experience', 'dailyQty', 'notes', 'contactName', 'address', 'mapUrl', 'lat', 'lng', 'lastOrderOn', 'stopReason', 'monthlyQty']
   const saveDetails = useCallback(
     (prev, data) => {
       const s = sessionRef.current
@@ -407,12 +408,13 @@ export function AppProvider({ children }) {
   )
 
   const logCall = useCallback(
-    (lead, { outcome, remark, next, status, priority, duration, extra }) => {
+    (lead, { outcome, remark, next, status, priority, duration, extra, visit }) => {
       const o = OUTCOMES.find((x) => x.id === outcome)
       const newStatus = status || o?.status || lead.status
       const call = {
         id: uid(), at: nowISO(), outcome, remark: remark || '', next: next || '',
         by: sessionRef.current?.name || settingsRef.current.name || '', duration: duration || 0,
+        ...(visit ? { mode: 'visit', lat: visit.lat ?? '', lng: visit.lng ?? '' } : sessionRef.current?.role === 'field' ? { mode: 'visit' } : {}),
       }
       const updated = {
         ...lead,
@@ -514,6 +516,40 @@ export function AppProvider({ children }) {
     [post, assignMany]
   )
 
+  /* ---------- lapsed hotels: import + bulk assign to a caller and/or a field person ---------- */
+  const importHotels = useCallback((arr) => {
+    const key = (l) => `${(l.name || '').toLowerCase()}|${l.phone || (l.area || '').toLowerCase()}`
+    const have = new Set(leadsRef.current.filter((l) => l.type === 'hotel').map(key))
+    const fresh = arr.filter((l) => !have.has(key(l))).map((l) => ({ ...l, _synced: false }))
+    setLeads((p) => [...fresh, ...p])
+    ;(async () => { for (let i = 0; i < fresh.length; i += 200) await post({ action: 'bulk', leads: fresh.slice(i, i + 200).map(strip) }) })()
+    return { added: fresh.length, skipped: arr.length - fresh.length }
+  }, [post])
+
+  // callerId / fieldId: undefined = leave as is, '' = unassign, id = assign. Also turns an existing lead into a hotel lead.
+  const assignHotels = useCallback(async (ids, { callerId, fieldId }) => {
+    const nm = new Map(callersRef.current.map((c) => [c.id, c.name])), ts = nowISO(), set = new Set(ids)
+    const changed = leadsRef.current.filter((l) => set.has(l.id)).map((l) => {
+      const o = { ...l, type: 'hotel', updatedAt: ts, _synced: false }
+      if (callerId !== undefined) Object.assign(o, { assignedTo: callerId, assignedName: nm.get(callerId) || '', assignedAt: callerId ? ts : '' })
+      if (fieldId !== undefined) Object.assign(o, { fieldId, fieldName: nm.get(fieldId) || '', fieldAt: fieldId ? ts : '' })
+      return o
+    })
+    const cm = new Map(changed.map((l) => [l.id, l]))
+    setLeads((prev) => prev.map((l) => cm.get(l.id) || l))
+    for (let i = 0; i < changed.length; i += 200) await post({ action: 'bulk', leads: changed.slice(i, i + 200).map(strip) })
+    return changed.length
+  }, [post])
+
+  /* ---------- Gmail for follow-up e-mails (asked once, at first login) ---------- */
+  const saveEmail = useCallback(async (email) => {
+    const j = await post({ action: 'setEmail', email })
+    if (!j?.ok) return false
+    setSession((s) => (s ? { ...s, email: j.email } : s))
+    setSettings((s) => ({ ...s, email: j.email }))
+    return true
+  }, [post])
+
   const clearAll = useCallback(() => setLeads([]), [])
 
   const loadSample = useCallback(() => {
@@ -541,7 +577,7 @@ export function AppProvider({ children }) {
     filter, setFilter, toasts, toast,
     pendingCall, pendingSnooze, startCall, clearPending, snoozePending, reopenPending,
     saveLead, addLead, saveDetails, logCall, convertLead, snooze, removeLead, importLeads, clearAll, loadSample,
-    assignMany, saveCaller, deleteCaller,
+    assignMany, saveCaller, deleteCaller, importHotels, assignHotels, saveEmail,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

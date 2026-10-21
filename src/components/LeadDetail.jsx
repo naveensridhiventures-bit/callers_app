@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Avatar, Confetti, Icon, Segmented, Sheet, StatusPill } from '../ui'
-import { AUDIENCES, CLOSED, NUMBER_ONLY, NUMBER_OUTCOMES, OUTCOMES, PRIORITIES, QUICK_REMARKS, STATUSES } from '../constants'
+import MapButton from './MapPopup'
+import { AUDIENCES, HOTEL_OUTCOMES, CLOSED, NUMBER_ONLY, NUMBER_OUTCOMES, OUTCOMES, PRIORITIES, QUICK_REMARKS, STATUSES } from '../constants'
 import {
   addHours, atDay, downloadICS, fmtDur, fmtWhen, fromLocalInput, gcalLink, gmailLink,
   assignedAtOf, fmtAssigned, nameOf, nowISO, suggestNext, telHref, toLocalInput, typeLabel, waHref,
@@ -40,9 +41,12 @@ export default function LeadDetail({ id, calling, preset, onClose }) {
   const secs = started ? Math.floor((Date.now() - started) / 1000) : 0
   const isNum = lead.type === 'number'
   const remarks = QUICK_REMARKS[lead.type] || QUICK_REMARKS.distributor
-  const outcomeList = isNum
+  const isHotel = lead.type === 'hotel'
+  const outcomeList = isHotel
+    ? HOTEL_OUTCOMES.map((id) => OUTCOMES.find((o) => o.id === id)).filter(Boolean)
+    : isNum
     ? OUTCOMES.filter((o) => NUMBER_OUTCOMES.includes(o.id))
-    : OUTCOMES.filter((o) => !NUMBER_ONLY.includes(o.id) && !o.hidden)
+    : OUTCOMES.filter((o) => !NUMBER_ONLY.includes(o.id) && !o.hidden && !o.hotel)
   const moveTo = (type) => { convertLead(lead, type); setOutcome(''); toast(`Moved to ${typeLabel(type)} lead ✓ Now call and add the details`) }
   const waText = `Hi ${lead.name || 'there'}, this is ${settings.name || 'the team'} from Sridhi Premium Idli & Dosa Batter. Thank you for your time. Soft idlies & crispy dosas - no preservatives, RO purified water, naturally fermented. 🌿`
 
@@ -127,11 +131,12 @@ export default function LeadDetail({ id, calling, preset, onClose }) {
           <Avatar name={nameOf(lead)} size={56} icon={isNum || !lead.name} />
           <div className="dh-main">
             <h2>{isNum ? lead.phone : lead.name || lead.phone}</h2>
-            <p>{isNum ? 'New number · who is this?' : `${lead.company ? `${lead.company} · ` : ''}${lead.area || 'Bengaluru'}`}</p>
+            <p>{isHotel ? [lead.contactName, lead.address || lead.area || 'Bengaluru'].filter(Boolean).join(' · ') : isNum ? 'New number · who is this?' : `${lead.company ? `${lead.company} · ` : ''}${lead.area || 'Bengaluru'}`}</p>
             <div className="dh-tags">{!isNum && <StatusPill status={lead.status} />}<span className="tag light">{typeLabel(lead.type)}</span></div>
           </div>
         </div>
-        {!isAdmin && <div className="dh-actions">
+        {isHotel && <div className="dh-actions"><MapButton lead={lead} className="act" label="Location"><Icon name="pin" /> Location &amp; Navigate</MapButton></div>}
+        {!isAdmin && (!isHotel || lead.phone) && <div className="dh-actions">
           <motion.a whileTap={{ scale: 0.94 }} className="act call" href={telHref(lead.phone)} onClick={(e) => { if (!startCall(lead)) return e.preventDefault(); setStarted(Date.now()); setTab('call') }}>
             <Icon name="phone" /> {started ? <span className="live"><i />{fmtDur(secs)}</span> : 'Call'}
           </motion.a>
