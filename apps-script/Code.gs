@@ -86,7 +86,7 @@ function who_(auth) {
   if (auth && auth.role === 'admin' && ADMIN_PIN && String(auth.pin) === ADMIN_PIN) return { role: 'admin' }
   const cs = callers_().filter(function (c) { return c.active })
   if (!cs.length) return { role: 'open' }
-  if (auth && auth.role === 'caller') {
+  if (auth && (auth.role === 'caller' || auth.role === 'field')) {
     const c = cs.filter(function (x) { return x.id === auth.id && String(x.pin) === String(auth.pin) })[0]
     if (c) return { role: c.role, id: c.id, name: c.name, email: c.email || '' }
   }
