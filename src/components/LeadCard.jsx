@@ -5,6 +5,7 @@ import { assignedAtOf, bucket, cityOf, fmtAssigned, fmtWhen, isToday, nameOf, te
 import { CLOSED } from '../constants'
 import MapButton from './MapPopup'
 import { StarsRO } from './Stars'
+import { KgBadge, ReasonChips } from './ReasonChips'
 
 export default function LeadCard({ lead, i = 0 }) {
   const { openLead, session, callers, convertLead, startCall } = useApp()
@@ -48,7 +49,8 @@ export default function LeadCard({ lead, i = 0 }) {
           {lead.type === 'sales' && <span className="tag">Sales</span>}
           {isHotel && <span className="tag">{lead.source === 'Lapsed hotel' ? '🏨 Lapsed hotel' : '🏨 Hotel'}</span>}
           {isHotel && Number(lead.rating) > 0 && <span className="tag rate"><StarsRO value={Number(lead.rating)} size={11} /></span>}
-          {isHotel && lead.stopReason && <span className="tag amber">⚠️ {lead.stopReason}</span>}
+          {isHotel && lead.stopReason && <ReasonChips text={lead.stopReason} limit={2} />}
+          {isHotel && <KgBadge lead={lead} />}
           {isHotel && session?.role === 'admin' && lead.fieldId && <span className="tag">🚶 {callers.find((c) => c.id === lead.fieldId)?.name || lead.fieldName}</span>}
           {fresh && <span className="tag new">🆕 New</span>}
           {got && <span className="tag when" title="When this lead was assigned">📥 {fmtAssigned(got)}</span>}

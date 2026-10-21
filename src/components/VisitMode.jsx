@@ -8,6 +8,8 @@ import { useGeo } from '../useGeo'
 import { etaMin, fmtEta, planRoute, pointOf } from '../chennai'
 import { atDay, fmtKm, fmtWhen, fromLocalInput, km, mapDirections, mapEmbed, mapOpen, nameOf, telHref, toLocalInput, waHref } from '../utils'
 import { OUTCOMES, QUICK_REMARKS } from '../constants'
+import { REASON, REASONS, kgOf, reasonsOf } from '../cancelled'
+import { KgBadge, ReasonChips } from './ReasonChips'
 
 const VISIT_OUTCOMES = ['Order Restarted', 'Will Order Soon', 'Interested', 'Revisit Needed', 'Visited', 'Owner Not Available', 'Hotel Closed', 'Not Interested']
 const NEEDS_RATING = ['Order Restarted', 'Will Order Soon', 'Interested', 'Revisit Needed', 'Visited']
@@ -87,9 +89,14 @@ function StopCard({ lead, me, index, total, onReach, onSkip, canSkip, busy }) {
           {pt?.approx && <span>≈ area centre</span>}
           {lead.rating > 0 && <span><StarsRO value={Number(lead.rating)} size={11} /> last visit</span>}
           {lead.lastOrderOn && <span>🕒 Last order {lead.lastOrderOn}</span>}
-          {lead.stopReason && <span>⚠️ {lead.stopReason}</span>}
-          {lead.monthlyQty && <span>📦 {lead.monthlyQty}/mo before</span>}
         </div>
+        {(lead.stopReason || kgOf(lead) > 0) && (
+          <div className="vm-why">
+            <ReasonChips text={lead.stopReason} big />
+            <KgBadge lead={lead} big />
+            {lead.stopReason && <p>“{lead.stopReason}”</p>}
+          </div>
+        )}
         {here && <motion.div className="vm-here" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>📍 You are here</motion.div>}
       </div>
 
@@ -124,16 +131,20 @@ function StopCard({ lead, me, index, total, onReach, onSkip, canSkip, busy }) {
 }
 
 /* ---------- pop-up 1: the remark, as soon as the person has reached ---------- */
-function RemarkSheet({ lead, reached, last, busy, onSave, onBack }) {
+export function RemarkSheet({ lead, reached, last, busy, onSave, onBack, quick = false }) {
   const { toast } = useApp()
   const [outcome, setOutcome] = useState('')
   const [rating, setRating] = useState(0)
   const [manual, setManual] = useState(false)
   const [remark, setRemark] = useState('')
   const [next, setNext] = useState('')
+  const startReasons = reasonsOf(lead.stopReason).filter((x) => x !== 'none' && x !== 'other')
+  const [why, setWhy] = useState(startReasons)
+  const [kg, setKg] = useState(kgOf(lead) ? String(kgOf(lead)) : '')
   const pt = pointOf(lead)
   const d = reached?.dist
   const remarks = QUICK_REMARKS.hotel
+  const toggleWhy = (id) => setWhy((w) => (w.includes(id) ? w.filter((x) => x !== id) : [...w, id]))
 
   const pick = (id) => {
     setOutcome(id)
@@ -145,7 +156,11 @@ function RemarkSheet({ lead, reached, last, busy, onSave, onBack }) {
     if (!outcome) return toast('Pick how the visit went first', 'warn')
     if (NEEDS_RATING.includes(outcome) && !rating) return toast('Give the interest a star rating ⭐', 'warn')
     const note = [d != null && pt && !pt.approx ? `Checked in ${fmtKm(d)} from the pin` : '', remark.trim()].filter(Boolean).join(' · ')
-    onSave({ outcome, rating, remark: note, next })
+    // what the person learned: the reason they cancelled, and the KG they will order now
+    const extra = {}
+    if (why.join() !== startReasons.join()) extra.stopReason = why.map((id) => REASON[id].label).join(' / ')
+    if (['Order Restarted', 'Will Order Soon'].includes(outcome) && kg && Number(kg) !== kgOf(lead)) extra.monthlyQty = String(Number(kg))
+    onSave({ outcome, rating, remark: note, next, extra: Object.keys(extra).length ? extra : undefined })
   }
 
   return (
@@ -154,8 +169,8 @@ function RemarkSheet({ lead, reached, last, busy, onSave, onBack }) {
         <div className="vm-grab" />
         <div className="vm-sheet-h">
           <div>
-            <b>✅ Reached {lead.name}</b>
-            <small>{d != null && pt && !pt.approx ? (d < 0.25 ? `Checked in · at the hotel (${fmtKm(d)})` : `Checked in · ${fmtKm(d)} from the pin`) : 'Checked in'}</small>
+            <b>{quick ? `✍️ Remark · ${lead.name}` : `✅ Reached ${lead.name}`}</b>
+            <small>{quick ? 'Saved with today’s date and your name' : d != null && pt && !pt.approx ? (d < 0.25 ? `Checked in · at the hotel (${fmtKm(d)})` : `Checked in · ${fmtKm(d)} from the pin`) : 'Checked in'}</small>
           </div>
           <button type="button" className="vm-sheet-x" onClick={onBack} aria-label="Back"><Icon name="x" /></button>
         </div>
@@ -182,6 +197,23 @@ function RemarkSheet({ lead, reached, last, busy, onSave, onBack }) {
           </div>
           <textarea rows={2} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="What did the owner or chef say?" />
 
+          {(lead.source === 'Cancelled order' || lead.stopReason) && (
+            <>
+              <h4>Why did they cancel? <small>· update if you learned more</small></h4>
+              <div className="chips small">
+                {REASONS.filter((r) => r.id !== 'none' && r.id !== 'other').map((r) => (
+                  <button type="button" key={r.id} className={`chip ${why.includes(r.id) ? 'on' : ''}`} onClick={() => toggleWhy(r.id)}>{r.icon} {r.label}</button>
+                ))}
+              </div>
+            </>
+          )}
+          {['Order Restarted', 'Will Order Soon'].includes(outcome) && (
+            <>
+              <h4>KG they will order</h4>
+              <input inputMode="numeric" value={kg} onChange={(e) => setKg(e.target.value.replace(/[^\d.]/g, ''))} placeholder="for example 10" />
+            </>
+          )}
+
           {!['Order Restarted', 'Hotel Closed', 'Not Interested'].includes(outcome) && (
             <>
               <h4>Next follow-up {next && <small>· {fmtWhen(next)}</small>}</h4>
@@ -194,7 +226,7 @@ function RemarkSheet({ lead, reached, last, busy, onSave, onBack }) {
           )}
 
           <motion.button whileTap={{ scale: 0.97, y: 3 }} className={`btn3d big ${outcome ? '' : 'off'}`} disabled={busy} onClick={save}>
-            <Icon name="check" /> {outcome ? (last ? 'Save & finish' : 'Save & see next hotel') : 'Pick what happened ↑'}
+            <Icon name="check" /> {outcome ? (quick ? 'Save remark' : last ? 'Save & finish' : 'Save & see next hotel') : 'Pick what happened ↑'}
           </motion.button>
         </div>
       </motion.div>
@@ -334,11 +366,11 @@ export default function VisitMode({ stops, areaLabel, onClose }) {
     setBusy(false)
   }
 
-  const onSave = async ({ outcome, rating, remark, next }) => {
+  const onSave = async ({ outcome, rating, remark, next, extra }) => {
     setBusy(true)
     const here = meRef.current
     const visited = cur
-    logCall(visited, { outcome, rating, remark, next, priority: ratingToPriority(rating) || undefined, mode: 'visit', visit: here ? { lat: here.lat, lng: here.lng } : undefined })
+    logCall(visited, { outcome, rating, remark, next, extra, priority: ratingToPriority(rating) || undefined, mode: 'visit', visit: here ? { lat: here.lat, lng: here.lng } : undefined })
     setLog((l) => [...l, { id: visited.id, name: nameOf(visited), area: visited.area, outcome, rating }])
     if (outcome === 'Order Restarted') { setParty((n) => n + 1); toast('🎉 Order restarted. Great work!') } else toast('Visit saved ✓')
     setCurId(null)

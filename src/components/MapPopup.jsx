@@ -40,7 +40,7 @@ export function MapPopup({ lead, onClose }) {
           <div className="mp-chips">
             {lead.lastOrderOn && <span>🕒 Last order {lead.lastOrderOn}</span>}
             {lead.stopReason && <span>⚠️ {lead.stopReason}</span>}
-            {lead.monthlyQty && <span>📦 {lead.monthlyQty}/mo before</span>}
+            {lead.monthlyQty && <span>📦 {lead.monthlyQty} {lead.source === 'Cancelled order' ? 'kg' : '/mo before'}</span>}
           </div>
         </div>
 

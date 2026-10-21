@@ -4,6 +4,8 @@ import { useApp } from '../store'
 import { Counter, Icon } from '../ui'
 import LeadCard from '../components/LeadCard'
 import VisitMode from '../components/VisitMode'
+import CancelBoard from '../components/CancelBoard'
+import { isCancelled } from '../cancelled'
 import { StarsRO } from '../components/Stars'
 import { useGeo } from '../useGeo'
 import { pointOf } from '../chennai'
@@ -16,14 +18,17 @@ export default function FieldHome() {
   const { leads, session, go, toast } = useApp()
   const { me, state, locate } = useGeo()
   const [area, setArea] = useState('all')
-  const [run, setRun] = useState(false)
+  const [run, setRun] = useState(null) // { stops, label } while a visit run is open
 
   const hotels = useMemo(() => leads.filter((l) => l.type === 'hotel'), [leads])
   const today = useMemo(() => buildFieldReport({ leads: hotels, session, range: rangeFor('today') }), [hotels, session])
   const visitedIds = useMemo(() => new Set(today.entries.filter((e) => e.mode === 'visit').map((e) => e.lead.id)), [today])
 
   // hotels still to visit: not closed, not already visited today
-  const pending = useMemo(() => hotels.filter((l) => !CLOSED.includes(l.status) && !visitedIds.has(l.id)), [hotels, visitedIds])
+  const pendingAll = useMemo(() => hotels.filter((l) => !CLOSED.includes(l.status) && !visitedIds.has(l.id)), [hotels, visitedIds])
+  const cancelled = useMemo(() => pendingAll.filter(isCancelled), [pendingAll])
+  const pending = useMemo(() => pendingAll.filter((l) => !isCancelled(l)), [pendingAll])
+  const cancelledToday = useMemo(() => hotels.filter((l) => isCancelled(l) && visitedIds.has(l.id)).length, [hotels, visitedIds])
   const areas = useMemo(() => {
     const m = new Map()
     pending.forEach((l) => m.set(areaOfLead(l), (m.get(areaOfLead(l)) || 0) + 1))
@@ -55,6 +60,9 @@ export default function FieldHome() {
         <div className="kpi"><em>⏰</em><b><Counter value={due} /></b><span>Follow-ups due</span></div>
       </div>
 
+      {cancelled.length > 0 && <CancelBoard hotels={cancelled} doneToday={cancelledToday} me={me} locating={state === 'loading'} onNear={near} onStart={(stops, label) => setRun({ stops, label })} />}
+
+      {pending.length > 0 && (
       <section className="card fh-pick">
         <div className="fh-pick-h">
           <h3>🗺 Choose an area in Chennai</h3>
@@ -64,11 +72,12 @@ export default function FieldHome() {
           <button className={`chip ${area === 'all' ? 'on' : ''}`} onClick={() => setArea('all')}>All areas <b>{pending.length}</b></button>
           {areas.map(([a, n]) => <button key={a} className={`chip ${area === a ? 'on' : ''}`} onClick={() => setArea(a)}>{a} <b>{n}</b></button>)}
         </div>
-        <motion.button whileTap={{ scale: 0.97, y: 3 }} className="btn3d lime big fh-go" disabled={!inArea.length} onClick={() => setRun(true)}>
+        <motion.button whileTap={{ scale: 0.97, y: 3 }} className="btn3d lime big fh-go" disabled={!inArea.length} onClick={() => setRun({ stops: inArea, label })}>
           <Icon name="play" size={20} /> {inArea.length ? `Start visits · ${label} (${inArea.length} hotel${inArea.length > 1 ? 's' : ''})` : 'No hotels left to visit here'}
         </motion.button>
         <p className="mini-note">You get the nearest hotels to where you stand to accept, then a remark pop-up when you reach, then the next nearest from that hotel.</p>
       </section>
+      )}
 
       {(t.visits > 0 || t.calls > 0) && (
         <section className="card fh-today">
@@ -87,20 +96,20 @@ export default function FieldHome() {
         </section>
       )}
 
-      <div className="sel-bar">
+      {pending.length > 0 && <div className="sel-bar">
         <b>{inArea.length} to visit{area === 'all' ? '' : ` in ${area}`}</b>
         {due > 0 && <button className="btn-soft sm" onClick={() => go('follow')}>⏰ Due ({due})</button>}
-      </div>
-      {list.map(({ l, d }, i) => (
+      </div>}
+      {pending.length > 0 && list.map(({ l, d }, i) => (
         <div key={l.id}>
           {d != null && <small className="dist">{fmtKm(d)} away</small>}
           <LeadCard lead={l} i={i} />
         </div>
       ))}
       {!hotels.length && <div className="card empty"><div className="empty-ico">🏨</div><h3>No hotels assigned yet</h3><p>HR will assign hotels to you, or tap + to add one you find on the road.</p></div>}
-      {hotels.length > 0 && !pending.length && <div className="card empty"><div className="empty-ico">🎉</div><h3>All hotels visited today</h3><p>Great day. Download your report from the Report tab.</p></div>}
+      {hotels.length > 0 && !pendingAll.length && <div className="card empty"><div className="empty-ico">🎉</div><h3>All hotels visited today</h3><p>Great day. Download your report from the Report tab.</p></div>}
 
-      {run && <VisitMode stops={inArea} areaLabel={area === 'all' ? 'All areas' : area} onClose={() => setRun(false)} />}
+      {run && <VisitMode stops={run.stops} areaLabel={run.label === 'all areas' ? 'All areas' : run.label} onClose={() => setRun(null)} />}
     </div>
   )
 }

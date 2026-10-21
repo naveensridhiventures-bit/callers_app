@@ -530,7 +530,7 @@ export function AppProvider({ children }) {
 
   /* ---------- lapsed hotels: import + bulk assign to a caller and/or a field person ---------- */
   const importHotels = useCallback((arr) => {
-    const key = (l) => `${(l.name || '').toLowerCase()}|${l.phone || (l.area || '').toLowerCase()}`
+    const key = (l) => (l.phone ? `p${l.phone}` : `${(l.name || '').toLowerCase()}|${(l.area || '').toLowerCase()}`)
     const have = new Set(leadsRef.current.filter((l) => l.type === 'hotel').map(key))
     const fresh = arr.filter((l) => !have.has(key(l))).map((l) => ({ ...l, _synced: false }))
     setLeads((p) => [...fresh, ...p])

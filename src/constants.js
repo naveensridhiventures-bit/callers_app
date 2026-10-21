@@ -109,6 +109,7 @@ export const QUICK_REMARKS = {
   hotel: [
     'Wants better price', 'Complained about quality - fixed', 'Needs credit period', 'Will order next week',
     'Owner away - come back', 'Chef wants a sample', 'Switched supplier', 'Send details on WhatsApp',
+    'Fresh sample given', 'Idly soft now - happy', 'Payment cleared', 'Delivery time fixed', 'Will restart after renovation', 'Wants smaller pack',
   ],
   sales: [
     'Wants price list', 'Will try sample', 'Stock available - call later',
