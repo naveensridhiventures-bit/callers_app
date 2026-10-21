@@ -94,19 +94,25 @@ const HEAD = {
 }
 
 /** one worksheet -> rows. Works with a header row and also with sheets that have no header. */
-function readSheet(ws) {
+function sheetGrid(ws) {
   const grid = []
   ws.eachRow({ includeEmpty: false }, (row) => {
     const arr = []
     row.eachCell({ includeEmpty: true }, (c, i) => { arr[i - 1] = cellText(c.value) })
     grid.push(arr)
   })
+  return grid
+}
+
+function readSheet(ws, flag) {
+  const grid = sheetGrid(ws)
   let hi = grid.findIndex((r) => r.some((c) => HEAD.name.includes(tidy(c).toLowerCase())) && r.some((c) => HEAD.phone.includes(tidy(c).toLowerCase())))
   const out = []
   if (hi >= 0) {
     const head = grid[hi].map((c) => tidy(c).toLowerCase())
     const at = {}
     Object.entries(HEAD).forEach(([k, names]) => { const i = head.findIndex((h) => names.includes(h)); if (i >= 0) at[k] = i })
+    if (at.kg != null) flag.cancelled = true // a KG column marks the cancelled-order list
     grid.slice(hi + 1).forEach((r) => {
       const g = (k) => (at[k] != null ? tidy(r[at[k]]) : '')
       out.push({ name: g('name'), area: g('area'), phone: g('phone'), kg: g('kg'), remark: g('remark'), extra: '' })
@@ -115,6 +121,7 @@ function readSheet(ws) {
     // no header: name, area, phone, kg, then extra columns (pay mode, how often, "Cancel") and the last one is the remark
     grid.forEach((r) => {
       if (!isPhone(r[2])) return
+      flag.cancelled = true
       const rest = r.slice(4).map(tidy).filter(Boolean)
       const remark = rest.filter((x) => !/^cancel$/i.test(x) && !/^(cash|cssh|credit|daily|weekly|weeklly|monthly)$/i.test(x)).join(' / ')
       const extra = rest.filter((x) => /^(cash|cssh|credit|daily|weekly|weeklly|monthly)$/i.test(x)).map((x) => (/^cssh$/i.test(x) ? 'Cash' : /^weeklly$/i.test(x) ? 'Weekly' : titleCase(x))).join(' · ')
@@ -125,14 +132,20 @@ function readSheet(ws) {
 }
 
 /** Excel file bytes -> hotel leads (cancelled-order list). Duplicates (same mobile) are merged. */
-export async function parseCancelledWorkbook(buffer) {
+async function loadWorkbook(buffer) {
   const mod = await import('exceljs')
-  const wb = new (mod.Workbook || mod.default.Workbook)()
+  const wb = new (mod.Workbook || mod.default?.Workbook)()
   await wb.xlsx.load(buffer)
+  return wb
+}
+
+export async function parseCancelledWorkbook(buffer, preloaded) {
+  const wb = preloaded || (await loadWorkbook(buffer))
   const seen = new Map()
+  const flag = { cancelled: false }
   let rows = 0
   wb.worksheets.forEach((ws) => {
-    readSheet(ws).forEach((r) => {
+    readSheet(ws, flag).forEach((r) => {
       if (!r.name) return
       rows++
       const phone = isPhone(r.phone) ? cleanPhone(r.phone) : ''
@@ -157,5 +170,28 @@ export async function parseCancelledWorkbook(buffer) {
     })
   })
   const leads = [...seen.values()]
-  return { leads, rows, merged: rows - leads.length }
+  return { leads, rows, merged: rows - leads.length, cancelledLike: flag.cancelled }
+}
+
+const csvCell = (v) => { const t = String(v ?? ''); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t }
+
+/**
+ * Any upload from a file picker: .xlsx (read here) or CSV / text.
+ *  -> { kind: 'cancelled', leads, rows, merged }  the cancelled-order list, ready to import as hotels
+ *  -> { kind: 'csv', text }                       any other table, as CSV text for the normal importers
+ */
+export async function readUpload(file) {
+  const buf = await file.arrayBuffer()
+  const head = new Uint8Array(buf.slice(0, 2))
+  const isXlsx = (head[0] === 0x50 && head[1] === 0x4b) || /\.xls[xm]$/i.test(file.name)
+  if (!isXlsx) {
+    if (/\.xls$/i.test(file.name)) throw new Error('This is an old .xls file. Open it in Excel, Save As .xlsx, then upload again.')
+    return { kind: 'csv', text: new TextDecoder().decode(buf) }
+  }
+  const wb = await loadWorkbook(buf)
+  const res = await parseCancelledWorkbook(null, wb)
+  if (res.cancelledLike && res.leads.length) return { kind: 'cancelled', ...res }
+  const ws = wb.worksheets.find((w) => sheetGrid(w).length > 1)
+  if (!ws) throw new Error('The Excel file has no rows')
+  return { kind: 'csv', text: sheetGrid(ws).map((r) => r.map(csvCell).join(',')).join('\n') }
 }

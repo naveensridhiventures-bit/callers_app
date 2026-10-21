@@ -4,6 +4,7 @@ import { useApp } from '../store'
 import { Avatar, Counter, Icon, Segmented, StatusPill } from '../ui'
 import { STATUSES } from '../constants'
 import { assignedAtOf, fmtAssigned, fmtWhen, nameOf, nowISO, parseCSV, rowsToLeads, uid } from '../utils'
+import { readUpload } from '../cancelled'
 
 const rndPin = () => String(Math.floor(1000 + Math.random() * 9000))
 
@@ -47,7 +48,7 @@ export function AddCaller({ onDone }) {
 
 /* ---------------- Assign ---------------- */
 export function Assign() {
-  const { allLeads, callers, assignMany, importLeads, toast } = useApp()
+  const { allLeads, callers, assignMany, importLeads, importHotels, toast } = useApp()
   const [scope, setScope] = useState('unassigned')
   const [status, setStatus] = useState('all')
   const [area, setArea] = useState('all')
@@ -120,8 +121,16 @@ export function Assign() {
   }
   const onFile = async (e) => {
     const f = e.target.files?.[0]
-    if (f) doImport(await f.text())
     e.target.value = ''
+    if (!f) return
+    try {
+      const res = await readUpload(f)
+      if (res.kind === 'cancelled') {
+        // the cancelled-order list is a hotel list, so it goes to the hotels (not the number leads)
+        const { added, skipped } = importHotels(res.leads)
+        toast(`${added} cancelled-order hotel${added === 1 ? '' : 's'} imported${skipped ? ` · ${skipped} already there` : ''} ✓ Open the Hotels tab to assign them.`)
+      } else doImport(res.text)
+    } catch (err) { toast(`Could not read that file${err?.message ? `: ${String(err.message).slice(0, 80)}` : ''}`, 'warn') }
   }
 
   const unassigned = allLeads.filter((l) => !l.assignedTo).length
@@ -203,7 +212,7 @@ export function Assign() {
             {callers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </label>
-        <input ref={file} type="file" accept=".csv,text/csv,.txt,.tsv" hidden onChange={onFile} />
+        <input ref={file} type="file" accept=".xlsx,.csv,text/csv,.txt,.tsv" hidden onChange={onFile} />
         <button className="btn-soft" onClick={() => file.current.click()}><Icon name="upload" /> Choose CSV file</button>
         <textarea rows={3} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={'Paste numbers, one per line:\n9876543210\n9845012345\n\n…or name, phone, area columns'} />
         {paste.trim() && <button className="btn3d" onClick={() => doImport(paste)}>Import pasted rows</button>}

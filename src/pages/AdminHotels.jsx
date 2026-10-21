@@ -5,7 +5,7 @@ import { Counter, Icon } from '../ui'
 import { parseCSV, rowsToHotels } from '../utils'
 import MapButton from '../components/MapPopup'
 import { STATUSES } from '../constants'
-import { KG_BANDS, REASONS, isCancelled, kgBandOf, kgOf, mainReason, parseCancelledWorkbook, reasonsOf } from '../cancelled'
+import { KG_BANDS, REASONS, isCancelled, kgBandOf, kgOf, mainReason, readUpload, reasonsOf } from '../cancelled'
 import { KgBadge, ReasonChips } from '../components/ReasonChips'
 
 const isHotelish = (l) => l.type === 'hotel' || /hotel|restaurant/i.test(l.bizType || '')
@@ -57,19 +57,26 @@ export default function AdminHotels() {
   }
   const toggle = (id) => setSel((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n })
 
-  const doExcel = async (f) => {
+  const showReport = (res) => {
+    const { leads, rows, merged } = res
+    const { added, skipped } = importHotels(leads)
+    const by = {}
+    leads.forEach((l) => { const r = mainReason(l); by[r] = (by[r] || 0) + 1 })
+    setReport({ rows, merged, added, skipped, kg: leads.reduce((n, l) => n + kgOf(l), 0), noArea: leads.filter((l) => !l.area).length, noPhone: leads.filter((l) => !l.phone).length, by })
+    setScope('cancelled')
+    toast(`${added} hotel${added === 1 ? '' : 's'} imported from Excel ✓`)
+  }
+
+  // Excel (.xlsx) or CSV: the cancelled-order list, or any hotel table with a "Hotel name" column
+  const pickFile = async (f) => {
     setBusy(true)
     try {
-      const { leads, rows, merged } = await parseCancelledWorkbook(await f.arrayBuffer())
-      if (!leads.length) { toast('No hotel rows found. Columns needed: customer / hotel name, location, mobile, KG, remark.', 'warn'); return }
-      const { added, skipped } = importHotels(leads)
-      const by = {}
-      leads.forEach((l) => { const r = mainReason(l); by[r] = (by[r] || 0) + 1 })
-      setReport({ rows, merged, added, skipped, kg: leads.reduce((n, l) => n + kgOf(l), 0), noArea: leads.filter((l) => !l.area).length, noPhone: leads.filter((l) => !l.phone).length, by })
-      setScope('cancelled')
-      toast(`${added} hotel${added === 1 ? '' : 's'} imported from Excel ✓`)
+      const res = await readUpload(f)
+      if (res.kind === 'cancelled') showReport(res)
+      else doImport(res.text)
     } catch (e) {
-      toast('Could not read that Excel file. Save it as .xlsx and try again.', 'warn')
+      console.error('Upload failed', e)
+      toast(`Could not read that file${e?.message ? `: ${String(e.message).slice(0, 80)}` : ''}`, 'warn')
     } finally { setBusy(false) }
   }
 
@@ -105,7 +112,7 @@ export default function AdminHotels() {
       <section className="card form">
         <h3>📥 Import hotels that stopped ordering</h3>
         <p className="mini-note">Paste or upload columns with a header row: <b>Hotel name</b>, phone, contact person, area, address, <b>map link</b>, last order, reason. Phone and map link are optional. A pasted Google Maps link gives the exact pin.</p>
-        <input ref={file} type="file" accept=".xlsx,.csv,.txt,.tsv,text/csv" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) { /\.xlsx$/i.test(f.name) ? await doExcel(f) : doImport(await f.text()) } e.target.value = '' }} />
+        <input ref={file} type="file" accept=".xlsx,.csv,.txt,.tsv,text/csv" hidden onChange={async (e) => { const f = e.target.files?.[0]; if (f) await pickFile(f); e.target.value = '' }} />
         <button className="btn-soft" disabled={busy} onClick={() => file.current.click()}><Icon name="upload" /> {busy ? 'Reading…' : 'Choose Excel (.xlsx) or CSV file'}</button>
         <p className="mini-note">Cancelled-order Excel: every sheet is read. Columns: customer name, location, mobile number, KG, remark. The same mobile on several sheets is merged into one hotel.</p>
         {report && (

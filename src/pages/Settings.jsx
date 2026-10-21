@@ -4,9 +4,10 @@ import { Icon } from '../ui'
 import InstallBanner from '../components/InstallBanner'
 import { fmtTime, parseCSV, rowsToLeads } from '../utils'
 import script from '../../apps-script/Code.gs?raw'
+import { readUpload } from '../cancelled'
 
 export default function Settings() {
-  const { settings, setSettings, sync, syncNow, importLeads, leads, clearAll, loadSample, toast, session, logout } = useApp()
+  const { settings, setSettings, sync, syncNow, importLeads, importHotels, leads, clearAll, loadSample, toast, session, logout } = useApp()
   const [paste, setPaste] = useState('')
   const file = useRef()
   const set = (k, v) => setSettings((s) => ({ ...s, [k]: v }))
@@ -21,8 +22,16 @@ export default function Settings() {
   }
   const onFile = async (e) => {
     const f = e.target.files?.[0]
-    if (f) doImport(await f.text())
     e.target.value = ''
+    if (!f) return
+    try {
+      const res = await readUpload(f)
+      if (res.kind === 'cancelled') {
+        // the cancelled-order list is a hotel list, so it goes to the hotels (not the number leads)
+        const { added, skipped } = importHotels(res.leads)
+        toast(`${added} cancelled-order hotel${added === 1 ? '' : 's'} imported${skipped ? ` · ${skipped} already there` : ''} ✓ Open the Hotels tab to assign them.`)
+      } else doImport(res.text)
+    } catch (err) { toast(`Could not read that file${err?.message ? `: ${String(err.message).slice(0, 80)}` : ''}`, 'warn') }
   }
   const notif = async () => {
     if (!('Notification' in window)) return toast('Notifications not supported here', 'warn')
@@ -75,7 +84,7 @@ export default function Settings() {
           <section className="card form">
             <h3>📥 Import company data</h3>
             <p className="mini-note">Paste <b>phone numbers one per line</b>, or CSV / Excel columns: <b>name, phone, area, company, type, notes</b>. Duplicate phone numbers are skipped.{session?.role === 'admin' ? ' To import AND assign to a caller, use the Admin tab.' : ''}</p>
-            <input ref={file} type="file" accept=".csv,text/csv,.txt,.tsv" hidden onChange={onFile} />
+            <input ref={file} type="file" accept=".xlsx,.csv,text/csv,.txt,.tsv" hidden onChange={onFile} />
             <button className="btn-soft" onClick={() => file.current.click()}><Icon name="upload" /> Choose CSV file</button>
             <textarea rows={4} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={'…or paste rows copied from Excel / Google Sheets\nname\tphone\tarea\nRavi\t9876543210\tWhitefield'} />
             {paste.trim() && <button className="btn3d" onClick={() => doImport(paste)}>Import pasted rows</button>}
