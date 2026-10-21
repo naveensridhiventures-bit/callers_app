@@ -267,7 +267,14 @@ export function AppProvider({ children }) {
       } catch (e) {
         if (dead) return
         setLoginList([])
-        setLoginErr("Can't reach the server. Check your internet and try again.")
+        const m = String(e?.message || e)
+        setLoginErr(
+          e instanceof SyntaxError
+            ? 'Google replied with a web page, not data. In Apps Script: Deploy → Manage deployments → ✏️ → New version, Who has access = Anyone, then authorise it.'
+            : /failed to fetch|networkerror|load failed/i.test(m)
+            ? "Can't reach the server. Check your internet, and that the script is deployed with access = Anyone."
+            : `Server says: ${m}`
+        )
         setGate('login')
       }
     })()
