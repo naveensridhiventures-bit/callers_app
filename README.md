@@ -138,3 +138,8 @@ No Apps Script change needed.
 ## Short Google Maps links (r1022e)
 Phones share `maps.app.goo.gl/...` links, which hide the coordinates. Paste one in **Locations** and the Sheet script follows the link and reads the lat/lng (also works in Bulk paste).
 **One-time setup:** paste the new `apps-script/Code.gs` (adds `resolveMap`), run **`authorizeFetch`** once in the Apps Script editor and accept the permission, then **Deploy → Manage deployments → ✏️ → New version → Deploy**.
+
+## Locations: reason, closed hotels, colours (r1022j)
+- Every hotel card shows **why they stopped** and the last visit. Filter by reason with the chips.
+- **Closed hotels need no pin**: detected from the reason / last outcome, or tap *This hotel is closed*. They get their own tab and are left out of the % and Auto-find.
+- Colours: green = exact pin, orange = still area only, grey = closed. The top tiles count **Exact pin / Need pin / Closed**.

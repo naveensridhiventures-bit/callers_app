@@ -3,6 +3,8 @@ import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Icon } from '../ui'
 import { areaInfo } from '../chennai'
+import { WhyBox } from '../components/ReasonChips'
+import { REASONS, reasonsOf } from '../cancelled'
 import { coordsFromLink, download, hotelPoint, km, fmtKm } from '../utils'
 
 const CHENNAI = { lat: 13.0827, lng: 80.2707 }
@@ -11,6 +13,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const gSearch = (l) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([l.name, l.address, l.area, 'Chennai'].filter(Boolean).join(', '))}`
 const embed = (p) => `https://maps.google.com/maps?q=${p.lat},${p.lng}&z=17&output=embed`
 const hasPin = (l) => !!hotelPoint(l)
+// a closed hotel needs no map pin: say so from the reason or the last visit
+const isClosed = (l) => l.lastOutcome === 'Hotel Closed' || reasonsOf(l.stopReason).includes('closed')
+// pinned (exact location) | closed (no pin needed) | need (still area centre only)
+const stateOf = (l) => (hasPin(l) ? 'pinned' : isClosed(l) ? 'closed' : 'need')
 
 /** "13.0418, 80.2341"  or any Google Maps link that carries coordinates */
 export function parsePin(text) {
@@ -50,6 +56,7 @@ export default function AdminLocations() {
   const { allLeads, saveLead, toast, go, resolveMapLink } = useApp()
   const hotels = useMemo(() => allLeads.filter((l) => l.type === 'hotel'), [allLeads])
   const [tab, setTab] = useState('missing')
+  const [why, setWhy] = useState('all')
   const [area, setArea] = useState('all')
   const [q, setQ] = useState('')
   const [open, setOpen] = useState(null)
@@ -78,19 +85,23 @@ export default function AdminLocations() {
     if (isShort(v) && !parsePin(v) && reading !== l.id && /\S{25,}/.test(v)) readLink(l, v)
   }
 
-  const withPin = hotels.filter(hasPin).length
-  const pct = hotels.length ? Math.round((withPin / hotels.length) * 100) : 0
+  const withPin = hotels.filter((l) => stateOf(l) === 'pinned').length
+  const nNeed = hotels.filter((l) => stateOf(l) === 'need').length
+  const nClosed = hotels.filter((l) => stateOf(l) === 'closed').length
+  const live = withPin + nNeed // closed hotels are not counted against you
+  const pct = live ? Math.round((withPin / live) * 100) : 100
+  const inTab = (l) => tab === 'all' || stateOf(l) === ({ missing: 'need', done: 'pinned', closed: 'closed' })[tab]
   const areas = useMemo(() => {
     const m = new Map()
-    hotels.filter((l) => (tab === 'all' || (tab === 'missing') === !hasPin(l))).forEach((l) => { const a = (l.area || '').trim() || '(no area)'; m.set(a, (m.get(a) || 0) + 1) })
+    hotels.filter(inTab).forEach((l) => { const a = (l.area || '').trim() || '(no area)'; m.set(a, (m.get(a) || 0) + 1) })
     return [...m].sort((a, b) => b[1] - a[1])
   }, [hotels, tab])
   const list = useMemo(() => {
     const s = q.trim().toLowerCase()
-    return hotels.filter((l) => (tab === 'all' || (tab === 'missing') === !hasPin(l))
+    return hotels.filter((l) => inTab(l) && (why === 'all' || reasonsOf(l.stopReason).includes(why))
       && (area === 'all' || ((l.area || '').trim() || '(no area)') === area)
       && (!s || `${l.name} ${l.phone} ${l.area}`.toLowerCase().includes(s))).sort((a, b) => (a.area || '~').localeCompare(b.area || '~') || a.name.localeCompare(b.name))
-  }, [hotels, tab, area, q])
+  }, [hotels, tab, area, q, why])
 
   const pin = (l, p, note = '') => {
     if (!inChennai(p)) return toast('That point is outside Chennai. Check the link.', 'warn')
@@ -99,6 +110,16 @@ export default function AdminLocations() {
     setCands((c) => { const n = { ...c }; delete n[l.id]; return n })
     setPaste((c) => { const n = { ...c }; delete n[l.id]; return n })
     toast(`📍 Pin saved for ${l.name}${note}`)
+  }
+
+  const markClosed = (l) => {
+    saveLead({ ...l, status: 'Not Interested', lastOutcome: 'Hotel Closed', stopReason: /closed/i.test(l.stopReason || '') ? l.stopReason : [l.stopReason, 'Closed'].filter(Boolean).join(' / ') })
+    toast(`🏚️ ${l.name} marked closed. No pin needed.`)
+  }
+  const reopen = (l) => {
+    const stopReason = String(l.stopReason || '').split(/\s*\/\s*/).filter((x) => !/^closed$/i.test(x)).join(' / ')
+    saveLead({ ...l, status: 'Contacted', lastOutcome: l.lastOutcome === 'Hotel Closed' ? 'Revisit Needed' : l.lastOutcome, stopReason })
+    toast(`${l.name} is open again`)
   }
 
   const find = async (l, quiet = false) => {
@@ -115,7 +136,7 @@ export default function AdminLocations() {
   }
 
   const findAll = async () => {
-    const todo = list.filter((l) => !hasPin(l) && !cands[l.id])
+    const todo = list.filter((l) => stateOf(l) === 'need' && !cands[l.id])
     if (!todo.length) return toast('Nothing to search in this list', 'warn')
     stop.current = false
     setBatch({ done: 0, total: todo.length })
@@ -130,7 +151,7 @@ export default function AdminLocations() {
   }
 
   // suggestions that sit close to the area centre are the safe ones to accept in one go
-  const safe = hotels.filter((l) => !hasPin(l) && cands[l.id]?.[0] && cands[l.id][0].d != null && cands[l.id][0].d <= 4)
+  const safe = hotels.filter((l) => stateOf(l) === 'need' && cands[l.id]?.[0] && cands[l.id][0].d != null && cands[l.id][0].d <= 4)
   const acceptSafe = () => { safe.forEach((l) => pin(l, cands[l.id][0])); toast(`✅ ${safe.length} pins saved`) }
 
   const applyBulk = async () => {
@@ -155,7 +176,7 @@ export default function AdminLocations() {
 
   const exportMissing = () => {
     const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
-    const rows = [['hotel name', 'area', 'phone', 'google maps search link', 'paste lat,lng or maps link here'], ...hotels.filter((l) => !hasPin(l)).map((l) => [l.name, l.area || '', l.phone || '', gSearch(l), ''])]
+    const rows = [['hotel name', 'area', 'phone', 'google maps search link', 'paste lat,lng or maps link here'], ...hotels.filter((l) => stateOf(l) === 'need').map((l) => [l.name, l.area || '', l.phone || '', gSearch(l), ''])]
     download('hotels-need-location.csv', '\ufeff' + rows.map((r) => r.map(esc).join(',')).join('\n'), 'text/csv')
     toast('Downloaded. Fill the last column, then paste the rows in Bulk paste.')
   }
@@ -174,13 +195,18 @@ export default function AdminLocations() {
           <b>{pct}%</b>
         </div>
         <div className="lc-hero-t">
-          <h3>{withPin} of {hotels.length} hotels have an exact pin</h3>
-          <p>{hotels.length - withPin ? `${hotels.length - withPin} still use the area centre, so “nearest first” is only approximate for them.` : 'All hotels are pinned. Navigation is exact.'}</p>
+          <h3>{withPin} of {live} hotels have an exact location</h3>
+          <p>{nNeed ? `${nNeed} still use the area centre, so “nearest first” is only approximate for them.` : 'Every open hotel is pinned. Navigation is exact.'}{nClosed ? ` ${nClosed} closed hotel${nClosed > 1 ? 's are' : ' is'} skipped.` : ''}</p>
+        </div>
+        <div className="lc-stats">
+          <button className={tab === 'done' ? 'on' : ''} onClick={() => { setTab('done'); setArea('all') }}><b>{withPin}</b><span>✅ Exact pin</span></button>
+          <button className={`need ${tab === 'missing' ? 'on' : ''}`} onClick={() => { setTab('missing'); setArea('all') }}><b>{nNeed}</b><span>⚠️ Need pin</span></button>
+          <button className={`shut ${tab === 'closed' ? 'on' : ''}`} onClick={() => { setTab('closed'); setArea('all') }}><b>{nClosed}</b><span>🏚️ Closed · skip</span></button>
         </div>
         <div className="lc-hero-b">
           {batch
             ? <button className="btn-soft" onClick={() => { stop.current = true }}>⏹ Stop · {batch.done}/{batch.total}</button>
-            : <button className="btn3d lime" onClick={findAll}>✨ Auto-find {list.filter((l) => !hasPin(l)).length || ''} in this list</button>}
+            : <button className="btn3d lime" onClick={findAll}>✨ Auto-find {list.filter((l) => stateOf(l) === 'need').length || ''} in this list</button>}
           <button className="btn-soft" onClick={() => setShowBulk((s) => !s)}>📋 Bulk paste</button>
           <button className="btn-soft" onClick={exportMissing}><Icon name="download" size={16} /> Missing list</button>
         </div>
@@ -198,8 +224,8 @@ export default function AdminLocations() {
       )}
 
       <div className="fp-tabs" role="tablist">
-        {[['missing', 'Need pin', hotels.length - withPin], ['done', 'Pinned', withPin], ['all', 'All', hotels.length]].map(([id, t, n]) => (
-          <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => { setTab(id); setArea('all') }}>{t}<b>{n}</b></button>
+        {[['missing', 'Need pin', nNeed], ['done', 'Pinned', withPin], ['closed', 'Closed', nClosed], ['all', 'All', hotels.length]].map(([id, t, n]) => (
+          <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => { setTab(id); setArea('all'); setWhy('all') }}>{t}<b>{n}</b></button>
         ))}
       </div>
       <div className="search"><Icon name="search" size={18} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search hotel, phone, area…" />{q && <button onClick={() => setQ('')}><Icon name="x" size={16} /></button>}</div>
@@ -208,21 +234,34 @@ export default function AdminLocations() {
         {areas.map(([a, n]) => <button key={a} className={`chip ${area === a ? 'on' : ''}`} onClick={() => setArea(area === a ? 'all' : a)}>{a} <b>{n}</b></button>)}
       </div>
 
+      <div className="chips scroll lc-why">
+        <span className="lc-why-l">Why they stopped:</span>
+        <button className={`chip ${why === 'all' ? 'on' : ''}`} onClick={() => setWhy('all')}>All</button>
+        {REASONS.filter((r) => hotels.some((l) => inTab(l) && reasonsOf(l.stopReason).includes(r.id))).map((r) => (
+          <button key={r.id} className={`chip ${why === r.id ? 'on' : ''}`} onClick={() => setWhy(why === r.id ? 'all' : r.id)}>{r.icon} {r.label} <b>{hotels.filter((l) => inTab(l) && reasonsOf(l.stopReason).includes(r.id)).length}</b></button>
+        ))}
+      </div>
+
       {list.slice(0, 60).map((l) => {
         const cur = hotelPoint(l)
+        const st = stateOf(l)
         const cs = cands[l.id]
         const top = !cur && cs?.[0]
         const typed = paste[l.id] ?? ''
         const parsed = parsePin(typed)
         const isOpen = open === l.id
         return (
-          <section key={l.id} className={`card lc-card ${cur ? 'ok' : ''}`}>
+          <section key={l.id} className={`card lc-card ${st}`}>
             <div className="lc-top" onClick={() => setOpen(isOpen ? null : l.id)}>
               <div className="lc-name"><b>{l.name}</b><small>📍 {l.area || 'Area not given'}{l.phone ? ` · ${l.phone}` : ''}</small></div>
-              <span className={`lc-st ${cur ? 'ok' : ''}`}>{cur ? '✅ Exact pin' : '≈ Area only'}</span>
+              <span className={`lc-st ${st}`}>{st === 'pinned' ? '✅ Exact pin' : st === 'closed' ? '🏚️ Closed · no pin needed' : '≈ Area only'}</span>
             </div>
 
-            {top && !isOpen && (
+            <WhyBox lead={l} compact tip={false} ask={false} />
+            {(l.lastOutcome || l.lastRemark) && <p className="lc-last"><b>Last visit:</b> {[l.lastOutcome, l.lastRemark].filter(Boolean).join(' · ')}</p>}
+            {st === 'closed' && <p className="lc-shut">This hotel is closed, so you do not need to add a map location.</p>}
+
+            {top && st === 'need' && !isOpen && (
               <div className="lc-sug">
                 <div><small>Suggested by OpenStreetMap</small><b>{top.title}</b><span>{top.addr}{top.d != null ? ` · ${fmtKm(top.d)} from area centre` : ''}</span></div>
                 <button className="btn-soft sm" onClick={() => setOpen(l.id)}>Check</button>
@@ -231,11 +270,21 @@ export default function AdminLocations() {
             )}
             {cs && !cs.length && !isOpen && <p className="lc-none">Not on OpenStreetMap. Use Google Maps below.</p>}
 
-            <div className="lc-act">
-              <button className="hr-b main" disabled={busy === l.id} onClick={() => find(l)}>{busy === l.id ? 'Searching…' : '🔎 Auto-find'}</button>
-              <a className="hr-b" href={gSearch(l)} target="_blank" rel="noreferrer">🗺 Google Maps ↗</a>
-              <button className="hr-b" onClick={() => setOpen(isOpen ? null : l.id)}>{isOpen ? 'Close' : '✏️ Enter pin'}</button>
-            </div>
+            {st === 'closed' ? (
+              <div className="lc-act two">
+                <button className="hr-b main" onClick={() => reopen(l)}>↩ Hotel is open</button>
+                <button className="hr-b" onClick={() => setOpen(isOpen ? null : l.id)}>{isOpen ? 'Close' : '✏️ Add pin anyway'}</button>
+              </div>
+            ) : (
+              <>
+                <div className="lc-act">
+                  <button className="hr-b main" disabled={busy === l.id} onClick={() => find(l)}>{busy === l.id ? 'Searching…' : '🔎 Auto-find'}</button>
+                  <a className="hr-b" href={gSearch(l)} target="_blank" rel="noreferrer">🗺 Google Maps ↗</a>
+                  <button className="hr-b" onClick={() => setOpen(isOpen ? null : l.id)}>{isOpen ? 'Close' : '✏️ Enter pin'}</button>
+                </div>
+                {st === 'need' && <button type="button" className="lc-closebtn" onClick={() => markClosed(l)}>🏚️ This hotel is closed. No pin needed</button>}
+              </>
+            )}
 
             {isOpen && (
               <div className="lc-edit">
@@ -277,7 +326,7 @@ export default function AdminLocations() {
         )
       })}
       {list.length > 60 && <p className="mini-note">Showing 60 of {list.length}. Filter by area to see the rest.</p>}
-      {!list.length && <div className="card empty"><div className="empty-ico">{tab === 'missing' ? '🎉' : '🔎'}</div><h3>{tab === 'missing' ? 'Every hotel here has an exact pin' : 'Nothing matches'}</h3></div>}
+      {!list.length && <div className="card empty"><div className="empty-ico">{tab === 'missing' ? '🎉' : '🔎'}</div><h3>{tab === 'missing' ? 'Every open hotel here has an exact pin' : 'Nothing matches'}</h3></div>}
       <p className="mini-note">Auto-find uses OpenStreetMap, which does not list every small hotel. Always check the map before you accept. Google Maps itself cannot be scraped, so use the Google Maps button and paste the link (short links are read for you).</p>
     </div>
   )

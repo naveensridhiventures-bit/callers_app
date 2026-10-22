@@ -24,7 +24,7 @@ export function KgBadge({ lead, big = false }) {
  * "Why they stopped" panel. Sits right above the map in the visit card and the location popup,
  * so the field person reads the reason BEFORE walking in.
  */
-export function WhyBox({ lead, tip = true, compact = false }) {
+export function WhyBox({ lead, tip = true, compact = false, ask = true }) {
   const [open, setOpen] = useState(false)
   const ids = reasonsOf(lead.stopReason)
   const main = REASON[ids[0]]
@@ -40,7 +40,7 @@ export function WhyBox({ lead, tip = true, compact = false }) {
       </div>
       <ReasonChips text={lead.stopReason} big limit={4} />
       {lead.stopReason && <p className="wy-q">“{lead.stopReason}”</p>}
-      {none && <p className="wy-ask">Nobody noted the reason. Ask the owner politely and record it in your remark.</p>}
+      {none && ask && <p className="wy-ask">Nobody noted the reason. Ask the owner politely and record it in your remark.</p>}
       {tip && main.tip && (
         <>
           <button type="button" className="wy-tipb" onClick={() => setOpen((o) => !o)}>{open ? '▾' : '▸'} 💡 How to win them back</button>

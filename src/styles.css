@@ -956,3 +956,17 @@ textarea { resize: vertical; margin-top: 10px; }
 .lc-prev { height: 200px; border-radius: 18px; overflow: hidden; background: #e2e8f0; } .lc-prev iframe { width: 100%; height: 100%; border: 0; }
 .vm-pinme { display: flex; gap: 10px; align-items: flex-start; margin: 8px 0 4px; padding: 11px 12px; border-radius: 16px; background: #eff6ff; border: 1.5px solid #93c5fd; } .vm-pinme input { width: 22px; height: 22px; margin-top: 2px; flex: none; } .vm-pinme span { display: flex; flex-direction: column; } .vm-pinme b { font-size: 13.5px; color: #1e3a8a; } .vm-pinme small { font-size: 12px; color: #475569; }
 @media (min-width: 700px) { .lc-hero { grid-template-columns: auto 1fr auto; } .lc-hero-b { grid-column: auto; grid-column: 1 / -1; } }
+
+/* ---- locations: state colours + stat tiles ---- */
+.lc-stats { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.lc-stats button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border-radius: 16px; color: #fff; background: rgba(34, 197, 94, .28); border: 2px solid transparent; }
+.lc-stats button b { font-size: 24px; line-height: 1; } .lc-stats button span { font-size: 11.5px; font-weight: 700; opacity: .95; }
+.lc-stats button.need { background: rgba(251, 146, 60, .34); } .lc-stats button.shut { background: rgba(148, 163, 184, .34); } .lc-stats button.on { border-color: #fff; }
+.lc-card.pinned { border-left-color: #16a34a; background: linear-gradient(90deg, #ecfdf3, #fff 55%); }
+.lc-card.need { border-left-color: #f97316; background: linear-gradient(90deg, #fff4e6, #fff 55%); }
+.lc-card.closed { border-left-color: #64748b; background: #f1f5f9; }
+.lc-st.pinned { color: #14532d; background: #bbf7d0; } .lc-st.need { color: #9a3412; background: #fed7aa; } .lc-st.closed { color: #334155; background: #cbd5e1; }
+.lc-last { font-size: 12.5px; color: #3d5547; line-height: 1.35; } .lc-shut { font-size: 13px; font-weight: 700; color: #475569; }
+.lc-act.two { grid-template-columns: repeat(2, 1fr); }
+.lc-closebtn { align-self: flex-start; padding: 6px 2px; font-size: 12.5px; font-weight: 700; color: #475569; text-decoration: underline; text-underline-offset: 3px; }
+.lc-why { align-items: center; } .lc-why-l { flex: none; font-size: 12px; font-weight: 800; color: #3d5547; }

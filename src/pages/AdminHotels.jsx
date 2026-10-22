@@ -100,7 +100,7 @@ export default function AdminHotels() {
 
   return (
     <div className="page adm">
-      {(() => { const miss = hotels.filter((l) => !hotelPoint(l)).length; return hotels.length > 0 && (
+      {(() => { const miss = hotels.filter((l) => !hotelPoint(l) && l.lastOutcome !== 'Hotel Closed' && !reasonsOf(l.stopReason).includes('closed')).length; return hotels.length > 0 && (
         <button type="button" className={`lc-banner ${miss ? '' : 'ok'}`} onClick={() => go('locations')}>
           <em>📍</em>
           <span><b>{miss ? `${miss} hotel${miss > 1 ? 's' : ''} need an exact map pin` : 'All hotels have exact pins'}</b><small>{miss ? 'Auto-find, paste a Google Maps link, or bulk upload' : 'Tap to review or change a pin'}</small></span>
