@@ -124,3 +124,13 @@ Built the way a field salesperson works through a day: **Follow up → Plan → 
 - **Follow-ups** (tab): Overdue / Today / Upcoming, visit all due hotels in one run, move a follow-up (+1h, 5 PM, tomorrow, next week).
 - The floating + button is removed for field users (it covered cards); use **+ Hotel** in the Plan header.
 No Apps Script change needed.
+
+## Exact hotel locations (r1022c)
+
+- **HR → Hotels** shows a banner with how many hotels still have no exact pin; **Locations** is also in the admin sidebar.
+- **Locations page**: progress ring, tabs *Need pin / Pinned / All*, area filter and search. Per hotel:
+  - **Auto-find**: searches OpenStreetMap by hotel name + area + Chennai and lists matches nearest to the area centre. Preview, then **Use**. **Auto-find all** runs the whole list (1 per second) and **Accept suggestions within 4 km of the area centre** saves the safe ones at once.
+  - **Google Maps ↗**: opens the search for that hotel; copy the link, paste it, check the preview and save. Accepts a full Google Maps link or `13.0418, 80.2341`. Short `maps.app.goo.gl` links hide the coordinates, so open them first.
+  - **Bulk paste**: lines like `Hotel name, lat, lng` or `phone, Google Maps link`. **Missing list** downloads a CSV with a Google search link per hotel to fill offline.
+- **Field person**: at a hotel with no exact pin, the remark sheet offers **Save this spot as the hotel's map pin**.
+- Saved pins feed the map, Navigate and the nearest-first routing automatically.

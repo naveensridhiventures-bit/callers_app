@@ -140,6 +140,8 @@ export function RemarkSheet({ lead, reached, last, busy, onSave, onBack, quick =
   const [why, setWhy] = useState(startReasons)
   const [kg, setKg] = useState(kgOf(lead) ? String(kgOf(lead)) : '')
   const pt = pointOf(lead)
+  const canPin = !!(reached?.pos && pt?.approx && !quick)
+  const [pinMe, setPinMe] = useState(true)
   const d = reached?.dist
   const remarks = QUICK_REMARKS.hotel
   const toggleWhy = (id) => setWhy((w) => (w.includes(id) ? w.filter((x) => x !== id) : [...w, id]))
@@ -161,6 +163,7 @@ export function RemarkSheet({ lead, reached, last, busy, onSave, onBack, quick =
     const extra = {}
     if (why.join() !== startReasons.join()) extra.stopReason = why.map((id) => REASON[id].label).join(' / ')
     if (['Order Restarted', 'Will Order Soon'].includes(outcome) && kg && Number(kg) !== kgOf(lead)) extra.monthlyQty = String(Number(kg))
+    if (canPin && pinMe) { extra.lat = reached.pos.lat.toFixed(6); extra.lng = reached.pos.lng.toFixed(6); extra.mapUrl = `https://www.google.com/maps/search/?api=1&query=${extra.lat},${extra.lng}` }
     onSave({ outcome, rating, remark: note, next, extra: Object.keys(extra).length ? extra : undefined })
   }
   const summary = outcome ? [outcome, rating && !NO_RATING.includes(outcome) ? `${rating}★` : '', showNext ? (next ? fmtWhen(next) : 'no follow-up') : ''].filter(Boolean).join(' · ') : 'Step 1: pick how it went'
@@ -179,6 +182,9 @@ export function RemarkSheet({ lead, reached, last, busy, onSave, onBack, quick =
 
         <div className="vm-form">
           <WhyBox lead={lead} compact tip={false} />
+          {canPin && (
+            <label className="vm-pinme"><input type="checkbox" checked={pinMe} onChange={(e) => setPinMe(e.target.checked)} /><span><b>📍 Save this spot as the hotel’s map pin</b><small>This hotel has no exact location yet. Tick only if you are standing at the hotel.</small></span></label>
+          )}
 
           <h4><i>1</i> How did it go?</h4>
           {OUTCOME_GROUPS.map(([g, ids]) => (

@@ -24,6 +24,7 @@ import FieldPlan from './pages/FieldPlan'
 import FieldFollow from './pages/FieldFollow'
 import FieldReport from './pages/FieldReport'
 import AdminHotels from './pages/AdminHotels'
+import AdminLocations from './pages/AdminLocations'
 import GmailGate from './components/GmailGate'
 import { Assign, Requests } from './pages/Admin'
 import { bucket, cityOf, fmtTime, nameOf } from './utils'
@@ -34,7 +35,7 @@ const AdminRequests = () => <div className="page adm"><div className="page-h"><h
 const AdminSettings = () => <div className="page adm"><div className="page-h"><h1>Settings</h1></div><Settings /></div>
 const AdminReports = () => <div className="page adm"><div className="page-h"><h1>Reports</h1></div><ReportCenter admin /></div>
 const FIELD_PAGES = { home: FieldHome, plan: FieldPlan, leads: FieldPlan, follow: FieldFollow, report: FieldReport, more: More }
-const ADMIN_PAGES = { hotels: AdminHotels, hubs: Hubs, reports: AdminReports, overview: AdminOverview, team: AdminTeam, assign: AdminAssign, leads: Leads, requests: AdminRequests, settings: AdminSettings }
+const ADMIN_PAGES = { hotels: AdminHotels, locations: AdminLocations, hubs: Hubs, reports: AdminReports, overview: AdminOverview, team: AdminTeam, assign: AdminAssign, leads: Leads, requests: AdminRequests, settings: AdminSettings }
 const ADMIN_TABS = [
   { id: 'overview', icon: 'chart', label: 'Progress' },
   { id: 'team', icon: 'users', label: 'Callers' },
@@ -118,6 +119,7 @@ function Shell() {
                 {t.id === 'requests' && reqCount > 0 && <b className="badge static">{reqCount}</b>}
               </button>
             ))}
+            <button className={active === 'locations' ? 'on' : ''} onClick={() => go('locations')}><Icon name="target" size={20} /><span>Locations</span></button>
             <button className={active === 'reports' ? 'on' : ''} onClick={() => go('reports')}><Icon name="download" size={20} /><span>Reports</span></button>
             <button className={active === 'settings' ? 'on' : ''} onClick={() => go('settings')}><Icon name="gear" size={20} /><span>Settings</span></button>
           </nav>

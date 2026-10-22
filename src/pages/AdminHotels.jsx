@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Counter, Icon } from '../ui'
-import { parseCSV, rowsToHotels } from '../utils'
+import { hotelPoint, parseCSV, rowsToHotels } from '../utils'
 import MapButton from '../components/MapPopup'
 import { STATUSES } from '../constants'
 import { KG_BANDS, REASONS, isCancelled, kgBandOf, kgOf, mainReason, readUpload, reasonsOf } from '../cancelled'
@@ -12,7 +12,7 @@ const isHotelish = (l) => l.type === 'hotel' || /hotel|restaurant/i.test(l.bizTy
 
 /** HR: import lapsed hotels, bulk-assign them to a caller + a field person, watch the win-back funnel. */
 export default function AdminHotels() {
-  const { allLeads, callers, importHotels, assignHotels, toast } = useApp()
+  const { allLeads, callers, importHotels, assignHotels, toast, go } = useApp()
   const [scope, setScope] = useState('unassigned')
   const [area, setArea] = useState('all')
   const [status, setStatus] = useState('all')
@@ -100,6 +100,13 @@ export default function AdminHotels() {
 
   return (
     <div className="page adm">
+      {(() => { const miss = hotels.filter((l) => !hotelPoint(l)).length; return hotels.length > 0 && (
+        <button type="button" className={`lc-banner ${miss ? '' : 'ok'}`} onClick={() => go('locations')}>
+          <em>📍</em>
+          <span><b>{miss ? `${miss} hotel${miss > 1 ? 's' : ''} need an exact map pin` : 'All hotels have exact pins'}</b><small>{miss ? 'Auto-find, paste a Google Maps link, or bulk upload' : 'Tap to review or change a pin'}</small></span>
+          <i>›</i>
+        </button>
+      ) })()}
       <div className="page-h"><h1>Lapsed hotels</h1></div>
       <div className="kpis">
         <div className="kpi"><em>🏨</em><b><Counter value={k.total} /></b><span>Hotels</span></div>
