@@ -143,3 +143,10 @@ Phones share `maps.app.goo.gl/...` links, which hide the coordinates. Paste one 
 - Every hotel card shows **why they stopped** and the last visit. Filter by reason with the chips.
 - **Closed hotels need no pin**: detected from the reason / last outcome, or tap *This hotel is closed*. They get their own tab and are left out of the % and Auto-find.
 - Colours: green = exact pin, orange = still area only, grey = closed. The top tiles count **Exact pin / Need pin / Closed**.
+
+## Field: date-wise visits, downloads, own quick remarks (r1022k)
+- **Script URL** updated in `src/constants.js`; phones on the earlier built-in link move to the new one automatically.
+- **Report tab → 📅 Date-wise visits**: every date in the chosen period is a row (visits, calls, hotels, avg interest). Tap a date to see each hotel, the remark and the stars. Each date has its own **PDF / Excel / CSV** download, and **✍️ Add remark** on any hotel.
+- **Periods**: Today, Yesterday, This week, Last 7 days, This month, Last 30 days, Pick dates. Downloads include a Date column plus a Day-wise table / sheet.
+- **Remark sheet**: type your own remark in the box, or tap chips. **＋ My quick remark** creates a chip of your own (for example Credit, Interested); typing a remark also offers **⭐ Keep as quick remark**. Your chips (orange ⭐) are saved permanently on the phone under your login; **✏️ Edit mine** deletes them.
+- No Apps Script change needed.

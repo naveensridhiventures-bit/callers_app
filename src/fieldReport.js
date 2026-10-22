@@ -1,7 +1,28 @@
-import { fmtDateTime, fmtDay } from './reports'
+import { fmtDateTime, fmtDay, rangeFor as baseRange, toInputDate } from './reports'
 import { nameOf } from './utils'
 
-export { RANGES, rangeFor, toInputDate } from './reports'
+export { toInputDate }
+
+/** periods a field person can pick: daily, weekly, monthly or her own dates */
+export const RANGES = [
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
+  { value: 'week', label: 'This week' },
+  { value: 'last7', label: 'Last 7 days' },
+  { value: 'month', label: 'This month' },
+  { value: 'last30', label: 'Last 30 days' },
+  { value: 'custom', label: 'Pick dates' },
+]
+export function rangeFor(kind, from, to) {
+  if (kind === 'last7' || kind === 'last30') {
+    const n = kind === 'last7' ? 6 : 29
+    const b = eod(new Date()), a = sod(new Date(Date.now() - n * 864e5))
+    const r = baseRange('custom', toInputDate(a), toInputDate(b))
+    return { ...r, kind, title: kind === 'last7' ? 'Weekly Report' : 'Monthly Report' }
+  }
+  return baseRange(kind, from, to)
+}
+const dkey = (d) => toInputDate(d)
 
 const SKIP = ['Checked In', 'Details Updated', 'Lead Added'] // automatic entries are not visits or calls
 const GOOD = ['Order Restarted', 'Will Order Soon', 'Interested', 'Meeting Fixed', 'Onboarded']
@@ -56,6 +77,18 @@ export function buildFieldReport({ leads, session, range, area = 'all', mode = '
     .sort((a, b) => a.nextFollowUp.localeCompare(b.nextFollowUp))
   const overdue = leads.filter((l) => open(l) && inArea(areaOfLead(l)) && new Date(l.nextFollowUp) < sod(new Date())).length
 
+  // day by day, oldest first: what was done on each date
+  const dm = new Map()
+  entries.forEach((e) => {
+    const k = dkey(e.at)
+    if (!dm.has(k)) dm.set(k, { key: k, date: sod(e.at), visits: 0, calls: 0, hotels: new Set(), ratings: [], entries: [] })
+    const r = dm.get(k)
+    if (e.mode === 'visit') r.visits++; else r.calls++
+    r.hotels.add(e.lead.id); if (e.rating) r.ratings.push(e.rating); r.entries.push(e)
+  })
+  const byDay = [...dm.values()].sort((a, b) => a.key.localeCompare(b.key))
+    .map((r) => ({ key: r.key, date: r.date, visits: r.visits, calls: r.calls, hotels: r.hotels.size, avg: avg(r.ratings), entries: r.entries }))
+
   return {
     meta: {
       title: 'Field Sales Report', city: 'Chennai', rangeLabel: range.label, single: range.single, from: range.from, to: range.to, nextDay: next,
@@ -66,7 +99,7 @@ export function buildFieldReport({ leads, session, range, area = 'all', mode = '
       areas: byArea.length, avgRating: avg(rated.map((e) => e.rating)), rated: rated.length, hot: good.length,
       orders: entries.filter((e) => e.outcome === 'Order Restarted').length, followups: followups.length, overdue,
     },
-    entries, byArea, followups,
+    entries, byArea, byDay, followups,
   }
 }
 
@@ -85,6 +118,11 @@ export function buildFieldWhatsApp(r, note = '') {
     L.push('━━━━━━━━━━━━━━━━')
     L.push('*🗺 Area-wise*')
     r.byArea.slice(0, 12).forEach((a) => L.push(`• *${a.area}* - ${a.visits} visit${a.visits === 1 ? '' : 's'}, ${a.calls} call${a.calls === 1 ? '' : 's'}${a.avg ? ` · ⭐ ${a.avg}` : ''}${a.orders ? ` · 🎉 ${a.orders}` : ''}`))
+  }
+  if (!m.single && r.byDay.length) {
+    L.push('━━━━━━━━━━━━━━━━')
+    L.push('*📅 Day-wise*')
+    r.byDay.forEach((d) => L.push(`• *${fmtDay(d.date)}* - ${d.visits} visit${d.visits === 1 ? '' : 's'}, ${d.calls} call${d.calls === 1 ? '' : 's'}${d.avg ? ` · ⭐ ${d.avg}` : ''}`))
   }
   const top = r.entries.filter((e) => e.rating >= 4 || GOOD.includes(e.outcome)).slice(-8)
   if (top.length) {

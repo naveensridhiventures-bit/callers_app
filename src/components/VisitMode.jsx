@@ -10,6 +10,7 @@ import { atDay, fmtKm, fmtWhen, fromLocalInput, km, mapDirections, mapEmbed, map
 import { OUTCOMES, QUICK_REMARKS } from '../constants'
 import { REASON, REASONS, kgOf, reasonsOf } from '../cancelled'
 import { WhyBox } from './ReasonChips'
+import { useMyRemarks } from '../myRemarks'
 
 const VISIT_OUTCOMES = ['Order Restarted', 'Will Order Soon', 'Interested', 'Revisit Needed', 'Visited', 'Owner Not Available', 'Hotel Closed', 'Not Interested']
 const NEEDS_RATING = ['Order Restarted', 'Will Order Soon', 'Interested', 'Revisit Needed', 'Visited']
@@ -144,6 +145,24 @@ export function RemarkSheet({ lead, reached, last, busy, onSave, onBack, quick =
   const [pinMe, setPinMe] = useState(true)
   const d = reached?.dist
   const remarks = QUICK_REMARKS.hotel
+  const my = useMyRemarks()
+  const [adding, setAdding] = useState(false)
+  const [newText, setNewText] = useState('')
+  const [editMine, setEditMine] = useState(false)
+  const tokens = remark.split(/\s*,\s*/).filter(Boolean)
+  const has = (r) => tokens.includes(r)
+  const allChips = [...my.mine, ...remarks.filter((r) => !my.mine.includes(r))]
+  const saveMine = (text) => {
+    const res = my.add(text)
+    if (res === 'added') { toast('Saved to your quick remarks ✓'); return true }
+    if (res === 'exists') toast('You already have this quick remark', 'warn')
+    return res === 'exists'
+  }
+  const addNew = () => {
+    const t = newText.trim()
+    if (!t) return toast('Type the quick remark first', 'warn')
+    if (saveMine(t)) { if (!has(t)) setRemark((cur) => (cur ? `${cur}, ${t}` : t)); setNewText(''); setAdding(false) }
+  }
   const toggleWhy = (id) => setWhy((w) => (w.includes(id) ? w.filter((x) => x !== id) : [...w, id]))
   const needsNext = FOLLOW_REQ.includes(outcome)
   const showNext = outcome && !NO_FOLLOW.includes(outcome)
@@ -153,7 +172,7 @@ export function RemarkSheet({ lead, reached, last, busy, onSave, onBack, quick =
     if (!manual) setRating(NO_RATING.includes(id) ? 0 : DEFAULT_RATING[id] || 0)
     setNext(suggestNext(id))
   }
-  const toggleRemark = (r) => setRemark((cur) => (cur.includes(r) ? cur.replace(r, '').replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,/g, ',') : cur ? `${cur}, ${r}` : r))
+  const toggleRemark = (r) => setRemark((cur) => { const t = cur.split(/\s*,\s*/).filter(Boolean); return (t.includes(r) ? t.filter((x) => x !== r) : [...t, r]).join(', ') })
   const save = () => {
     if (!outcome) return toast('Pick how the visit went first', 'warn')
     if (NEEDS_RATING.includes(outcome) && !rating) return toast('Give the interest a star rating ⭐', 'warn')
@@ -214,9 +233,29 @@ export function RemarkSheet({ lead, reached, last, busy, onSave, onBack, quick =
             <>
               <h4><i>{NO_RATING.includes(outcome) ? 2 : 3}</i> What did they say?</h4>
               <div className="chips small">
-                {remarks.map((r) => <button type="button" key={r} className={`chip ${remark.includes(r) ? 'on' : ''}`} onClick={() => toggleRemark(r)}>{r}</button>)}
+                {allChips.map((r) => {
+                  const own = my.mine.includes(r)
+                  return (
+                    <span key={r} className={`chip-wrap ${own ? 'own' : ''}`}>
+                      <button type="button" className={`chip ${has(r) ? 'on' : ''} ${own ? 'own' : ''}`} onClick={() => toggleRemark(r)}>{own ? '⭐ ' : ''}{r}</button>
+                      {own && editMine && <button type="button" className="chip-x" aria-label={`Delete ${r}`} onClick={() => my.remove(r)}>✕</button>}
+                    </span>
+                  )
+                })}
+                <button type="button" className="chip add" onClick={() => setAdding((v) => !v)}>＋ My quick remark</button>
+                {my.mine.length > 0 && <button type="button" className={`chip add ${editMine ? 'on' : ''}`} onClick={() => setEditMine((v) => !v)}>{editMine ? 'Done' : '✏️ Edit mine'}</button>}
               </div>
-              <textarea rows={2} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Owner or chef said… (tap a chip or type)" />
+              {adding && (
+                <div className="myrem-add">
+                  <input value={newText} maxLength={60} autoFocus onChange={(e) => setNewText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addNew() } }} placeholder="For example: Credit, Interested, Ask owner tomorrow" />
+                  <button type="button" className="btn3d" onClick={addNew}>Save</button>
+                </div>
+              )}
+              <label className="myrem-l">✍️ Write your own remark <small>what the owner or chef actually said</small></label>
+              <textarea rows={3} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Type the remark here, or tap the chips above…" />
+              {remark.trim() && !allChips.includes(remark.trim()) && remark.trim().length <= 60 && (
+                <button type="button" className="myrem-save" onClick={() => saveMine(remark)}>⭐ Keep “{remark.trim()}” as a quick remark</button>
+              )}
 
               <h4>Why did they stop? <small>· tap to confirm or change</small></h4>
               <div className="chips small">

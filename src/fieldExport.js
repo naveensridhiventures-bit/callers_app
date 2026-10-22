@@ -1,14 +1,15 @@
-import { fmtDateTime } from './reports'
+import { fmtDateTime, fmtDay } from './reports'
 import { toCSV } from './utils'
 
 const GREEN = [15, 107, 52], DARK = [6, 48, 26], LIME = [212, 232, 58], SOFT = [238, 244, 236], INK = [16, 36, 26], MUTED = [95, 116, 104]
 const clean = (s) => String(s ?? '').replace(/[–—]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[^\x20-\x7E -ÿ]/g, '').replace(/\s+/g, ' ').trim()
 const when = (iso) => (iso ? fmtDateTime(iso) : '')
+const tOnly = (iso) => (iso ? new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : '')
 const rows = (r) => r.entries.map((e) => ({
-  Time: when(e.at), Type: e.mode === 'visit' ? 'Visit' : 'Call', Hotel: e.name, Area: e.area, Phone: e.phone, Outcome: e.outcome,
+  Date: fmtDay(e.at), Time: tOnly(e.at), Type: e.mode === 'visit' ? 'Visit' : 'Call', Hotel: e.name, Area: e.area, Phone: e.phone, Outcome: e.outcome,
   Rating: e.rating || '', Remark: e.remark, 'Next follow-up': when(e.next),
 }))
-const COLS = ['Time', 'Type', 'Hotel', 'Area', 'Phone', 'Outcome', 'Rating', 'Remark', 'Next follow-up']
+const COLS = ['Date', 'Time', 'Type', 'Hotel', 'Area', 'Phone', 'Outcome', 'Rating', 'Remark', 'Next follow-up']
 
 export const makeFieldCSV = (r) => new Blob(['﻿' + toCSV(rows(r), COLS)], { type: 'text/csv;charset=utf-8' })
 
@@ -38,11 +39,17 @@ export async function makeFieldXLSX(r) {
   ].forEach((x) => { const row = sm.addRow(x); if (x.length) row.getCell(1).font = { bold: true } })
 
   const ws = wb.addWorksheet('Visits & Calls')
-  ws.columns = [{ header: 'Time', width: 18 }, { header: 'Type', width: 8 }, { header: 'Hotel', width: 28 }, { header: 'Area', width: 18 }, { header: 'Phone', width: 14 },
+  ws.columns = [{ header: 'Date', width: 18 }, { header: 'Time', width: 10 }, { header: 'Type', width: 8 }, { header: 'Hotel', width: 28 }, { header: 'Area', width: 18 }, { header: 'Phone', width: 14 },
     { header: 'Outcome', width: 20 }, { header: 'Rating (1-5)', width: 11 }, { header: 'Remark', width: 40 }, { header: 'Next follow-up', width: 18 }]
   rows(r).forEach((x) => ws.addRow(COLS.map((c) => x[c])))
   head(ws)
-  ws.autoFilter = { from: 'A1', to: 'I1' }
+  ws.autoFilter = { from: 'A1', to: 'J1' }
+
+  const wd = wb.addWorksheet('Day-wise')
+  wd.columns = [{ header: 'Date', width: 20 }, { header: 'Visits', width: 9 }, { header: 'Calls', width: 9 }, { header: 'Hotels', width: 9 }, { header: 'Avg rating', width: 11 }]
+  r.byDay.forEach((d) => wd.addRow([fmtDay(d.date), d.visits, d.calls, d.hotels, d.avg || '']))
+  if (r.byDay.length > 1) { const tr = wd.addRow(['Total', t.visits, t.calls, t.hotels, t.avgRating || '']); tr.font = { bold: true } }
+  head(wd)
 
   const wa = wb.addWorksheet('By Area')
   wa.columns = [{ header: 'Area', width: 24 }, { header: 'Visits', width: 9 }, { header: 'Calls', width: 9 }, { header: 'Hotels', width: 9 }, { header: 'Avg rating', width: 11 }, { header: 'Interested', width: 11 }, { header: 'Orders restarted', width: 16 }]
@@ -103,6 +110,14 @@ export async function makeFieldPDF(r) {
   }
   const table = (opts) => { autoTable(doc, { ...style, startY: y, ...opts }); y = doc.lastAutoTable.finalY + 8 }
 
+  if (r.byDay.length > 1) {
+    section('Day-wise')
+    table({
+      head: [['Date', 'Visits', 'Calls', 'Hotels', 'Avg rating']],
+      body: r.byDay.map((d) => [clean(fmtDay(d.date)), d.visits, d.calls, d.hotels, d.avg || '-']),
+      columnStyles: { 0: { fontStyle: 'bold' } },
+    })
+  }
   if (r.byArea.length) {
     section('Area-wise')
     table({

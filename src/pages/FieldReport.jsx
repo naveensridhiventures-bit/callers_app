@@ -4,6 +4,8 @@ import { useApp } from '../store'
 import { Counter, Icon, Segmented } from '../ui'
 import { StarsRO } from '../components/Stars'
 import { RANGES, buildFieldReport, buildFieldWhatsApp, fieldFileName, areaOfLead, rangeFor, toInputDate } from '../fieldReport'
+import { fmtDay } from '../reports'
+import { useQuickRemark } from '../components/QuickRemark'
 import { fmtTime } from '../utils'
 
 async function copyText(text) {
@@ -36,6 +38,8 @@ export default function FieldReport() {
   const [mode, setMode] = useState('all')
   const [busy, setBusy] = useState('')
   const [note, setNote] = useState('')
+  const [openDays, setOpenDays] = useState(null) // null = newest day open
+  const quick = useQuickRemark()
 
   const hotels = useMemo(() => leads.filter((l) => l.type === 'hotel'), [leads])
   const range = useMemo(() => ({ ...rangeFor(kind, from, to), title: 'Field Sales Report' }), [kind, from, to])
@@ -49,17 +53,25 @@ export default function FieldReport() {
   useEffect(() => { try { localStorage.setItem(key, note) } catch { /* ignore */ } }, [note, key])
 
   const copy = async () => toast((await copyText(text)) ? 'Report copied ✓ Paste it in the WhatsApp group' : 'Could not copy. Long-press the message to copy')
+  const build = async (type, rep) => {
+    const mod = await import('../fieldExport')
+    const blob = type === 'pdf' ? await mod.makeFieldPDF(rep) : type === 'xlsx' ? await mod.makeFieldXLSX(rep) : mod.makeFieldCSV(rep)
+    saveBlob(blob, fieldFileName(rep, type))
+    toast(`${type === 'pdf' ? 'PDF' : type === 'xlsx' ? 'Excel' : 'CSV'} downloaded ✓`)
+  }
   const make = async (type) => {
     setBusy(type)
-    try {
-      const mod = await import('../fieldExport')
-      const blob = type === 'pdf' ? await mod.makeFieldPDF(report) : type === 'xlsx' ? await mod.makeFieldXLSX(report) : mod.makeFieldCSV(report)
-      saveBlob(blob, fieldFileName(report, type))
-      toast(`${type === 'pdf' ? 'PDF' : type === 'xlsx' ? 'Excel' : 'CSV'} downloaded ✓`)
-    } catch (e) {
-      console.error(e); toast('Could not create the file. Try again', 'warn')
-    } finally { setBusy('') }
+    try { await build(type, report) } catch (e) { console.error(e); toast('Could not create the file. Try again', 'warn') } finally { setBusy('') }
   }
+  /** download just one date */
+  const makeDay = async (type, day) => {
+    setBusy(`${type}-${day.key}`)
+    try { await build(type, buildFieldReport({ leads: hotels, session, range: { ...rangeFor('custom', day.key, day.key), title: 'Daily Report' }, area, mode })) }
+    catch (e) { console.error(e); toast('Could not create the file. Try again', 'warn') } finally { setBusy('') }
+  }
+  const days = useMemo(() => [...report.byDay].reverse(), [report])
+  const isOpen = (k, i) => (openDays ? openDays.includes(k) : i === 0)
+  const toggleDay = (k, i) => setOpenDays((cur) => { const base = cur || (days[0] ? [days[0].key] : []); return base.includes(k) ? base.filter((x) => x !== k) : [...base, k] })
 
   const kpis = [['📍', t.visits, 'Visits'], ['📞', t.calls, 'Calls'], ['🏨', t.hotels, 'Hotels reached'], ['🔥', t.hot, 'Interested'], ['🎉', t.orders, 'Orders restarted'], ['🗺', t.areas, 'Areas covered']]
 
@@ -112,20 +124,49 @@ export default function FieldReport() {
         )}
 
         <section className="card form">
-          <h3>📋 Every visit and call</h3>
-          {report.entries.length === 0 && <p className="mini-note">Nothing logged for this period{area === 'all' ? '' : ` in ${area}`}.</p>}
-          {[...report.entries].reverse().map((e, i) => (
-            <div key={`${e.at}-${i}`} className="fh-row">
-              <i>{e.mode === 'visit' ? '📍' : '📞'}</i>
-              <div><b>{e.name}</b><small>{[e.area, e.outcome, fmtTime(e.at)].filter(Boolean).join(' · ')}</small>{e.remark && <small className="fr-remark">{e.remark}</small>}</div>
-              <StarsRO value={e.rating} size={12} />
-            </div>
-          ))}
+          <h3>📅 Date-wise visits</h3>
+          <p className="mini-note">Tap a date to see every hotel you visited that day. Download one date, or add a remark to any hotel.</p>
+          {days.length === 0 && <p className="mini-note">Nothing logged for this period{area === 'all' ? '' : ` in ${area}`}.</p>}
+          {days.map((d, di) => {
+            const open = isOpen(d.key, di)
+            return (
+              <div key={d.key} className={`dw-day ${open ? 'open' : ''}`}>
+                <button type="button" className="dw-head" onClick={() => toggleDay(d.key, di)} aria-expanded={open}>
+                  <span><b>{fmtDay(d.date)}</b><small>{d.visits} visit{d.visits === 1 ? '' : 's'} · {d.calls} call{d.calls === 1 ? '' : 's'} · {d.hotels} hotel{d.hotels === 1 ? '' : 's'}{d.avg ? ` · ⭐ ${d.avg}` : ''}</small></span>
+                  <em>{open ? '▾' : '▸'}</em>
+                </button>
+                {open && (
+                  <div className="dw-body">
+                    {[...d.entries].reverse().map((e, i) => (
+                      <div key={`${e.at}-${i}`} className="fh-row">
+                        <i>{e.mode === 'visit' ? '📍' : '📞'}</i>
+                        <div>
+                          <b>{e.name}</b>
+                          <small>{[e.area, e.outcome, fmtTime(e.at)].filter(Boolean).join(' · ')}</small>
+                          {e.remark ? <small className="fr-remark">“{e.remark}”</small> : <small className="fr-remark none">No remark</small>}
+                          <button type="button" className="dw-addr" onClick={() => quick.open(e.lead)}>✍️ Add remark</button>
+                        </div>
+                        <StarsRO value={e.rating} size={12} />
+                      </div>
+                    ))}
+                    <div className="dw-dl">
+                      <span>Download {fmtDay(d.date)}</span>
+                      {['pdf', 'xlsx', 'csv'].map((t) => (
+                        <button key={t} type="button" className="btn-soft sm" disabled={!!busy} onClick={() => makeDay(t, d)}>
+                          {busy === `${t}-${d.key}` ? <em className="spin" /> : <Icon name="download" size={14} />} {t === 'xlsx' ? 'Excel' : t.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </section>
 
         <section className="card form">
-          <h3>📄 Download the report</h3>
-          <p className="mini-note">The file follows the period, area and visits / calls choice above, so you can pick one area and download just that.</p>
+          <h3>📄 Download the whole period</h3>
+          <p className="mini-note">Pick Today, This week, This month or your own dates above. The file follows the period, area and visits / calls choice, with a day-wise table inside.</p>
           <div className="rc-actions">
             <motion.button whileTap={{ scale: 0.97, y: 3 }} className="btn3d" disabled={!!busy} onClick={() => make('pdf')}>
               {busy === 'pdf' ? <em className="spin" /> : <Icon name="download" />} {busy === 'pdf' ? 'Creating PDF…' : 'Download PDF'}
@@ -149,6 +190,7 @@ export default function FieldReport() {
           </div>
         </section>
       </div>
+      {quick.node}
     </div>
   )
 }
