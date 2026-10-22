@@ -150,3 +150,6 @@ Phones share `maps.app.goo.gl/...` links, which hide the coordinates. Paste one 
 - **Periods**: Today, Yesterday, This week, Last 7 days, This month, Last 30 days, Pick dates. Downloads include a Date column plus a Day-wise table / sheet.
 - **Remark sheet**: type your own remark in the box, or tap chips. **＋ My quick remark** creates a chip of your own (for example Credit, Interested); typing a remark also offers **⭐ Keep as quick remark**. Your chips (orange ⭐) are saved permanently on the phone under your login; **✏️ Edit mine** deletes them.
 - No Apps Script change needed.
+
+## r1022l
+- Script URL updated again in `src/constants.js`; the previous built-in link was added to `OLD_DEFAULT_URLS` so devices move over automatically.
