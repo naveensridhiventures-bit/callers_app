@@ -348,7 +348,7 @@ function mapCoords_(t) {
 
 function resolveMap_(url) {
   var u = (url.match(/https?:\/\/[^\s]+/) || [''])[0]
-  if (!/^https?:\/\/((maps\.app\.)?goo\.gl|(www\.|maps\.)?google\.[a-z.]+\/maps|maps\.google\.[a-z.]+|g\.co\/kgs)/i.test(u)) return { error: 'That is not a Google Maps link' }
+  if (!/^https?:\/\/((maps\.app\.)?goo\.gl|(www\.|maps\.)?google\.[a-z.]+\/maps|maps\.google\.[a-z.]+|g\.co\/kgs)/i.test(u)) return { ok: false, reason: 'That is not a Google Maps link' }
   var cur = u
   try {
     for (var i = 0; i < 7; i++) {
@@ -362,7 +362,7 @@ function resolveMap_(url) {
       break
     }
   } catch (e) {
-    return { error: 'Could not open the link: ' + String(e.message || e).slice(0, 120) }
+    return { ok: false, reason: /permission|authoriz/i.test(String(e.message || e)) ? 'The script needs permission to open links. In Apps Script run authorizeFetch once and accept, then Deploy a New version.' : 'Could not open the link: ' + String(e.message || e).slice(0, 120) }
   }
-  return { error: 'No coordinates found in that link. Open it in Google Maps and use Share, or paste the numbers.' }
+  return { ok: false, reason: 'No coordinates found in that link. Open it in Google Maps and use Share, or paste the numbers.' }
 }

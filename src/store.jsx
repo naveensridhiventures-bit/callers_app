@@ -190,11 +190,21 @@ export function AppProvider({ children }) {
 
   // asks the Sheet script to open a Google Maps short link and read its coordinates
   const resolveMapLink = useCallback(async (url) => {
-    const j = await post({ action: 'resolveMap', url })
-    if (!j) return { error: 'Could not reach the Sheet. Check the internet and try again.' }
-    if (j.lat == null) return { error: j.error || 'Update the Apps Script (paste the new Code.gs and deploy a New version) to read short links.' }
-    return { lat: Number(j.lat), lng: Number(j.lng) }
-  }, [post])
+    const { sheetUrl, token } = settingsRef.current
+    if (!sheetUrl) return { error: 'No Sheet link is set. Open More → Settings.' }
+    let j
+    try {
+      j = await rpc(sheetUrl, { action: 'resolveMap', url, token, auth: authPayload() })
+    } catch (e) {
+      const m = String(e.message || e)
+      if (navigator.onLine === false) return { error: 'You are offline. Connect to the internet and try again.' }
+      if (/json|unexpected|token/i.test(m)) return { error: 'The Sheet script returned an error page. In Apps Script run authorizeFetch once and accept the permission, then Deploy → New version.' }
+      return { error: `Could not reach the Sheet script (${m.slice(0, 50)}). In Deploy → Manage deployments, check Who has access = Anyone and that this link is the latest deployment.` }
+    }
+    if (j && j.lat != null) return { lat: Number(j.lat), lng: Number(j.lng) }
+    if (/login required/i.test(j?.error || '')) return { error: 'Please log in again, then retry.' }
+    return { error: j?.reason || j?.error || 'This Sheet script is the old version. Paste the new Code.gs, run authorizeFetch once, then Deploy → New version.' }
+  }, [])
 
   const syncNow = useCallback(async () => {
     const { sheetUrl, token } = settingsRef.current
