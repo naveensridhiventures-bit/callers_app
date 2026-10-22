@@ -160,3 +160,9 @@ Phones share `maps.app.goo.gl/...` links, which hide the coordinates. Paste one 
 - Tapping a locked Map / Navigate button opens a **Map is locked** sheet: call admin and ask them to add the map location, with steps, WhatsApp and Copy message. Locked hotels show no map or Navigate in the visit run either. Admin and caller accounts are not affected.
 - **Set the admin number**: `ADMIN_CONTACT` in `src/constants.js` (digits with country code, e.g. `'919876543210'`) adds a **Call admin** button and sends WhatsApp straight to admin. Leave `''` to let the person pick the contact in WhatsApp.
 - The map unlocks by itself after admin adds the pin in HR → Locations and the app syncs.
+
+## r1022n: admin edit / delete remarks, add area
+- **HR → Locations**: every hotel card has **✏️ Edit hotel · remark · area** (or **➕ Add area** when the area is empty) and **🗑 Delete** (asks to confirm).
+- The editor changes name, phone, contact, **area** (search the Chennai list or type a new one; a new area is added for everyone through the hotel), address and the **latest remark**, and lists **every visit / call remark with ✏️ edit and 🗑 delete**. Cards, reports and the field app recalculate the last remark, last outcome and rating from what is left.
+- **Lead screen → History** (admin, hotel leads) uses the same edit / delete per entry.
+- No Apps Script change needed: edits travel with the hotel. The Sheet's separate *Calls* tab keeps its original log rows; the app and reports read the hotel's own history.

@@ -4,6 +4,7 @@ import { useApp } from '../store'
 import { Avatar, Confetti, Icon, Segmented, Sheet, StatusPill } from '../ui'
 import MapButton from './MapPopup'
 import FieldStatusPick from './FieldStatusPick'
+import { HistoryEditor } from './AdminHotelEditor'
 import { RATING_LABEL, Stars, ratingToPriority } from './Stars'
 import { AUDIENCES, HOTEL_OUTCOMES, CLOSED, NUMBER_ONLY, NUMBER_OUTCOMES, OUTCOMES, PRIORITIES, QUICK_REMARKS, STATUSES } from '../constants'
 import {
@@ -332,8 +333,9 @@ export default function LeadDetail({ id, calling, preset, onClose }) {
 
           {tab === 'history' && (
             <motion.div key="hist" className="timeline" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-              {!lead.calls?.length && <p className="empty-s">No calls logged yet. Make the first call! 📞</p>}
-              {lead.calls?.map((c, i) => (
+              {isAdmin && isHotel && <HistoryEditor lead={lead} />}
+              {(!isAdmin || !isHotel) && !lead.calls?.length && <p className="empty-s">No calls logged yet. Make the first call! 📞</p>}
+              {!(isAdmin && isHotel) && lead.calls?.map((c, i) => (
                 <motion.div key={c.id} className="tl" initial={{ opacity: 0, x: -14 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}>
                   <i>{OUTCOMES.find((o) => o.id === c.outcome)?.icon || '📞'}</i>
                   <div>

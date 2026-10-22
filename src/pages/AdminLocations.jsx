@@ -4,6 +4,7 @@ import { useApp } from '../store'
 import { Icon } from '../ui'
 import { areaInfo } from '../chennai'
 import { WhyBox } from '../components/ReasonChips'
+import AdminHotelEditor from '../components/AdminHotelEditor'
 import { REASONS, reasonsOf } from '../cancelled'
 import { coordsFromLink, download, hotelPoint, km, fmtKm } from '../utils'
 
@@ -53,12 +54,14 @@ async function findPlaces(l) {
 }
 
 export default function AdminLocations() {
-  const { allLeads, saveLead, toast, go, resolveMapLink } = useApp()
+  const { allLeads, saveLead, toast, go, resolveMapLink, removeLead } = useApp()
   const hotels = useMemo(() => allLeads.filter((l) => l.type === 'hotel'), [allLeads])
   const [tab, setTab] = useState('missing')
   const [why, setWhy] = useState('all')
   const [area, setArea] = useState('all')
   const [q, setQ] = useState('')
+  const [editing, setEditing] = useState(null)
+  const [delId, setDelId] = useState(null)
   const [open, setOpen] = useState(null)
   const [paste, setPaste] = useState({})
   const [cands, setCands] = useState({})      // id -> [candidates]
@@ -286,6 +289,13 @@ export default function AdminLocations() {
               </>
             )}
 
+            <div className="lc-admin">
+              <button type="button" className={l.area ? '' : 'need'} onClick={() => setEditing(l)}>{l.area ? '✏️ Edit hotel · remark · area' : '➕ Add area · edit hotel'}</button>
+              {delId === l.id
+                ? <span className="lc-delq">Delete {l.name}? <button type="button" onClick={() => setDelId(null)}>Keep</button><button type="button" className="red" onClick={() => { removeLead(l.id); setDelId(null); toast(`🗑 ${l.name} deleted`) }}>Delete</button></span>
+                : <button type="button" className="red" onClick={() => setDelId(l.id)}>🗑 Delete</button>}
+            </div>
+
             {isOpen && (
               <div className="lc-edit">
                 {cs?.length > 0 && !cur && (
@@ -327,6 +337,7 @@ export default function AdminLocations() {
       })}
       {list.length > 60 && <p className="mini-note">Showing 60 of {list.length}. Filter by area to see the rest.</p>}
       {!list.length && <div className="card empty"><div className="empty-ico">{tab === 'missing' ? '🎉' : '🔎'}</div><h3>{tab === 'missing' ? 'Every open hotel here has an exact pin' : 'Nothing matches'}</h3></div>}
+      {editing && <AdminHotelEditor key={editing.id} lead={editing} onClose={() => setEditing(null)} />}
       <p className="mini-note">Auto-find uses OpenStreetMap, which does not list every small hotel. Always check the map before you accept. Google Maps itself cannot be scraped, so use the Google Maps button and paste the link (short links are read for you).</p>
     </div>
   )
