@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Avatar, Confetti, Icon, Segmented, Sheet, StatusPill } from '../ui'
 import MapButton from './MapPopup'
+import FieldStatusPick from './FieldStatusPick'
 import { RATING_LABEL, Stars, ratingToPriority } from './Stars'
 import { AUDIENCES, HOTEL_OUTCOMES, CLOSED, NUMBER_ONLY, NUMBER_OUTCOMES, OUTCOMES, PRIORITIES, QUICK_REMARKS, STATUSES } from '../constants'
 import {
@@ -276,11 +277,17 @@ export default function LeadDetail({ id, calling, preset, onClose }) {
                   <Segmented id="ld-pri" value={priority} onChange={setPriority}
                     options={PRIORITIES.map((p) => ({ value: p, label: p === 'Hot' ? '🔥' : p === 'Warm' ? '🌤' : '❄️' }))} />
                 </div>}
-                <label className="field"><span>Status</span>
-                  <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                    {STATUSES.map((s) => <option key={s.id}>{s.id}</option>)}
-                  </select>
-                </label>
+                {isField ? (
+                  <div className="field"><span>Status</span>
+                    <FieldStatusPick status={status} next={next} onChange={(st, nx) => { setStatus(st); setNext(nx) }} />
+                  </div>
+                ) : (
+                  <label className="field"><span>Status</span>
+                    <select value={status} onChange={(e) => setStatus(e.target.value)}>
+                      {STATUSES.map((s) => <option key={s.id}>{s.id}</option>)}
+                    </select>
+                  </label>
+                )}
               </div>}
 
               {!CLOSED.includes(status) && (

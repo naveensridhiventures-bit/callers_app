@@ -2,6 +2,10 @@
 export const DEFAULT_SHEET_URL =
   'https://script.google.com/macros/s/AKfycbzZ5m2BZ8wD5d1fnh1TOY98YKcGOY5QtMirbZ9NAvnHuF_XbVQHe7Fn9wAnv5u8YS3T/exec'
 
+// HR / admin number that field people call to get a hotel's map location added.
+// Digits only with country code, e.g. '919876543210'. Leave '' to hide the Call button.
+export const ADMIN_CONTACT = ''
+
 // earlier built-in links: devices that saved one of these are moved to the current link automatically
 export const OLD_DEFAULT_URLS = [
   'https://script.google.com/macros/s/AKfycbzP01iZgNUVdxx9K5o4BZYq_JtGk79vNi4yOijERShqBmsfjqqd4vSv8vfD1o9E7kI/exec',

@@ -5,6 +5,7 @@ import { Icon, Segmented, Sheet } from '../ui'
 import AreaPicker from './AreaPicker'
 import ChennaiAreaPicker from './ChennaiAreaPicker'
 import { lastKnown } from '../useGeo'
+import FieldStatusPick from './FieldStatusPick'
 import { AREAS, BIZ_TYPES, INVEST, PRIORITIES, SOURCES, STATUSES, STOP_REASONS } from '../constants'
 import { coordsFromLink, cleanPhone, fromLocalInput, toLocalInput, atDay, addHours } from '../utils'
 
@@ -167,11 +168,17 @@ export default function LeadForm({ lead, preset, onClose }) {
         )}
 
         {editing && !isNum && (
-          <label className="field"><span>Status</span>
-            <select value={f.status} onChange={(e) => set('status', e.target.value)}>
-              {STATUSES.map((s) => <option key={s.id}>{s.id}</option>)}
-            </select>
-          </label>
+          isField ? (
+            <div className="field"><span>Status</span>
+              <FieldStatusPick status={f.status} next={f.nextFollowUp} onChange={(st, nx) => { set('status', st); set('nextFollowUp', nx) }} />
+            </div>
+          ) : (
+            <label className="field"><span>Status</span>
+              <select value={f.status} onChange={(e) => set('status', e.target.value)}>
+                {STATUSES.map((s) => <option key={s.id}>{s.id}</option>)}
+              </select>
+            </label>
+          )
         )}
 
         <label className="field"><span>Follow-up (optional)</span>

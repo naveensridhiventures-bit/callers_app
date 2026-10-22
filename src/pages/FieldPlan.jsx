@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Icon } from '../ui'
@@ -11,9 +11,10 @@ import { pointOf } from '../chennai'
 import { areaOfLead, buildFieldReport, rangeFor } from '../fieldReport'
 import { bucket, km } from '../utils'
 import { CLOSED } from '../constants'
+import { FIELD_STATUS, fieldStatusOf, hasPin } from '../fieldStatus'
 
 const PAGE = 25
-const TABS = [['todo', 'To visit'], ['due', 'Follow-up due'], ['done', 'Done today']]
+const TABS = [['todo', 'To visit'], ['due', 'Follow-up due'], ['done', 'Done today'], ['all', 'All hotels']]
 
 /**
  * PLAN: the field person's first screen of work.
@@ -29,6 +30,8 @@ export default function FieldPlan() {
   const [area, setArea] = useState(() => { const a = localStorage.getItem('sridhi.planArea') || 'all'; localStorage.removeItem('sridhi.planArea'); return a })
   const [reason, setReason] = useState('all')
   const [band, setBand] = useState('all')
+  const [pinF, setPinF] = useState('all') // all | pin | lock
+  const [stF, setStF] = useState('all') // all | visited | followup | notint | todo
   const [q, setQ] = useState('')
   const [sort, setSort] = useState('near')
   const [more, setMore] = useState(false)
@@ -47,13 +50,14 @@ export default function FieldPlan() {
       todo: open.filter((l) => !visitedIds.has(l.id)),
       due: open.filter((l) => ['overdue', 'today'].includes(bucket(l)) && !visitedIds.has(l.id)),
       done: hotels.filter((l) => visitedIds.has(l.id)),
+      all: hotels,
     }
   }, [hotels, visitedIds])
   const base = lists[tab]
 
   const rows = useMemo(() => base.map((l) => {
     const p = pointOf(l)
-    return { l, ids: reasonsOf(l.stopReason), kg: kgOf(l), band: kgBandOf(l), area: areaOfLead(l), d: me && p ? km(me, p) : null }
+    return { l, ids: reasonsOf(l.stopReason), kg: kgOf(l), band: kgBandOf(l), area: areaOfLead(l), d: me && p ? km(me, p) : null, pin: hasPin(l), fs: fieldStatusOf(l).id }
   }), [base, me])
 
   // every filter's counts ignore itself, so the number on a chip always matches what you will see
@@ -62,6 +66,8 @@ export default function FieldPlan() {
     return (skip === 'reason' || reason === 'all' || r.ids.includes(reason))
       && (skip === 'area' || area === 'all' || r.area === area)
       && (skip === 'band' || band === 'all' || r.band === band)
+      && (skip === 'pin' || pinF === 'all' || (pinF === 'pin') === r.pin)
+      && (skip === 'st' || stF === 'all' || r.fs === stF)
       && (!s || `${r.l.name} ${r.l.phone} ${r.l.area} ${r.l.stopReason}`.toLowerCase().includes(s))
   }
   const list = useMemo(() => {
@@ -71,8 +77,9 @@ export default function FieldPlan() {
       area: (a, b) => a.area.localeCompare(b.area) || b.kg - a.kg,
       follow: (a, b) => (a.l.nextFollowUp || '9').localeCompare(b.l.nextFollowUp || '9') || b.kg - a.kg,
     }
-    return rows.filter((r) => pass(r)).sort(by[sort])
-  }, [rows, reason, area, band, q, sort]) // eslint-disable-line react-hooks/exhaustive-deps
+    const sorted = rows.filter((r) => pass(r)).sort(by[sort])
+    return [...sorted.filter((r) => r.pin), ...sorted.filter((r) => !r.pin)]
+  }, [rows, reason, area, band, pinF, stF, q, sort]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const facet = (skip, keyFn) => {
     const m = new Map()
@@ -84,11 +91,14 @@ export default function FieldPlan() {
   const reasonF = facet('reason', (r) => r.ids)
   const areaF = facet('area', (r) => r.area)
   const bandF = facet('band', (r) => r.band)
+  const pinFc = facet('pin', (r) => (r.pin ? 'pin' : 'lock'))
+  const stFc = facet('st', (r) => r.fs)
+  const nPin = list.filter((r) => r.pin).length, nLock = list.length - nPin
   const areas = [...areaF].sort((a, b) => b[1].n - a[1].n || a[0].localeCompare(b[0]))
   const nArea = [...areaF.values()].reduce((n, o) => n + o.n, 0)
 
-  const filterCount = (reason !== 'all') + (area !== 'all') + (band !== 'all') + (q.trim() ? 1 : 0)
-  const reset = () => { setReason('all'); setArea('all'); setBand('all'); setQ(''); setShown(PAGE) }
+  const filterCount = (reason !== 'all') + (area !== 'all') + (band !== 'all') + (pinF !== 'all') + (stF !== 'all') + (q.trim() ? 1 : 0)
+  const reset = () => { setReason('all'); setArea('all'); setBand('all'); setPinF('all'); setStF('all'); setQ(''); setShown(PAGE) }
   const f = (fn) => (v) => { fn(v); setShown(PAGE) }
   const changeTab = (t) => { setTab(t); setSel(new Set()); setShown(PAGE) }
 
@@ -129,6 +139,15 @@ export default function FieldPlan() {
         ))}
       </div>
 
+      <div className="fp-map" aria-label="Map status">
+        <button type="button" className={`ok ${pinF === 'pin' ? 'on' : ''}`} onClick={() => f(setPinF)(pinF === 'pin' ? 'all' : 'pin')}>
+          <i>📍</i><b>{pinFc.get('pin')?.n || 0}</b><span>Map ready<small>navigate exactly</small></span>
+        </button>
+        <button type="button" className={`lock ${pinF === 'lock' ? 'on' : ''}`} onClick={() => f(setPinF)(pinF === 'lock' ? 'all' : 'lock')}>
+          <i>🔒</i><b>{pinFc.get('lock')?.n || 0}</b><span>Map locked<small>admin must add map</small></span>
+        </button>
+      </div>
+
       <div className="search">
         <Icon name="search" size={18} />
         <input value={q} onChange={(e) => f(setQ)(e.target.value)} placeholder="Search hotel, phone, area, reason…" />
@@ -138,6 +157,13 @@ export default function FieldPlan() {
       <div className="chips scroll">
         <button className={`chip ${area === 'all' ? 'on' : ''}`} onClick={() => f(setArea)('all')}>🗺 All areas <b>{nArea}</b></button>
         {areas.map(([a, o]) => <button key={a} className={`chip ${area === a ? 'on' : ''}`} onClick={() => f(setArea)(area === a ? 'all' : a)}>{a} <b>{o.n}</b></button>)}
+      </div>
+
+      <div className="chips scroll fp-st">
+        <button className={`chip ${stF === 'all' ? 'on' : ''}`} onClick={() => f(setStF)('all')}>All status</button>
+        {FIELD_STATUS.map((o) => (
+          <button key={o.id} className={`chip st-${o.id} ${stF === o.id ? 'on' : ''}`} onClick={() => f(setStF)(stF === o.id ? 'all' : o.id)}>{o.icon} {o.label} <b>{stFc.get(o.id)?.n || 0}</b></button>
+        ))}
       </div>
 
       <button type="button" className={`fp-more ${more ? 'open' : ''}`} onClick={() => setMore((m) => !m)}>
@@ -177,8 +203,17 @@ export default function FieldPlan() {
         {filterCount > 0 && <button className="btn-soft sm" onClick={reset}>Clear filters</button>}
       </div>
 
-      {list.slice(0, shown).map((r) => (
-        <HotelRow key={r.l.id} lead={r.l} d={r.d} selected={sel.has(r.l.id)} onToggle={tab === 'done' ? undefined : () => toggle(r.l.id)} onRemark={quick.open} onVisit={tab === 'done' ? undefined : (l) => setRun({ stops: [l], label: l.name })} />
+      {list.slice(0, shown).map((r, i, arr) => (
+        <Fragment key={r.l.id}>
+          {(i === 0 || arr[i - 1].pin !== r.pin) && (
+            <div className={`fp-sec ${r.pin ? 'ok' : 'lock'}`}>
+              <i>{r.pin ? '📍' : '🔒'}</i>
+              <div><b>{r.pin ? 'Map ready' : 'Waiting for map location'} <em>{r.pin ? nPin : nLock}</em></b>
+                <small>{r.pin ? 'Exact location added by admin. Tap Map to navigate.' : 'Admin has not added the map yet. Tap Map on a card to see how to get it.'}</small></div>
+            </div>
+          )}
+          <HotelRow lead={r.l} d={r.d} selected={sel.has(r.l.id)} onToggle={tab === 'done' ? undefined : () => toggle(r.l.id)} onRemark={quick.open} onVisit={tab === 'done' ? undefined : (l) => setRun({ stops: [l], label: l.name })} />
+        </Fragment>
       ))}
       {list.length > shown && <button className="btn-soft wide" onClick={() => setShown((n) => n + PAGE)}>Show {Math.min(PAGE, list.length - shown)} more</button>}
       {!list.length && (

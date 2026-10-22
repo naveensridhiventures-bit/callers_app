@@ -153,3 +153,10 @@ Phones share `maps.app.goo.gl/...` links, which hide the coordinates. Paste one 
 
 ## r1022l
 - Script URL updated again in `src/constants.js`; the previous built-in link was added to `OLD_DEFAULT_URLS` so devices move over automatically.
+
+## r1022m: field statuses + locked maps
+- **Field statuses** (derived from what happened, no extra typing): ✅ Visited, ⏰ Need follow-up (a return date is set), 🚫 Not interested (also closed hotels), ○ To visit. Shown on every hotel card; Plan has status chips with counts and a new **All hotels** tab. In the lead screens a field person picks one of the three with big buttons, which sets the stored status and the follow-up date together.
+- **Map ready vs locked**: a hotel counts as map-ready only with an exact pin (lat/lng or a full Google Maps link). Plan lists **📍 Map ready** hotels first, then a **🔒 Waiting for map location** section with greyed, locked cards. The two tiles at the top filter the list.
+- Tapping a locked Map / Navigate button opens a **Map is locked** sheet: call admin and ask them to add the map location, with steps, WhatsApp and Copy message. Locked hotels show no map or Navigate in the visit run either. Admin and caller accounts are not affected.
+- **Set the admin number**: `ADMIN_CONTACT` in `src/constants.js` (digits with country code, e.g. `'919876543210'`) adds a **Call admin** button and sends WhatsApp straight to admin. Leave `''` to let the person pick the contact in WhatsApp.
+- The map unlocks by itself after admin adds the pin in HR → Locations and the app syncs.

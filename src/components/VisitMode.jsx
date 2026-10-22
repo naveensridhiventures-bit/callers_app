@@ -11,6 +11,8 @@ import { OUTCOMES, QUICK_REMARKS } from '../constants'
 import { REASON, REASONS, kgOf, reasonsOf } from '../cancelled'
 import { WhyBox } from './ReasonChips'
 import { useMyRemarks } from '../myRemarks'
+import MapButton from './MapPopup'
+import { hasPin } from '../fieldStatus'
 
 const VISIT_OUTCOMES = ['Order Restarted', 'Will Order Soon', 'Interested', 'Revisit Needed', 'Visited', 'Owner Not Available', 'Hotel Closed', 'Not Interested']
 const NEEDS_RATING = ['Order Restarted', 'Will Order Soon', 'Interested', 'Revisit Needed', 'Visited']
@@ -76,6 +78,7 @@ function StopCard({ lead, me, index, total }) {
   const pt = pointOf(lead)
   const d = me && pt ? km(me, pt) : null
   const here = d != null && !pt.approx && d < 0.15
+  const locked = !hasPin(lead)
   const share = `📍 ${lead.name}\n${[lead.address, lead.area].filter(Boolean).join(', ')}\n${mapOpen(lead)}`
 
   return (
@@ -96,16 +99,29 @@ function StopCard({ lead, me, index, total }) {
         <WhyBox lead={lead} />
       </div>
 
-      <div className="vm-map">
-        <iframe title={`Map of ${lead.name}`} src={mapEmbed(lead)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-        <div className="mp-offline">Map needs internet. Use <b>Navigate</b> below.</div>
-      </div>
+      {locked ? (
+        <div className="vm-map lockedmap">
+          <div className="lm-c">
+            <span className="lm-ico">🔒</span>
+            <b>Map locked</b>
+            <small>Admin has not added this hotel’s exact map yet.</small>
+            <MapButton lead={lead} className="lm-btn" lockedLabel=" Call admin to add the map">Unlock</MapButton>
+          </div>
+        </div>
+      ) : (
+        <div className="vm-map">
+          <iframe title={`Map of ${lead.name}`} src={mapEmbed(lead)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+          <div className="mp-offline">Map needs internet. Use <b>Navigate</b> below.</div>
+        </div>
+      )}
 
       <div className="vm-actions first">
-        <motion.a whileTap={{ scale: 0.95 }} className="go" href={mapDirections(lead)} target="_blank" rel="noreferrer"><Icon name="send" /> Navigate</motion.a>
+        {locked
+          ? <MapButton lead={lead} className="go" lockedLabel=" Navigate locked"><Icon name="send" /> Navigate</MapButton>
+          : <motion.a whileTap={{ scale: 0.95 }} className="go" href={mapDirections(lead)} target="_blank" rel="noreferrer"><Icon name="send" /> Navigate</motion.a>}
         {lead.phone && <motion.a whileTap={{ scale: 0.95 }} href={telHref(lead.phone)}><Icon name="phone" /> Call</motion.a>}
         {lead.phone && <motion.a whileTap={{ scale: 0.95 }} href={waHref(lead.phone)} target="_blank" rel="noreferrer"><Icon name="whatsapp" /> Chat</motion.a>}
-        <motion.a whileTap={{ scale: 0.95 }} href={`https://wa.me/?text=${encodeURIComponent(share)}`} target="_blank" rel="noreferrer"><Icon name="copy" /> Share pin</motion.a>
+        {!locked && <motion.a whileTap={{ scale: 0.95 }} href={`https://wa.me/?text=${encodeURIComponent(share)}`} target="_blank" rel="noreferrer"><Icon name="copy" /> Share pin</motion.a>}
       </div>
 
       <div className="vm-info">
@@ -316,7 +332,7 @@ function NextSheet({ kind, options, fromLabel, waiting, onAccept, onFinish }) {
               <i>{i + 1}</i>
               <span className="vm-opt-t">
                 <b>{o.l.name}</b>
-                <small>{[o.l.area, o.pt?.approx ? '≈ area centre' : ''].filter(Boolean).join(' · ')}</small>
+                <small>{[o.l.area, hasPin(o.l) ? '📍 map ready' : '🔒 map locked'].filter(Boolean).join(' · ')}</small>
               </span>
               <span className="vm-opt-d">
                 {o.d != null ? <><b>{fmtKm(o.d)}</b><small>~{fmtEta(etaMin(o.d))}</small></> : <small>no pin</small>}
@@ -327,10 +343,19 @@ function NextSheet({ kind, options, fromLabel, waiting, onAccept, onFinish }) {
         </div>
         {waiting > 0 && <small className="vm-more dark">+ {waiting} more hotel{waiting > 1 ? 's' : ''} after these</small>}
         <div className="vm-sheet-act">
-          <a className="btn3d big lime" href={mapDirections(pick.l)} target="_blank" rel="noreferrer" onClick={() => onAccept(pick.l.id)}>
-            <Icon name="send" /> Accept &amp; navigate
-          </a>
-          <button type="button" className="btn-soft" onClick={() => onAccept(pick.l.id)}>Accept, I will navigate myself</button>
+          {hasPin(pick.l) ? (
+            <>
+              <a className="btn3d big lime" href={mapDirections(pick.l)} target="_blank" rel="noreferrer" onClick={() => onAccept(pick.l.id)}>
+                <Icon name="send" /> Accept &amp; navigate
+              </a>
+              <button type="button" className="btn-soft" onClick={() => onAccept(pick.l.id)}>Accept, I will navigate myself</button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="btn3d big lime" onClick={() => onAccept(pick.l.id)}>Accept this hotel</button>
+              <p className="vm-lockline">🔒 Map locked for {pick.l.name}. Ask admin to add its map location.</p>
+            </>
+          )}
           <button type="button" className="vm-skip" onClick={onFinish}>Not now · finish for today</button>
         </div>
       </motion.div>
