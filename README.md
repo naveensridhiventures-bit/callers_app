@@ -111,3 +111,16 @@ A person added as **Field** in HR Control gets a Chennai-only app: no Bengaluru 
 - **Report**: pick a day, week, month or custom dates, filter by area and visits / calls, then download **PDF, Excel or CSV**, or copy the WhatsApp message.
 
 Paste the new `apps-script/Code.gs` (version 6) and deploy a new version so ratings, visit/call type and area are saved to the Sheet.
+
+## Field flow redesign (r1022a)
+
+Built the way a field salesperson works through a day: **Follow up → Plan → Visit → Remark → Report**.
+
+- **Today**: one "Do this next" card (follow-ups due first, then hotels waiting), KPIs, a 4-step guide and tap-to-plan area chips.
+- **Plan** (tab): list switch *To visit / Follow-up due / Done today*, search, area chips, filters (why they stopped, KG, sort), tick hotels or **Select all**, then the pinned **Start visit** bar. Nothing ticked = visit everything shown, nearest first.
+- **Hotel card**: why they stopped (colour tags + original reason), KG, distance, last outcome and remark, follow-up date, and one-tap **Map / Call / Remark / Visit**.
+- **Visit card**: *Why they stopped* panel sits right above the map (with a "How to win them back" tip). **I have reached** is pinned at the bottom of the screen. The location popup shows the same panel.
+- **Remark sheet**: numbered steps (How did it go → Interest → What they said and why they stopped → When to go back). Outcomes that need a revisit require a follow-up date. **Save** stays pinned.
+- **Follow-ups** (tab): Overdue / Today / Upcoming, visit all due hotels in one run, move a follow-up (+1h, 5 PM, tomorrow, next week).
+- The floating + button is removed for field users (it covered cards); use **+ Hotel** in the Plan header.
+No Apps Script change needed.

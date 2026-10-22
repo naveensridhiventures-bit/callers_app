@@ -20,6 +20,8 @@ import AdminTeam from './pages/AdminTeam'
 import ReportCenter from './pages/ReportCenter'
 import Hubs from './pages/Hubs'
 import FieldHome from './pages/FieldHome'
+import FieldPlan from './pages/FieldPlan'
+import FieldFollow from './pages/FieldFollow'
 import FieldReport from './pages/FieldReport'
 import AdminHotels from './pages/AdminHotels'
 import GmailGate from './components/GmailGate'
@@ -31,7 +33,7 @@ const AdminAssign = () => <div className="page adm"><div className="page-h"><h1>
 const AdminRequests = () => <div className="page adm"><div className="page-h"><h1>Delete requests</h1></div><Requests /></div>
 const AdminSettings = () => <div className="page adm"><div className="page-h"><h1>Settings</h1></div><Settings /></div>
 const AdminReports = () => <div className="page adm"><div className="page-h"><h1>Reports</h1></div><ReportCenter admin /></div>
-const FIELD_PAGES = { home: FieldHome, leads: Leads, follow: Followups, report: FieldReport, more: More }
+const FIELD_PAGES = { home: FieldHome, plan: FieldPlan, leads: FieldPlan, follow: FieldFollow, report: FieldReport, more: More }
 const ADMIN_PAGES = { hotels: AdminHotels, hubs: Hubs, reports: AdminReports, overview: AdminOverview, team: AdminTeam, assign: AdminAssign, leads: Leads, requests: AdminRequests, settings: AdminSettings }
 const ADMIN_TABS = [
   { id: 'overview', icon: 'chart', label: 'Progress' },
@@ -44,7 +46,7 @@ const ADMIN_TABS = [
 ]
 const FIELD_TABS = [
   { id: 'home', icon: 'home', label: 'Today' },
-  { id: 'leads', icon: 'pin', label: 'Hotels' },
+  { id: 'plan', icon: 'pin', label: 'Plan' },
   { id: 'follow', icon: 'calendar', label: 'Follow-ups' },
   { id: 'report', icon: 'download', label: 'Report' },
 ]
@@ -98,7 +100,7 @@ function Shell() {
   if (gate !== 'ready') return <Login />
 
   const reqCount = isAdmin ? allLeads.filter((l) => l.delReq === '1').length : 0
-  const due = leads.filter((l) => ['overdue', 'today'].includes(bucket(l))).length
+  const due = leads.filter((l) => ['overdue', 'today'].includes(bucket(l)) && (!isField || l.type === 'hotel')).length
   const formLead = sheet?.type === 'form' && sheet.leadId ? allLeads.find((l) => l.id === sheet.leadId) || null : null
 
   const tabs = isAdmin ? ADMIN_TABS : isField ? FIELD_TABS : TABS
@@ -143,7 +145,7 @@ function Shell() {
         </motion.main>
       </div>
 
-      {(!isAdmin ? page !== 'call' : active === 'leads') && (
+      {(!isAdmin ? page !== 'call' && !isField : active === 'leads') && (
         <motion.button className="fab-add" initial={{ scale: 0 }} animate={{ scale: 1 }} whileTap={{ scale: 0.88 }} whileHover={{ scale: 1.08, rotate: 90 }} onClick={() => openForm()} aria-label="Add lead">
           <Icon name="plus" size={26} />
         </motion.button>

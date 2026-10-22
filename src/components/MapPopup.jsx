@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Icon, Sheet } from '../ui'
+import { WhyBox } from './ReasonChips'
 import { fmtKm, hotelPoint, km, mapDirections, mapEmbed, mapOpen, telHref } from '../utils'
 
 /** Attractive hotel-location popup: live map, address, contact, navigate, share and GPS check-in. */
@@ -38,11 +39,11 @@ export function MapPopup({ lead, onClose }) {
           <h2>{lead.name}</h2>
           <p>{[lead.area, 'Chennai'].filter(Boolean).join(' · ')}</p>
           <div className="mp-chips">
-            {lead.lastOrderOn && <span>🕒 Last order {lead.lastOrderOn}</span>}
-            {lead.stopReason && <span>⚠️ {lead.stopReason}</span>}
-            {lead.monthlyQty && <span>📦 {lead.monthlyQty} {lead.source === 'Cancelled order' ? 'kg' : '/mo before'}</span>}
+            {lead.monthlyQty && lead.source !== 'Cancelled order' && <span>📦 {lead.monthlyQty} /mo before</span>}
           </div>
         </div>
+
+        {lead.type === 'hotel' && <div className="mp-why"><WhyBox lead={lead} /></div>}
 
         <div className="mp-map">
           <iframe title="Hotel location" src={mapEmbed(lead)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />

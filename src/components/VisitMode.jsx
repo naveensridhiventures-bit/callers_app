@@ -9,7 +9,7 @@ import { etaMin, fmtEta, planRoute, pointOf } from '../chennai'
 import { atDay, fmtKm, fmtWhen, fromLocalInput, km, mapDirections, mapEmbed, mapOpen, nameOf, telHref, toLocalInput, waHref } from '../utils'
 import { OUTCOMES, QUICK_REMARKS } from '../constants'
 import { REASON, REASONS, kgOf, reasonsOf } from '../cancelled'
-import { KgBadge, ReasonChips } from './ReasonChips'
+import { WhyBox } from './ReasonChips'
 
 const VISIT_OUTCOMES = ['Order Restarted', 'Will Order Soon', 'Interested', 'Revisit Needed', 'Visited', 'Owner Not Available', 'Hotel Closed', 'Not Interested']
 const NEEDS_RATING = ['Order Restarted', 'Will Order Soon', 'Interested', 'Revisit Needed', 'Visited']
@@ -70,8 +70,8 @@ function nearest(origin, pool, exclude = []) {
     .sort((a, b) => (a.d ?? 1e9) - (b.d ?? 1e9))
 }
 
-/* ---------- one hotel: where to go, and the "I have reached" button ---------- */
-function StopCard({ lead, me, index, total, onReach, onSkip, canSkip, busy }) {
+/* ---------- one hotel: why they stopped, the map, then the way there ---------- */
+function StopCard({ lead, me, index, total }) {
   const pt = pointOf(lead)
   const d = me && pt ? km(me, pt) : null
   const here = d != null && !pt.approx && d < 0.15
@@ -79,25 +79,25 @@ function StopCard({ lead, me, index, total, onReach, onSkip, canSkip, busy }) {
 
   return (
     <motion.div className="vm-card" initial={{ opacity: 0, x: 70, scale: 0.97 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, x: -70, scale: 0.97 }} transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
-      <div className="vm-head">
+      <div className="vm-head2">
         <span className="vm-step">Stop {index} of {total}</span>
-        <span className="vm-pin">🏨</span>
         <h2>{lead.name}</h2>
-        <p>{[lead.area, 'Chennai'].filter(Boolean).join(' · ')}</p>
+        <p>📍 {[lead.area, 'Chennai'].filter(Boolean).join(' · ')}</p>
         <div className="vm-chips">
           {d != null && <span className="big">📏 {fmtKm(d)} · ~{fmtEta(etaMin(d))}</span>}
           {pt?.approx && <span>≈ area centre</span>}
           {lead.rating > 0 && <span><StarsRO value={Number(lead.rating)} size={11} /> last visit</span>}
-          {lead.lastOrderOn && <span>🕒 Last order {lead.lastOrderOn}</span>}
+          {here && <span className="here">📍 You are here</span>}
         </div>
-        {(lead.stopReason || kgOf(lead) > 0) && (
-          <div className="vm-why">
-            <ReasonChips text={lead.stopReason} big />
-            <KgBadge lead={lead} big />
-            {lead.stopReason && <p>“{lead.stopReason}”</p>}
-          </div>
-        )}
-        {here && <motion.div className="vm-here" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>📍 You are here</motion.div>}
+      </div>
+
+      <div className="vm-sec">
+        <WhyBox lead={lead} />
+      </div>
+
+      <div className="vm-map">
+        <iframe title={`Map of ${lead.name}`} src={mapEmbed(lead)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+        <div className="mp-offline">Map needs internet. Use <b>Navigate</b> below.</div>
       </div>
 
       <div className="vm-actions first">
@@ -107,31 +107,29 @@ function StopCard({ lead, me, index, total, onReach, onSkip, canSkip, busy }) {
         <motion.a whileTap={{ scale: 0.95 }} href={`https://wa.me/?text=${encodeURIComponent(share)}`} target="_blank" rel="noreferrer"><Icon name="copy" /> Share pin</motion.a>
       </div>
 
-      <div className="vm-map">
-        <iframe title={`Map of ${lead.name}`} src={mapEmbed(lead)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-        <div className="mp-offline">Map needs internet. Use <b>Navigate</b> above.</div>
-      </div>
-
       <div className="vm-info">
         {(lead.address || lead.area) && <p><Icon name="pin" size={16} /> {lead.address || lead.area}</p>}
         {(lead.contactName || lead.phone) && (
           <p><Icon name="phone" size={16} /> {lead.contactName ? <b>{lead.contactName}</b> : null}{lead.contactName && lead.phone ? ' · ' : ''}{lead.phone ? <a href={telHref(lead.phone)}>{lead.phone}</a> : null}</p>
         )}
         {!lead.phone && !lead.contactName && <p className="mp-muted">No contact number yet. Ask for the owner or manager and add it with Edit.</p>}
-        {lead.lastRemark && <p className="mp-muted">Last time: {lead.lastOutcome ? `${lead.lastOutcome} · ` : ''}{lead.lastRemark}</p>}
+        {lead.lastRemark && <p className="mp-muted"><b>Last time:</b> {lead.lastOutcome ? `${lead.lastOutcome} · ` : ''}{lead.lastRemark}</p>}
       </div>
-
-      <button type="button" className={`vm-reach ${here ? 'done' : ''}`} disabled={busy} onClick={onReach}>
-        {here ? '📍 You are here · log the visit' : '📍 I have reached · log the visit'}
-      </button>
-      <p className="vm-reach-hint">The remark pop-up opens by itself when you arrive.</p>
-      {canSkip && <button type="button" className="vm-skip" disabled={busy} onClick={onSkip}>Skip this hotel for now</button>}
     </motion.div>
   )
 }
 
-/* ---------- pop-up 1: the remark, as soon as the person has reached ---------- */
-export function RemarkSheet({ lead, reached, last, busy, onSave, onBack, quick = false }) {
+/* ---------- the remark: outcome, what they said, why they stopped, next follow-up ---------- */
+const OUTCOME_GROUPS = [
+  ['👍 Good news', ['Order Restarted', 'Will Order Soon', 'Interested']],
+  ['🔁 Needs another visit', ['Revisit Needed', 'Visited', 'Owner Not Available']],
+  ['🚫 Closed for now', ['Hotel Closed', 'Not Interested']],
+]
+const FOLLOW_REQ = ['Will Order Soon', 'Interested', 'Revisit Needed', 'Visited', 'Owner Not Available']
+const NO_FOLLOW = ['Order Restarted', 'Hotel Closed', 'Not Interested']
+const NO_RATING = ['Hotel Closed', 'Owner Not Available']
+
+export function RemarkSheet({ lead, reached, last, busy, onSave, onBack, quick = false, fixed = false }) {
   const { toast } = useApp()
   const [outcome, setOutcome] = useState('')
   const [rating, setRating] = useState(0)
@@ -145,61 +143,76 @@ export function RemarkSheet({ lead, reached, last, busy, onSave, onBack, quick =
   const d = reached?.dist
   const remarks = QUICK_REMARKS.hotel
   const toggleWhy = (id) => setWhy((w) => (w.includes(id) ? w.filter((x) => x !== id) : [...w, id]))
+  const needsNext = FOLLOW_REQ.includes(outcome)
+  const showNext = outcome && !NO_FOLLOW.includes(outcome)
 
   const pick = (id) => {
     setOutcome(id)
-    if (!manual) setRating(DEFAULT_RATING[id] || 0)
+    if (!manual) setRating(NO_RATING.includes(id) ? 0 : DEFAULT_RATING[id] || 0)
     setNext(suggestNext(id))
   }
   const toggleRemark = (r) => setRemark((cur) => (cur.includes(r) ? cur.replace(r, '').replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,/g, ',') : cur ? `${cur}, ${r}` : r))
   const save = () => {
     if (!outcome) return toast('Pick how the visit went first', 'warn')
     if (NEEDS_RATING.includes(outcome) && !rating) return toast('Give the interest a star rating ⭐', 'warn')
+    if (needsNext && !next) return toast('Pick a follow-up so this hotel is not forgotten ⏰', 'warn')
     const note = [d != null && pt && !pt.approx ? `Checked in ${fmtKm(d)} from the pin` : '', remark.trim()].filter(Boolean).join(' · ')
-    // what the person learned: the reason they cancelled, and the KG they will order now
+    // what the person learned: the reason they stopped, and the KG they will order now
     const extra = {}
     if (why.join() !== startReasons.join()) extra.stopReason = why.map((id) => REASON[id].label).join(' / ')
     if (['Order Restarted', 'Will Order Soon'].includes(outcome) && kg && Number(kg) !== kgOf(lead)) extra.monthlyQty = String(Number(kg))
     onSave({ outcome, rating, remark: note, next, extra: Object.keys(extra).length ? extra : undefined })
   }
+  const summary = outcome ? [outcome, rating && !NO_RATING.includes(outcome) ? `${rating}★` : '', showNext ? (next ? fmtWhen(next) : 'no follow-up') : ''].filter(Boolean).join(' · ') : 'Step 1: pick how it went'
 
   return (
-    <motion.div className="vm-sheet-ov" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <motion.div className="vm-sheet" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 280, damping: 30 }}>
+    <motion.div className={`vm-sheet-ov ${fixed ? 'fixed' : ''}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={fixed ? onBack : undefined}>
+      <motion.div className="vm-sheet" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 280, damping: 30 }} onClick={(e) => e.stopPropagation()}>
         <div className="vm-grab" />
         <div className="vm-sheet-h">
           <div>
-            <b>{quick ? `✍️ Remark · ${lead.name}` : `✅ Reached ${lead.name}`}</b>
+            <b>{quick ? `✍️ ${lead.name}` : `✅ Reached ${lead.name}`}</b>
             <small>{quick ? 'Saved with today’s date and your name' : d != null && pt && !pt.approx ? (d < 0.25 ? `Checked in · at the hotel (${fmtKm(d)})` : `Checked in · ${fmtKm(d)} from the pin`) : 'Checked in'}</small>
           </div>
-          <button type="button" className="vm-sheet-x" onClick={onBack} aria-label="Back"><Icon name="x" /></button>
+          <button type="button" className="vm-sheet-x" onClick={onBack} aria-label="Close"><Icon name="x" /></button>
         </div>
 
         <div className="vm-form">
-          <h4>How did the visit go?</h4>
-          <div className="vm-outcomes">
-            {VISIT_OUTCOMES.map((id) => (
-              <motion.button type="button" key={id} whileTap={{ scale: 0.93 }} className={outcome === id ? 'on' : ''} onClick={() => pick(id)}>
-                <em>{OUTCOMES.find((o) => o.id === id)?.icon}</em>{id}
-              </motion.button>
-            ))}
-          </div>
+          <WhyBox lead={lead} compact tip={false} />
 
-          <h4>Interest rating</h4>
-          <div className="vm-rate">
-            <Stars value={rating} size={40} onChange={(n) => { setRating(n); setManual(true) }} />
-            <span className={`vm-rate-l r${rating}`}>{RATING_LABEL[rating]}</span>
-          </div>
+          <h4><i>1</i> How did it go?</h4>
+          {OUTCOME_GROUPS.map(([g, ids]) => (
+            <div key={g} className="vm-og">
+              <small>{g}</small>
+              <div className="vm-outcomes">
+                {ids.map((id) => (
+                  <motion.button type="button" key={id} whileTap={{ scale: 0.93 }} className={outcome === id ? 'on' : ''} onClick={() => pick(id)}>
+                    <em>{OUTCOMES.find((o) => o.id === id)?.icon}</em>{id}
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+          ))}
 
-          <h4>Remark</h4>
-          <div className="chips small">
-            {remarks.map((r) => <button type="button" key={r} className={`chip ${remark.includes(r) ? 'on' : ''}`} onClick={() => toggleRemark(r)}>{r}</button>)}
-          </div>
-          <textarea rows={2} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="What did the owner or chef say?" />
-
-          {(lead.source === 'Cancelled order' || lead.stopReason) && (
+          {outcome && !NO_RATING.includes(outcome) && (
             <>
-              <h4>Why did they cancel? <small>· update if you learned more</small></h4>
+              <h4><i>2</i> How interested are they?</h4>
+              <div className="vm-rate">
+                <Stars value={rating} size={40} onChange={(n) => { setRating(n); setManual(true) }} />
+                <span className={`vm-rate-l r${rating}`}>{RATING_LABEL[rating]}</span>
+              </div>
+            </>
+          )}
+
+          {outcome && (
+            <>
+              <h4><i>{NO_RATING.includes(outcome) ? 2 : 3}</i> What did they say?</h4>
+              <div className="chips small">
+                {remarks.map((r) => <button type="button" key={r} className={`chip ${remark.includes(r) ? 'on' : ''}`} onClick={() => toggleRemark(r)}>{r}</button>)}
+              </div>
+              <textarea rows={2} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Owner or chef said… (tap a chip or type)" />
+
+              <h4>Why did they stop? <small>· tap to confirm or change</small></h4>
               <div className="chips small">
                 {REASONS.filter((r) => r.id !== 'none' && r.id !== 'other').map((r) => (
                   <button type="button" key={r.id} className={`chip ${why.includes(r.id) ? 'on' : ''}`} onClick={() => toggleWhy(r.id)}>{r.icon} {r.label}</button>
@@ -207,6 +220,7 @@ export function RemarkSheet({ lead, reached, last, busy, onSave, onBack, quick =
               </div>
             </>
           )}
+
           {['Order Restarted', 'Will Order Soon'].includes(outcome) && (
             <>
               <h4>KG they will order</h4>
@@ -214,19 +228,23 @@ export function RemarkSheet({ lead, reached, last, busy, onSave, onBack, quick =
             </>
           )}
 
-          {!['Order Restarted', 'Hotel Closed', 'Not Interested'].includes(outcome) && (
+          {showNext && (
             <>
-              <h4>Next follow-up {next && <small>· {fmtWhen(next)}</small>}</h4>
+              <h4><i>{NO_RATING.includes(outcome) ? 3 : 4}</i> When will you go back? {next && <small>· {fmtWhen(next)}</small>}</h4>
               <div className="chips small">
                 {QUICK_NEXT.map(([l, f]) => <button type="button" key={l} className="chip" onClick={() => setNext(f())}>{l}</button>)}
-                <button type="button" className={`chip ${!next ? 'on' : ''}`} onClick={() => setNext('')}>None</button>
+                {!needsNext && <button type="button" className={`chip ${!next ? 'on' : ''}`} onClick={() => setNext('')}>None</button>}
               </div>
               <input type="datetime-local" value={toLocalInput(next)} onChange={(e) => setNext(fromLocalInput(e.target.value))} />
+              {needsNext && !next && <p className="vm-warn">⏰ Pick a date so this hotel shows up in Follow-ups.</p>}
             </>
           )}
+        </div>
 
+        <div className="vm-sheet-foot">
+          <small>{summary}</small>
           <motion.button whileTap={{ scale: 0.97, y: 3 }} className={`btn3d big ${outcome ? '' : 'off'}`} disabled={busy} onClick={save}>
-            <Icon name="check" /> {outcome ? (quick ? 'Save remark' : last ? 'Save & finish' : 'Save & see next hotel') : 'Pick what happened ↑'}
+            <Icon name="check" /> {outcome ? (quick ? 'Save remark' : last ? 'Save & finish' : 'Save & next hotel') : 'Pick what happened ↑'}
           </motion.button>
         </div>
       </motion.div>
@@ -388,6 +406,7 @@ export default function VisitMode({ stops, areaLabel, onClose }) {
   }
 
   const doneN = log.length
+  const hereNow = !!(cur && me && (() => { const q = pointOf(cur); return q && !q.approx && km(me, q) < 0.15 })())
   const rated = log.filter((x) => x.rating)
   const avg = rated.length ? Math.round((rated.reduce((n, x) => n + x.rating, 0) / rated.length) * 10) / 10 : 0
 
@@ -400,7 +419,7 @@ export default function VisitMode({ stops, areaLabel, onClose }) {
       </header>
       <div className="vm-bar"><motion.i animate={{ width: `${Math.min(100, (doneN / Math.max(1, total)) * 100)}%` }} /></div>
 
-      <div className="vm-body">
+      <div className={`vm-body ${phase === 'go' && cur && !done ? 'has-foot' : ''}`}>
         {party > 0 && <Confetti key={party} />}
         {!ready && (
           <div className="vm-wait">
@@ -417,7 +436,7 @@ export default function VisitMode({ stops, areaLabel, onClose }) {
             {phase === 'pick' && <div className="vm-note soft">Choose where to go next in the pop-up 👇</div>}
             {phase !== 'pick' && cur && (
               <AnimatePresence mode="wait">
-                <StopCard key={cur.id} lead={cur} me={me} index={doneN + 1} total={total} busy={busy} canSkip={pool.length > 0} onReach={reachNow} onSkip={onSkip} />
+                <StopCard key={cur.id} lead={cur} me={me} index={doneN + 1} total={total} />
               </AnimatePresence>
             )}
             {nextUp.length > 0 && (
@@ -450,6 +469,15 @@ export default function VisitMode({ stops, areaLabel, onClose }) {
           </motion.div>
         )}
       </div>
+
+      {ready && !done && phase === 'go' && cur && (
+        <div className="vm-foot">
+          <button type="button" className={`vm-reach2 ${hereNow ? 'done' : ''}`} disabled={busy} onClick={reachNow}>
+            {hereNow ? '📍 You are here · log the visit' : '📍 I have reached · log the visit'}
+          </button>
+          {pool.length > 0 && <button type="button" className="vm-skip2" disabled={busy} onClick={onSkip}>Skip</button>}
+        </div>
+      )}
 
       <AnimatePresence>
         {ready && !done && phase === 'pick' && options.length > 0 && (

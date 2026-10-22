@@ -1,82 +1,86 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Counter, Icon } from '../ui'
-import LeadCard from '../components/LeadCard'
-import VisitMode from '../components/VisitMode'
-import CancelBoard from '../components/CancelBoard'
-import { isCancelled } from '../cancelled'
 import { StarsRO } from '../components/Stars'
-import { useGeo } from '../useGeo'
-import { pointOf } from '../chennai'
 import { areaOfLead, buildFieldReport, rangeFor } from '../fieldReport'
-import { bucket, fmtKm, fmtTime, greeting, km } from '../utils'
+import { bucket, fmtTime, greeting } from '../utils'
 import { CLOSED } from '../constants'
+import { kgOf } from '../cancelled'
 
-/** Field person's day: today's visits and calls, pick a Chennai area, then visit its hotels one by one. */
+/** TODAY: where you stand in the day, and the one thing to do next. */
 export default function FieldHome() {
-  const { leads, session, go, toast } = useApp()
-  const { me, state, locate } = useGeo()
-  const [area, setArea] = useState('all')
-  const [run, setRun] = useState(null) // { stops, label } while a visit run is open
-
+  const { leads, session, go } = useApp()
   const hotels = useMemo(() => leads.filter((l) => l.type === 'hotel'), [leads])
   const today = useMemo(() => buildFieldReport({ leads: hotels, session, range: rangeFor('today') }), [hotels, session])
   const visitedIds = useMemo(() => new Set(today.entries.filter((e) => e.mode === 'visit').map((e) => e.lead.id)), [today])
-
-  // hotels still to visit: not closed, not already visited today
-  const pendingAll = useMemo(() => hotels.filter((l) => !CLOSED.includes(l.status) && !visitedIds.has(l.id)), [hotels, visitedIds])
-  const cancelled = useMemo(() => pendingAll.filter(isCancelled), [pendingAll])
-  const pending = useMemo(() => pendingAll.filter((l) => !isCancelled(l)), [pendingAll])
-  const cancelledToday = useMemo(() => hotels.filter((l) => isCancelled(l) && visitedIds.has(l.id)).length, [hotels, visitedIds])
+  const pending = useMemo(() => hotels.filter((l) => !CLOSED.includes(l.status) && !visitedIds.has(l.id)), [hotels, visitedIds])
+  const due = useMemo(() => pending.filter((l) => ['overdue', 'today'].includes(bucket(l))), [pending])
+  const upcoming = hotels.filter((l) => bucket(l) === 'upcoming').length
   const areas = useMemo(() => {
     const m = new Map()
     pending.forEach((l) => m.set(areaOfLead(l), (m.get(areaOfLead(l)) || 0) + 1))
-    return [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    return [...m].sort((a, b) => b[1] - a[1]).slice(0, 6)
   }, [pending])
-  const inArea = useMemo(() => (area === 'all' ? pending : pending.filter((l) => areaOfLead(l) === area)), [pending, area])
-  const list = useMemo(() => {
-    const rows = inArea.map((l) => { const p = pointOf(l); return { l, d: me && p ? km(me, p) : null } })
-    return rows.sort((a, b) => (a.d ?? 1e9) - (b.d ?? 1e9) || (a.l.nextFollowUp || '9').localeCompare(b.l.nextFollowUp || '9') || (a.l.name || '').localeCompare(b.l.name || ''))
-  }, [inArea, me])
-
-  const due = hotels.filter((l) => ['overdue', 'today'].includes(bucket(l))).length
   const t = today.totals
-  const label = area === 'all' ? 'all areas' : area
+  const pendingKg = pending.reduce((n, l) => n + kgOf(l), 0)
+  const withNext = today.entries.filter((e) => e.next).length
 
-  const near = async () => {
-    const p = await locate()
-    toast(p ? 'Sorted by distance from you 📍' : 'Allow location access to sort by distance', p ? 'ok' : 'warn')
-  }
+  const openPlan = (a) => { if (a) localStorage.setItem('sridhi.planArea', a); go('plan') }
+
+  // the one thing to do next
+  const next = !hotels.length
+    ? { ico: '🏨', t: 'No hotels assigned yet', s: 'HR will assign hotels to you. You can also add one you find on the road.', btn: '+ Add a hotel', fn: () => go('plan') }
+    : due.length
+    ? { ico: '⏰', t: `${due.length} follow-up${due.length > 1 ? 's are' : ' is'} due`, s: 'Go back to these first. They already showed interest.', btn: 'Open follow-ups', fn: () => go('follow') }
+    : pending.length
+    ? { ico: '🗺', t: `${pending.length} hotel${pending.length > 1 ? 's' : ''} waiting`, s: `${pendingKg ? `${pendingKg} kg to win back. ` : ''}Choose an area, tick the hotels and start.`, btn: 'Plan my visits', fn: () => go('plan') }
+    : { ico: '🎉', t: 'All hotels visited today', s: 'Great day. Send your report to the team.', btn: 'Open report', fn: () => go('report') }
+
+  const steps = [
+    { n: 1, ico: '🗺', t: 'Plan', s: `${pending.length} to visit`, hint: 'Filter and tick hotels', fn: () => go('plan') },
+    { n: 2, ico: '📍', t: 'Visit', s: `${t.visits} today`, hint: 'Map shows why they stopped', fn: () => go('plan') },
+    { n: 3, ico: '✍️', t: 'Remark', s: `${t.visits + t.calls} saved`, hint: 'Outcome, stars, note', fn: () => go('plan') },
+    { n: 4, ico: '⏰', t: 'Follow up', s: `${due.length} due · ${upcoming} later`, hint: 'Never lose a hotel', fn: () => go('follow') },
+  ]
 
   return (
     <div className="page">
       <div className="page-h"><h1>{greeting()}, {session.name.split(' ')[0]} 👋</h1></div>
 
+      <motion.section className="card fh-next" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        <span className="fh-next-i">{next.ico}</span>
+        <div><small>Do this next</small><h3>{next.t}</h3><p>{next.s}</p></div>
+        <button className="btn3d lime big" onClick={next.fn}>{next.btn} <Icon name="chevron" size={18} /></button>
+      </motion.section>
+
       <div className="kpis">
         <div className="kpi"><em>📍</em><b><Counter value={t.visits} /></b><span>Visits today</span></div>
         <div className="kpi"><em>📞</em><b><Counter value={t.calls} /></b><span>Calls today</span></div>
-        <div className="kpi"><em>⭐</em><b>{t.avgRating ? t.avgRating : '-'}</b><span>Avg interest today</span></div>
-        <div className="kpi"><em>⏰</em><b><Counter value={due} /></b><span>Follow-ups due</span></div>
+        <div className="kpi"><em>⭐</em><b>{t.avgRating ? t.avgRating : '-'}</b><span>Avg interest</span></div>
+        <div className="kpi"><em>⏰</em><b><Counter value={due.length} /></b><span>Follow-ups due</span></div>
       </div>
 
-      {cancelled.length > 0 && <CancelBoard hotels={cancelled} doneToday={cancelledToday} me={me} locating={state === 'loading'} onNear={near} onStart={(stops, label) => setRun({ stops, label })} />}
-
-      {pending.length > 0 && (
-      <section className="card fh-pick">
-        <div className="fh-pick-h">
-          <h3>🗺 Choose an area in Chennai</h3>
-          <button className="btn-soft sm" disabled={state === 'loading'} onClick={near}>{state === 'loading' ? 'Finding…' : me ? '📍 Refresh' : '📍 Nearest first'}</button>
+      <section className="card fh-steps">
+        <h3>Your day, step by step</h3>
+        <div className="fh-steps-g">
+          {steps.map((s) => (
+            <button key={s.n} className="fh-step" onClick={s.fn}>
+              <i>{s.n}</i><em>{s.ico}</em><b>{s.t}</b><span>{s.s}</span><small>{s.hint}</small>
+            </button>
+          ))}
         </div>
-        <div className="chips scroll">
-          <button className={`chip ${area === 'all' ? 'on' : ''}`} onClick={() => setArea('all')}>All areas <b>{pending.length}</b></button>
-          {areas.map(([a, n]) => <button key={a} className={`chip ${area === a ? 'on' : ''}`} onClick={() => setArea(a)}>{a} <b>{n}</b></button>)}
-        </div>
-        <motion.button whileTap={{ scale: 0.97, y: 3 }} className="btn3d lime big fh-go" disabled={!inArea.length} onClick={() => setRun({ stops: inArea, label })}>
-          <Icon name="play" size={20} /> {inArea.length ? `Start visits · ${label} (${inArea.length} hotel${inArea.length > 1 ? 's' : ''})` : 'No hotels left to visit here'}
-        </motion.button>
-        <p className="mini-note">You get the nearest hotels to where you stand to accept, then a remark pop-up when you reach, then the next nearest from that hotel.</p>
+        {withNext < t.visits && t.visits > 0 && <p className="mini-note warn">⚠️ {t.visits - withNext} visit{t.visits - withNext > 1 ? 's' : ''} today have no next follow-up set.</p>}
       </section>
+
+      {areas.length > 0 && (
+        <section className="card">
+          <h3 className="fh-h">Where the hotels are</h3>
+          <div className="chips scroll">
+            {areas.map(([a, n]) => <button key={a} className="chip" onClick={() => openPlan(a)}>{a} <b>{n}</b></button>)}
+            <button className="chip on" onClick={() => openPlan()}>All areas →</button>
+          </div>
+        </section>
       )}
 
       {(t.visits > 0 || t.calls > 0) && (
@@ -95,21 +99,6 @@ export default function FieldHome() {
           {today.entries.length > 6 && <small className="vm-more">+ {today.entries.length - 6} more in the report</small>}
         </section>
       )}
-
-      {pending.length > 0 && <div className="sel-bar">
-        <b>{inArea.length} to visit{area === 'all' ? '' : ` in ${area}`}</b>
-        {due > 0 && <button className="btn-soft sm" onClick={() => go('follow')}>⏰ Due ({due})</button>}
-      </div>}
-      {pending.length > 0 && list.map(({ l, d }, i) => (
-        <div key={l.id}>
-          {d != null && <small className="dist">{fmtKm(d)} away</small>}
-          <LeadCard lead={l} i={i} />
-        </div>
-      ))}
-      {!hotels.length && <div className="card empty"><div className="empty-ico">🏨</div><h3>No hotels assigned yet</h3><p>HR will assign hotels to you, or tap + to add one you find on the road.</p></div>}
-      {hotels.length > 0 && !pendingAll.length && <div className="card empty"><div className="empty-ico">🎉</div><h3>All hotels visited today</h3><p>Great day. Download your report from the Report tab.</p></div>}
-
-      {run && <VisitMode stops={run.stops} areaLabel={run.label === 'all areas' ? 'All areas' : run.label} onClose={() => setRun(null)} />}
     </div>
   )
 }
