@@ -47,7 +47,7 @@ async function findPlaces(l) {
 }
 
 export default function AdminLocations() {
-  const { allLeads, saveLead, toast, go } = useApp()
+  const { allLeads, saveLead, toast, go, resolveMapLink } = useApp()
   const hotels = useMemo(() => allLeads.filter((l) => l.type === 'hotel'), [allLeads])
   const [tab, setTab] = useState('missing')
   const [area, setArea] = useState('all')
@@ -59,7 +59,24 @@ export default function AdminLocations() {
   const [batch, setBatch] = useState(null)    // { done, total } while auto-finding all
   const [bulk, setBulk] = useState('')
   const [showBulk, setShowBulk] = useState(false)
+  const [bulkBusy, setBulkBusy] = useState(false)
   const stop = useRef(false)
+  const [reading, setReading] = useState(null) // id whose short link is being read
+  const isShort = (t) => /(maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs)\/\S{4,}/i.test(String(t))
+
+  // short link -> coordinates (the Sheet script follows the redirect), then fill the box
+  const readLink = async (l, text) => {
+    setReading(l.id)
+    const r = await resolveMapLink(text)
+    setReading(null)
+    if (r.error) return toast(r.error, 'warn')
+    setPaste((p) => ({ ...p, [l.id]: `${r.lat.toFixed(6)}, ${r.lng.toFixed(6)}` }))
+    toast('📍 Location read from the link. Check the map, then save.')
+  }
+  const onType = (l, v) => {
+    setPaste((p) => ({ ...p, [l.id]: v }))
+    if (isShort(v) && !parsePin(v) && reading !== l.id && /\S{25,}/.test(v)) readLink(l, v)
+  }
 
   const withPin = hotels.filter(hasPin).length
   const pct = hotels.length ? Math.round((withPin / hotels.length) * 100) : 0
@@ -116,11 +133,11 @@ export default function AdminLocations() {
   const safe = hotels.filter((l) => !hasPin(l) && cands[l.id]?.[0] && cands[l.id][0].d != null && cands[l.id][0].d <= 4)
   const acceptSafe = () => { safe.forEach((l) => pin(l, cands[l.id][0])); toast(`✅ ${safe.length} pins saved`) }
 
-  const applyBulk = () => {
+  const applyBulk = async () => {
     let ok = 0, bad = 0
     const byName = new Map(hotels.map((l) => [l.name.trim().toLowerCase(), l]))
     const byPhone = new Map(hotels.filter((l) => l.phone).map((l) => [String(l.phone).replace(/\D/g, '').slice(-10), l]))
-    bulk.split('\n').map((r) => r.trim()).filter(Boolean).forEach((row) => {
+    for (const row of bulk.split('\n').map((r) => r.trim()).filter(Boolean)) {
       // first cell = hotel name or phone (may be quoted); everything after it = the location
       let first, tail
       const qm = row.match(/^"((?:[^"]|"")*)"\s*[,\t]?(.*)$/)
@@ -128,9 +145,10 @@ export default function AdminLocations() {
       first = first.trim()
       const l = byName.get(first.toLowerCase()) || (first.replace(/\D/g, '').length >= 10 ? byPhone.get(first.replace(/\D/g, '').slice(-10)) : null)
       const m = tail.match(/(-?\d{1,2}\.\d{3,})\s*[,;\s]\s*(-?\d{2,3}\.\d{3,})/)
-      const p = parsePin(tail.replace(/^"|"$/g, '')) || coordsFromLink(tail) || (m ? { lat: +m[1], lng: +m[2] } : null)
+      let p = parsePin(tail.replace(/^"|"$/g, '')) || coordsFromLink(tail) || (m ? { lat: +m[1], lng: +m[2] } : null)
+      if (!p && l && isShort(tail)) { const r = await resolveMapLink(tail); if (!r.error) p = r }
       if (l && p && inChennai(p)) { pin(l, p); ok++ } else bad++
-    })
+    }
     toast(`${ok} pin${ok === 1 ? '' : 's'} saved${bad ? ` · ${bad} row${bad === 1 ? '' : 's'} not matched` : ''}`, bad && !ok ? 'warn' : 'ok')
     if (ok) setBulk('')
   }
@@ -173,9 +191,9 @@ export default function AdminLocations() {
       {showBulk && (
         <motion.section className="card lc-bulk" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
           <h4>Bulk paste</h4>
-          <p>One hotel per line: <b>hotel name or phone, then lat,lng or a Google Maps link</b>. Works straight from Excel or the missing-list CSV.</p>
+          <p>One hotel per line: <b>hotel name or phone, then lat,lng or a Google Maps link</b>. Short Google links are read automatically. Works straight from Excel or the missing-list CSV.</p>
           <textarea rows={5} value={bulk} onChange={(e) => setBulk(e.target.value)} placeholder={'Hotel Saravana, 13.1143, 80.1548\n9876543210, https://www.google.com/maps/@13.04,80.23,17z'} />
-          <button className="btn3d" disabled={!bulk.trim()} onClick={applyBulk}>Save pins</button>
+          <button className="btn3d" disabled={!bulk.trim() || bulkBusy} onClick={async () => { setBulkBusy(true); await applyBulk(); setBulkBusy(false) }}>{bulkBusy ? 'Reading links…' : 'Save pins'}</button>
         </motion.section>
       )}
 
@@ -238,10 +256,13 @@ export default function AdminLocations() {
                 <ol className="lc-how">
                   <li>Tap <b>Google Maps ↗</b> and open the right hotel.</li>
                   <li>Tap <b>Share → Copy link</b> (or long-press the pin and copy the numbers).</li>
-                  <li>Paste it here. The map below confirms it before you save.</li>
+                  <li>Paste it here. Short links are read for you and the map confirms it before you save.</li>
                 </ol>
-                <input value={typed} onChange={(e) => setPaste((p) => ({ ...p, [l.id]: e.target.value }))} placeholder="Paste Google Maps link or 13.0418, 80.2341" />
-                {typed && !parsed && <p className="lc-err">{/goo\.gl|maps\.app/i.test(typed) ? 'Short links hide the coordinates. Open the link in a browser, then copy the long address from the top bar. Or paste the numbers.' : 'No coordinates found in this text.'}</p>}
+                <input value={typed} onChange={(e) => onType(l, e.target.value)} placeholder="Paste the Google Maps link (short links work) or 13.0418, 80.2341" />
+                {reading === l.id && <p className="lc-ok">⏳ Reading the link…</p>}
+                {typed && !parsed && reading !== l.id && (isShort(typed)
+                  ? <button type="button" className="btn-soft" onClick={() => readLink(l, typed)}>🔗 Read this short link</button>
+                  : <p className="lc-err">No coordinates found in this text.</p>)}
                 {parsed && (
                   <>
                     <div className="lc-prev"><iframe title="Preview" src={embed(parsed)} loading="lazy" /></div>
@@ -257,7 +278,7 @@ export default function AdminLocations() {
       })}
       {list.length > 60 && <p className="mini-note">Showing 60 of {list.length}. Filter by area to see the rest.</p>}
       {!list.length && <div className="card empty"><div className="empty-ico">{tab === 'missing' ? '🎉' : '🔎'}</div><h3>{tab === 'missing' ? 'Every hotel here has an exact pin' : 'Nothing matches'}</h3></div>}
-      <p className="mini-note">Auto-find uses OpenStreetMap, which does not list every small hotel. Always check the map before you accept. Google Maps cannot be scraped from the app, so use the Google Maps button and paste the link.</p>
+      <p className="mini-note">Auto-find uses OpenStreetMap, which does not list every small hotel. Always check the map before you accept. Google Maps itself cannot be scraped, so use the Google Maps button and paste the link (short links are read for you).</p>
     </div>
   )
 }

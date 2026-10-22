@@ -212,6 +212,8 @@ function doPost(e) {
     const w = who_(body.auth)
     if (!w) return json_({ error: 'Login required' })
 
+    if (body.action === 'resolveMap') return json_(resolveMap_(String(body.url || '')))
+
     if (body.action === 'setEmail') {
       if (!w.id) return json_({ error: 'Login required' })
       const em = String(body.email || '').trim().toLowerCase()
@@ -322,4 +324,45 @@ function sendFollowupMails() {
     })
     if (late.length) MailApp.sendEmail({ to: ADMIN_EMAIL, subject: '🚨 ' + late.length + ' follow-up(s) overdue by 2+ hours', htmlBody: '<ul>' + late.map(li).join('') + '</ul>' })
   } finally { lock.releaseLock() }
+}
+
+
+/* ---------- Google Maps short links (maps.app.goo.gl) -> coordinates ----------
+ * Phones share short links that hide the coordinates. The browser cannot open them (CORS),
+ * so the app asks this script to follow the redirects and read the latitude / longitude.
+ * One-time: in the editor run authorizeFetch() once and accept the permission. */
+function authorizeFetch() { UrlFetchApp.fetch('https://www.google.com/generate_204', { muteHttpExceptions: true }) }
+
+function mapCoords_(t) {
+  t = String(t || '')
+  try { t = decodeURIComponent(t) } catch (x) {}
+  var m = t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)               // the exact marker
+       || t.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)                  // map centre
+       || t.match(/[?&](?:q|ll|query|destination|daddr)=(-?\d+\.\d+)[,+ ]+(-?\d+\.\d+)/)
+       || t.match(/center=(-?\d+\.\d+)[,&]+(?:amp;)?(-?\d+\.\d+)/)
+       || t.match(/\[null,null,(-?\d+\.\d+),(-?\d+\.\d+)\]/)
+  if (!m) return null
+  var la = Number(m[1]), ln = Number(m[2])
+  return la > 5 && la < 38 && ln > 66 && ln < 99 ? { lat: la, lng: ln } : null
+}
+
+function resolveMap_(url) {
+  var u = (url.match(/https?:\/\/[^\s]+/) || [''])[0]
+  if (!/^https?:\/\/((maps\.app\.)?goo\.gl|(www\.|maps\.)?google\.[a-z.]+\/maps|maps\.google\.[a-z.]+|g\.co\/kgs)/i.test(u)) return { error: 'That is not a Google Maps link' }
+  var cur = u
+  try {
+    for (var i = 0; i < 7; i++) {
+      var p = mapCoords_(cur)
+      if (p) return { ok: true, lat: p.lat, lng: p.lng, url: cur }
+      var r = UrlFetchApp.fetch(cur, { followRedirects: false, muteHttpExceptions: true, headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36', 'Accept-Language': 'en-IN,en;q=0.9' } })
+      var code = r.getResponseCode(), h = r.getHeaders(), loc = h['Location'] || h['location']
+      if (code >= 300 && code < 400 && loc) { cur = loc.indexOf('http') === 0 ? loc : 'https://www.google.com' + loc; continue }
+      var q = mapCoords_(r.getContentText())
+      if (q) return { ok: true, lat: q.lat, lng: q.lng, url: cur }
+      break
+    }
+  } catch (e) {
+    return { error: 'Could not open the link: ' + String(e.message || e).slice(0, 120) }
+  }
+  return { error: 'No coordinates found in that link. Open it in Google Maps and use Share, or paste the numbers.' }
 }

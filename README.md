@@ -134,3 +134,7 @@ No Apps Script change needed.
   - **Bulk paste**: lines like `Hotel name, lat, lng` or `phone, Google Maps link`. **Missing list** downloads a CSV with a Google search link per hotel to fill offline.
 - **Field person**: at a hotel with no exact pin, the remark sheet offers **Save this spot as the hotel's map pin**.
 - Saved pins feed the map, Navigate and the nearest-first routing automatically.
+
+## Short Google Maps links (r1022e)
+Phones share `maps.app.goo.gl/...` links, which hide the coordinates. Paste one in **Locations** and the Sheet script follows the link and reads the lat/lng (also works in Bulk paste).
+**One-time setup:** paste the new `apps-script/Code.gs` (adds `resolveMap`), run **`authorizeFetch`** once in the Apps Script editor and accept the permission, then **Deploy → Manage deployments → ✏️ → New version → Deploy**.

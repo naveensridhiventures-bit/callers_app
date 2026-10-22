@@ -188,6 +188,14 @@ export function AppProvider({ children }) {
     }
   }, [forceLogout, markSynced])
 
+  // asks the Sheet script to open a Google Maps short link and read its coordinates
+  const resolveMapLink = useCallback(async (url) => {
+    const j = await post({ action: 'resolveMap', url })
+    if (!j) return { error: 'Could not reach the Sheet. Check the internet and try again.' }
+    if (j.lat == null) return { error: j.error || 'Update the Apps Script (paste the new Code.gs and deploy a New version) to read short links.' }
+    return { lat: Number(j.lat), lng: Number(j.lng) }
+  }, [post])
+
   const syncNow = useCallback(async () => {
     const { sheetUrl, token } = settingsRef.current
     if (!sheetUrl) return false
@@ -583,7 +591,7 @@ export function AppProvider({ children }) {
   }, [toast])
 
   const value = {
-    leads, allLeads, callers, settings, setSettings, sync, syncNow, scriptVersion,
+    leads, allLeads, callers, settings, setSettings, sync, syncNow, resolveMapLink, scriptVersion,
     session, gate, loginList, loginErr, retryGate: () => setGateTry((n) => n + 1), login, adminLogin, logout,
     route, page, sub, go, sheet, openLead, openForm, closeSheet,
     filter, setFilter, toasts, toast,
