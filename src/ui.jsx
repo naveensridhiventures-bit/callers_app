@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, useMotionValue, useSpring, useTransform, useDragControls, animate } from 'framer-motion'
 import { STATUSES } from './constants'
 
@@ -161,7 +162,8 @@ export function Sheet({ onClose, children, footer }) {
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = prev }
   }, [])
-  return (
+  // portal to <body>: a transformed parent (the animated <main>) would otherwise trap this fixed overlay
+  return createPortal(
     <div className={`sheet-back ${closing ? 'out' : ''}`} onClick={close}>
       <motion.div
         className="sheet"
@@ -174,7 +176,8 @@ export function Sheet({ onClose, children, footer }) {
         <div className="sheet-scroll">{children}</div>
         {footer}
       </motion.div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

@@ -7,12 +7,13 @@ import MapButton from '../components/MapPopup'
 import { STATUSES } from '../constants'
 import { KG_BANDS, REASONS, isCancelled, kgBandOf, kgOf, mainReason, readUpload, reasonsOf } from '../cancelled'
 import { KgBadge, ReasonChips } from '../components/ReasonChips'
+import AdminHotelEditor from '../components/AdminHotelEditor'
 
 const isHotelish = (l) => l.type === 'hotel' || /hotel|restaurant/i.test(l.bizType || '')
 
 /** HR: import lapsed hotels, bulk-assign them to a caller + a field person, watch the win-back funnel. */
 export default function AdminHotels() {
-  const { allLeads, callers, importHotels, assignHotels, toast, go } = useApp()
+  const { allLeads, callers, importHotels, assignHotels, removeLead, toast, go } = useApp()
   const [scope, setScope] = useState('unassigned')
   const [area, setArea] = useState('all')
   const [status, setStatus] = useState('all')
@@ -25,6 +26,8 @@ export default function AdminHotels() {
   const [field, setField] = useState('')
   const [paste, setPaste] = useState('')
   const [busy, setBusy] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [delId, setDelId] = useState(null)
   const file = useRef()
 
   const callerList = callers.filter((c) => c.role !== 'field' && c.active !== false)
@@ -38,6 +41,7 @@ export default function AdminHotels() {
     return allLeads.filter((l) => {
       if (scope === 'convert' ? l.type === 'hotel' || !isHotelish(l) : l.type !== 'hotel') return false
       if (scope === 'unassigned' && (l.assignedTo || l.fieldId)) return false
+      if (scope === 'assigned' && !(l.assignedTo || l.fieldId)) return false
       if (scope === 'cancelled' && !isCancelled(l)) return false
       if (reason !== 'all' && !reasonsOf(l.stopReason).includes(reason)) return false
       if (band !== 'all' && kgBandOf(l) !== band) return false
@@ -98,6 +102,15 @@ export default function AdminHotels() {
     toast(`${n} hotel${n === 1 ? '' : 's'} assigned${caller && caller !== 'none' ? ` → caller ${nm.get(caller)}` : ''}${field && field !== 'none' ? ` → field ${nm.get(field)}` : ''} ✓`)
   }
 
+  // unassign: who = 'caller' | 'field' | 'both'; ids = list of lead ids
+  const unassign = async (ids, who) => {
+    if (!ids.length) return toast('Nothing selected', 'warn')
+    setBusy(true)
+    const n = await assignHotels(ids, { callerId: who !== 'field' ? '' : undefined, fieldId: who !== 'caller' ? '' : undefined })
+    setBusy(false)
+    toast(`${n} hotel${n === 1 ? '' : 's'} unassigned${who === 'caller' ? ' from caller' : who === 'field' ? ' from field person' : ''} ✓`)
+  }
+
   return (
     <div className="page adm">
       {(() => { const miss = hotels.filter((l) => !hotelPoint(l) && l.lastOutcome !== 'Hotel Closed' && !reasonsOf(l.stopReason).includes('closed')).length; return hotels.length > 0 && (
@@ -139,7 +152,7 @@ export default function AdminHotels() {
         <div className="grid2">
           <label className="field"><span>Show</span>
             <select value={scope} onChange={(e) => { setScope(e.target.value); setSel(new Set()) }}>
-              <option value="unassigned">Unassigned hotels</option><option value="all">All hotels</option><option value="cancelled">Cancelled-order hotels</option><option value="convert">Existing leads that are hotels (convert)</option>
+              <option value="unassigned">Unassigned hotels</option><option value="assigned">Assigned hotels</option><option value="all">All hotels</option><option value="cancelled">Cancelled-order hotels</option><option value="convert">Existing leads that are hotels (convert)</option>
             </select>
           </label>
           <label className="field"><span>Area</span><select value={area} onChange={(e) => setArea(e.target.value)}><option value="all">All areas</option>{areas.map((a) => <option key={a}>{a}</option>)}</select></label>
@@ -155,13 +168,25 @@ export default function AdminHotels() {
         </div>
         <div className="alist">
           {list.slice(0, 80).map((l) => (
-            <label key={l.id} className={`arow ${sel.has(l.id) ? 'on' : ''}`}>
-              <input type="checkbox" checked={sel.has(l.id)} onChange={() => toggle(l.id)} />
-              <div><b>{l.name}</b><small>{l.phone || 'No contact'} · {l.area || l.address || 'No area'}</small>
-                <small>📞 {nm.get(l.assignedTo) || '—'} · 🚶 {nm.get(l.fieldId) || '—'}</small>
-                {(l.stopReason || kgOf(l) > 0) && <div className="arow-why"><ReasonChips text={l.stopReason} limit={3} /><KgBadge lead={l} /></div>}</div>
-              {(l.mapUrl || l.lat || l.address) && <MapButton lead={l} className="round map sm" />}
-            </label>
+            <div key={l.id} className="arow-wrap">
+              <label className={`arow ${sel.has(l.id) ? 'on' : ''}`}>
+                <input type="checkbox" checked={sel.has(l.id)} onChange={() => toggle(l.id)} />
+                <div><b>{l.name}</b><small>{l.phone || 'No contact'} · {l.area || l.address || 'No area'}</small>
+                  <small>📞 {nm.get(l.assignedTo) || '—'} · 🚶 {nm.get(l.fieldId) || '—'}</small>
+                  {(l.stopReason || kgOf(l) > 0) && <div className="arow-why"><ReasonChips text={l.stopReason} limit={3} /><KgBadge lead={l} /></div>}</div>
+                {(l.mapUrl || l.lat || l.address) && <MapButton lead={l} className="round map sm" />}
+              </label>
+              {scope !== 'convert' && (
+                <div className="arow-tools">
+                  <button type="button" onClick={() => setEditing(l)}>✏️ Edit</button>
+                  {l.assignedTo && <button type="button" className="warn" disabled={busy} onClick={() => unassign([l.id], 'caller')}>✖ Caller</button>}
+                  {l.fieldId && <button type="button" className="warn" disabled={busy} onClick={() => unassign([l.id], 'field')}>✖ Field</button>}
+                  {delId === l.id
+                    ? <span className="delq">Delete {l.name}? <button type="button" onClick={() => setDelId(null)}>Keep</button><button type="button" className="red" onClick={() => { removeLead(l.id); setDelId(null); setSel((p) => { const n = new Set(p); n.delete(l.id); return n }); toast(`🗑 ${l.name} deleted`) }}>Delete</button></span>
+                    : <button type="button" className="red" onClick={() => setDelId(l.id)}>🗑 Delete</button>}
+                </div>
+              )}
+            </div>
           ))}
           {list.length > 80 && <p className="mini-note">Showing 80. “Select all” selects all {list.length}.</p>}
           {!list.length && <p className="empty-s">No hotels match.</p>}
@@ -180,7 +205,13 @@ export default function AdminHotels() {
         </div>
         {!fieldList.length && <p className="mini-note">No field person yet. Add one in <b>Callers → Add</b> and choose the role “Field person”.</p>}
         <motion.button whileTap={{ scale: 0.97, y: 3 }} className="btn3d" disabled={busy} onClick={assign}><Icon name="check" /> {busy ? 'Assigning…' : 'Assign to both'}</motion.button>
+        <div className="un-bar">
+          <button type="button" className="btn-soft" disabled={busy || !sel.size} onClick={() => unassign([...sel], 'caller').then(() => setSel(new Set()))}>✖ Unassign callers</button>
+          <button type="button" className="btn-soft" disabled={busy || !sel.size} onClick={() => unassign([...sel], 'field').then(() => setSel(new Set()))}>✖ Unassign field</button>
+          <button type="button" className="btn-soft danger" disabled={busy || !sel.size} onClick={() => unassign([...sel], 'both').then(() => setSel(new Set()))}>✖ Unassign both</button>
+        </div>
       </section>
+      {editing && <AdminHotelEditor key={editing.id} lead={editing} onClose={() => setEditing(null)} />}
     </div>
   )
 }
