@@ -47,8 +47,8 @@ export default function HotelRow({ lead: l, d, selected = false, onToggle, onRem
         <span className="hr-fs" style={{ '--fc': fs.color, '--fb': fs.bg }}>{fs.icon} {fs.label}</span>
         {l.lastOutcome && fs.id !== 'todo' && <small className="hr-lo">{l.lastOutcome}</small>}
         {field && (pin
-          ? <span className="hr-map ok">📍 Map ready</span>
-          : closed ? <span className="hr-map shut">🏚️ Closed · no map</span> : <span className="hr-map lock">🔒 Map locked</span>)}
+          ? <span className="hr-map ok">📍 Map ready{l.locById && l.locById === session.id ? ' · added by you' : ''}</span>
+          : closed ? <span className="hr-map shut">🏚️ Closed · no map</span> : <span className="hr-map lock">📍 Needs location</span>)}
         {Number(l.rating) > 0 && <StarsRO value={Number(l.rating)} size={12} />}
         {l.nextFollowUp && k !== 'none' && <span className={`due ${k}`}><Icon name="clock" size={12} />{k === 'overdue' ? 'Overdue · ' : ''}{fmtWhen(l.nextFollowUp)}</span>}
       </div>

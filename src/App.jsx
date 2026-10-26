@@ -101,6 +101,7 @@ function Shell() {
   if (gate !== 'ready') return <Login />
 
   const reqCount = isAdmin ? allLeads.filter((l) => l.delReq === '1').length : 0
+  const locCount = isAdmin ? allLeads.filter((l) => l.type === 'hotel' && l.locReview === 'new').length : 0
   const due = leads.filter((l) => ['overdue', 'today'].includes(bucket(l)) && (!isField || l.type === 'hotel')).length
   const formLead = sheet?.type === 'form' && sheet.leadId ? allLeads.find((l) => l.id === sheet.leadId) || null : null
 
@@ -119,7 +120,7 @@ function Shell() {
                 {t.id === 'requests' && reqCount > 0 && <b className="badge static">{reqCount}</b>}
               </button>
             ))}
-            <button className={active === 'locations' ? 'on' : ''} onClick={() => go('locations')}><Icon name="target" size={20} /><span>Locations</span></button>
+            <button className={active === 'locations' ? 'on' : ''} onClick={() => go('locations')}><Icon name="target" size={20} /><span>Locations</span>{locCount > 0 && <b className="badge static">{locCount}</b>}</button>
             <button className={active === 'reports' ? 'on' : ''} onClick={() => go('reports')}><Icon name="download" size={20} /><span>Reports</span></button>
             <button className={active === 'settings' ? 'on' : ''} onClick={() => go('settings')}><Icon name="gear" size={20} /><span>Settings</span></button>
           </nav>
@@ -161,6 +162,7 @@ function Shell() {
               <Icon name={t.icon} size={t.fab ? 26 : 22} />
               {t.id === 'follow' && due > 0 && <b className="badge">{due > 99 ? '99+' : due}</b>}
               {t.id === 'requests' && reqCount > 0 && <b className="badge">{reqCount}</b>}
+              {t.id === 'hotels' && locCount > 0 && <b className="badge">{locCount}</b>}
             </motion.span>
             <small>{t.label}</small>
           </button>

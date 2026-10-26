@@ -1,5 +1,5 @@
 /**
- * SRIDHI CALLER APP - Google Sheets backend  (version 6)
+ * SRIDHI CALLER APP - Google Sheets backend  (version 7)
  * ------------------------------------------------------
  * Paste this whole file into the Apps Script of your Google Sheet
  * (Extensions -> Apps Script), Save, then:
@@ -15,7 +15,7 @@
 const ADMIN_PIN = 'hr@sridhi'
 const SECRET = '' // optional extra key; if you set it, enter the same in the app (Settings -> Advanced)
 const ADMIN_EMAIL = '' // HR Gmail: gets an alert when a follow-up is 2+ hours overdue (leave '' to switch off)
-const VERSION = 6
+const VERSION = 7
 
 const LEAD_HEADERS = [
   'id', 'type', 'name', 'phone', 'altPhone', 'email', 'company', 'bizType', 'area', 'city',
@@ -26,6 +26,9 @@ const LEAD_HEADERS = [
   'fieldId', 'fieldName', 'fieldAt', 'contactName', 'address', 'mapUrl', 'lat', 'lng', 'lastOrderOn', 'stopReason', 'monthlyQty',
   // field sales (v6): star rating 1-5 of the hotel's interest
   'rating',
+  // exact hotel location (v7): who pinned it, when, how (gps | visit | search | link | admin), GPS accuracy in metres,
+  // the pin before the update (so HR can undo) and review ('new' = a field person changed it and HR has not looked yet)
+  'locBy', 'locById', 'locAt', 'locSource', 'locAcc', 'locPrev', 'locReview',
   'mailedFor', 'escalatedFor',
 ]
 const SERVER_ONLY = ['mailedFor', 'escalatedFor'] // owned by the reminder job, never overwritten by the app

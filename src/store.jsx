@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { uid, nowISO, addHours, atDay } from './utils'
 import { OUTCOMES, CLOSED, DEFAULT_SHEET_URL, OLD_DEFAULT_URLS } from './constants'
+import { clearLoc, locFields, prevPin } from './location'
 
 const Ctx = createContext(null)
 export const useApp = () => useContext(Ctx)
@@ -464,6 +465,32 @@ export function AppProvider({ children }) {
     [saveLead, writePending]
   )
 
+  /* ---------- exact hotel location ----------
+     A field person (or HR) pins a hotel by GPS, by an online search or by a Google Maps link.
+     Who / when / how / accuracy and the OLD pin are stored with the hotel, so HR sees it and can undo it. */
+  const saveLocation = useCallback(
+    (lead, p, source = 'link', acc = 0) => {
+      const fresh = leadsRef.current.find((x) => x.id === lead.id) || lead
+      return saveLead({ ...fresh, ...locFields(sessionRef.current, fresh, p, source, acc) })
+    },
+    [saveLead]
+  )
+
+  /* HR looks at a pin a field person added: 'ok' keeps it, 'undo' goes back to the old pin, 'remove' clears it */
+  const reviewLocation = useCallback(
+    (lead, action) => {
+      const fresh = leadsRef.current.find((x) => x.id === lead.id) || lead
+      if (action === 'ok') return saveLead({ ...fresh, locReview: 'ok' })
+      if (action === 'undo') {
+        const old = prevPin(fresh)
+        if (!old) return saveLead({ ...fresh, ...clearLoc() })
+        return saveLead({ ...fresh, ...locFields({ role: 'admin' }, { ...fresh, lat: '', lng: '', mapUrl: '' }, old, 'admin'), locReview: 'ok' })
+      }
+      return saveLead({ ...fresh, ...clearLoc() })
+    },
+    [saveLead]
+  )
+
   const convertLead = useCallback((lead, type) => saveLead({ ...lead, type }), [saveLead])
 
   const snooze = useCallback((lead, iso) => saveLead({ ...lead, nextFollowUp: iso }), [saveLead])
@@ -606,7 +633,7 @@ export function AppProvider({ children }) {
     route, page, sub, go, sheet, openLead, openForm, closeSheet,
     filter, setFilter, toasts, toast,
     pendingCall, pendingSnooze, startCall, clearPending, snoozePending, reopenPending,
-    saveLead, addLead, saveDetails, logCall, convertLead, snooze, removeLead, importLeads, clearAll, loadSample,
+    saveLead, saveLocation, reviewLocation, addLead, saveDetails, logCall, convertLead, snooze, removeLead, importLeads, clearAll, loadSample,
     assignMany, saveCaller, deleteCaller, importHotels, assignHotels, saveEmail,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

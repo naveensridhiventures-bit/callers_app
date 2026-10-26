@@ -7,6 +7,7 @@ import { areaOfLead, buildFieldReport, rangeFor } from '../fieldReport'
 import { bucket, fmtTime, greeting } from '../utils'
 import { CLOSED } from '../constants'
 import { kgOf } from '../cancelled'
+import { hasPin, isClosedHotel } from '../fieldStatus'
 
 /** TODAY: where you stand in the day, and the one thing to do next. */
 export default function FieldHome() {
@@ -25,6 +26,14 @@ export default function FieldHome() {
   const t = today.totals
   const pendingKg = pending.reduce((n, l) => n + kgOf(l), 0)
   const withNext = today.entries.filter((e) => e.next).length
+
+  // how many open hotels already have an exact map pin
+  const open = useMemo(() => hotels.filter((l) => !isClosedHotel(l)), [hotels])
+  const noPin = open.filter((l) => !hasPin(l)).length
+  const pinPct = open.length ? Math.round(((open.length - noPin) / open.length) * 100) : 100
+  const dayGoal = Math.max(1, t.visits + pending.length)
+  const dayPct = Math.round((t.visits / dayGoal) * 100)
+  const addLocations = () => { localStorage.setItem('sridhi.planPin', 'lock'); go('plan') }
 
   const openPlan = (a) => { if (a) localStorage.setItem('sridhi.planArea', a); go('plan') }
 
@@ -46,13 +55,31 @@ export default function FieldHome() {
 
   return (
     <div className="page">
-      <div className="page-h"><h1>{greeting()}, {session.name.split(' ')[0]} 👋</h1></div>
+      <section className="fh-hero">
+        <div>
+          <small>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}</small>
+          <h1>{greeting()}, {session.name.split(' ')[0]} 👋</h1>
+          <p>{t.visits ? <><b>{t.visits}</b> visit{t.visits > 1 ? 's' : ''} done today. </> : 'No visits yet today. '}{pending.length ? <><b>{pending.length}</b> hotel{pending.length > 1 ? 's' : ''} waiting.</> : 'Everything is visited.'}</p>
+        </div>
+        <div className="fh-ring" style={{ '--p': dayPct }}><b>{dayPct}%<small>OF TODAY</small></b></div>
+      </section>
 
       <motion.section className="card fh-next" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <span className="fh-next-i">{next.ico}</span>
         <div><small>Do this next</small><h3>{next.t}</h3><p>{next.s}</p></div>
         <button className="btn3d lime big" onClick={next.fn}>{next.btn} <Icon name="chevron" size={18} /></button>
       </motion.section>
+
+      {noPin > 0 && (
+        <section className="card fh-loc">
+          <div className="fh-loc-ring" style={{ '--p': pinPct }}><b>{pinPct}%</b></div>
+          <div>
+            <h3>{noPin} hotel{noPin > 1 ? 's need' : ' needs'} an exact location</h3>
+            <p>Add it when you reach the hotel (GPS), find it online, or paste a Google Maps link. HR sees it right away.</p>
+          </div>
+          <button type="button" className="btn-soft" onClick={addLocations}>📍 Show hotels to pin</button>
+        </section>
+      )}
 
       <div className="kpis">
         <div className="kpi"><em>📍</em><b><Counter value={t.visits} /></b><span>Visits today</span></div>

@@ -1,0 +1,152 @@
+/* =====================================================================
+   v7 theme layer: loaded after styles.css, so it refines the look
+   without touching any behaviour. Mobile first.
+   ===================================================================== */
+:root {
+  --r: 24px;
+  --shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 12px 28px -14px rgba(6, 48, 26, .32), 0 2px 6px -2px rgba(6, 48, 26, .08);
+  --shadow-lg: 0 24px 48px -20px rgba(6, 48, 26, .5);
+  --glass: rgba(255, 255, 255, .72);
+  --ease: cubic-bezier(.2, .9, .3, 1);
+  --amber-d: #b45309; --amber-l: #fef3c7;
+}
+
+body {
+  background-color: #eaf2e7;
+  background-image:
+    radial-gradient(620px 420px at 105% -6%, rgba(34, 197, 94, .26), transparent 62%),
+    radial-gradient(520px 380px at -12% 22%, rgba(212, 232, 58, .22), transparent 62%),
+    radial-gradient(700px 500px at 50% 112%, rgba(15, 107, 52, .12), transparent 60%);
+}
+
+/* ---------- entrance: cards rise in one after another ---------- */
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+.page > .card, .page > .hr, .page > .kpis, .page > .fp-sec, .page > .lead, .page > .fp-map, .list > .lead { animation: rise .5s var(--ease) both; }
+.page > :nth-child(2) { animation-delay: .04s; } .page > :nth-child(3) { animation-delay: .08s; } .page > :nth-child(4) { animation-delay: .12s; }
+.page > :nth-child(5) { animation-delay: .16s; } .page > :nth-child(n+6) { animation-delay: .2s; }
+@media (prefers-reduced-motion: reduce) { .page > *, .list > * { animation: none !important; } }
+
+/* ---------- top bar: frosted, calm ---------- */
+.top { background: linear-gradient(rgba(234, 242, 231, .92) 55%, rgba(234, 242, 231, 0)); padding-bottom: 12px; }
+.brand b { font-size: 18px; letter-spacing: -.4px; }
+.brand b span { font-weight: 600; font-size: 13px; color: var(--g600); display: block; margin-top: -3px; letter-spacing: 0; }
+.who { display: inline-flex; align-items: center; height: 40px; padding: 0 14px; border-radius: 14px; background: var(--glass); backdrop-filter: blur(10px); font-weight: 700; font-size: 13px; color: var(--g800); box-shadow: var(--shadow); }
+.icon-btn, .sync { box-shadow: var(--shadow); }
+.page-h h1 { font-size: 28px; letter-spacing: -.8px; }
+
+/* ---------- bottom dock: floating glass bar with a glowing active tab ---------- */
+.dock { bottom: calc(12px + var(--safe-b)); padding: 7px 6px; border-radius: 28px; background: linear-gradient(180deg, rgba(10, 60, 32, .92), rgba(4, 32, 15, .96)); backdrop-filter: blur(20px) saturate(1.4); box-shadow: 0 22px 44px -12px rgba(4, 32, 15, .75), 0 0 0 1px rgba(255, 255, 255, .08) inset; }
+.dock button { font-size: 11px; font-weight: 600; padding: 7px 0 5px; min-height: 54px; transition: color .2s; }
+.dock-pill { inset: 1px 6px; border-radius: 22px; background: linear-gradient(180deg, rgba(212, 232, 58, .26), rgba(34, 197, 94, .2)); box-shadow: inset 0 0 0 1px rgba(212, 232, 58, .5), 0 0 22px rgba(212, 232, 58, .22); }
+.dock button.on small { color: var(--lime); }
+.badge { box-shadow: 0 0 0 2px #0a3c20; font-weight: 800; }
+
+/* ---------- cards, buttons, inputs ---------- */
+.card { border: 1px solid rgba(255, 255, 255, .7); }
+.btn3d { min-height: 48px; border-radius: 18px; letter-spacing: .1px; }
+.btn3d.big { min-height: 54px; font-size: 16px; }
+.btn-soft { min-height: 44px; border-radius: 16px; }
+.btn-soft.sm { min-height: 38px; }
+input:not([type=checkbox]), select, textarea { border-radius: 16px; min-height: 48px; border-width: 1.5px; background: #fbfdfb; }
+.search { box-shadow: var(--shadow); border-radius: 18px; }
+.chip { min-height: 38px; border-radius: 99px; font-weight: 600; transition: transform .12s, background .15s; }
+.chip:active { transform: scale(.95); }
+.chip.on { box-shadow: 0 6px 14px -6px rgba(15, 107, 52, .6); }
+.chips.scroll { scroll-snap-type: x proximity; -webkit-mask-image: linear-gradient(90deg, #000 92%, transparent); mask-image: linear-gradient(90deg, #000 92%, transparent); padding-right: 24px; }
+.chips.scroll > * { scroll-snap-align: start; }
+
+/* ---------- sheets ---------- */
+.sheet-back { backdrop-filter: blur(6px); background: rgba(4, 32, 15, .5); }
+.sheet { border-radius: 32px 32px 0 0; background: linear-gradient(180deg, #f6faf4, var(--bg)); box-shadow: 0 -24px 60px rgba(0, 0, 0, .4); }
+.grab i { width: 48px; height: 5px; background: rgba(6, 48, 26, .22); }
+
+/* ---------- toasts: top pill ---------- */
+.toast { border-radius: 18px; font-weight: 600; box-shadow: 0 16px 36px -10px rgba(4, 32, 15, .6); backdrop-filter: blur(12px); }
+
+/* ---------- Today (field home) ---------- */
+.fh-hero { position: relative; overflow: hidden; display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; border-radius: 30px; padding: 22px 20px; color: #fff; background: radial-gradient(120% 140% at 0% 0%, #1a8a47 0%, #0a4a25 55%, #04200f 100%); box-shadow: var(--shadow-lg); }
+.fh-hero::before { content: ''; position: absolute; right: -50px; top: -60px; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, rgba(212, 232, 58, .5), transparent 70%); }
+.fh-hero::after { content: ''; position: absolute; left: -40px; bottom: -70px; width: 180px; height: 180px; border-radius: 50%; background: radial-gradient(circle, rgba(34, 197, 94, .35), transparent 70%); }
+.fh-hero > * { position: relative; z-index: 1; }
+.fh-hero small { opacity: .75; font-size: 12px; font-weight: 600; letter-spacing: .3px; }
+.fh-hero h1 { font-size: 25px; line-height: 1.15; letter-spacing: -.6px; margin: 3px 0 6px; font-weight: 800; }
+.fh-hero p { font-size: 13.5px; opacity: .88; line-height: 1.4; }
+.fh-hero p b { color: var(--lime); }
+.fh-ring { width: 92px; height: 92px; border-radius: 50%; display: grid; place-items: center; position: relative; background: conic-gradient(var(--lime) calc(var(--p, 0) * 1%), rgba(255, 255, 255, .16) 0); }
+.fh-ring::before { content: ''; position: absolute; inset: 9px; border-radius: 50%; background: #0a3c20; }
+.fh-ring b { position: relative; font-size: 22px; font-weight: 800; line-height: 1; text-align: center; }
+.fh-ring b small { display: block; font-size: 9.5px; opacity: .75; font-weight: 600; margin-top: 2px; letter-spacing: .3px; }
+.fh-next { border-radius: 26px; }
+.fh-next .btn3d { min-height: 54px; }
+.fh-loc { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; padding: 16px; }
+.fh-loc-ring { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; position: relative; background: conic-gradient(#22c55e calc(var(--p, 0) * 1%), #e5ebe3 0); }
+.fh-loc-ring::before { content: ''; position: absolute; inset: 7px; border-radius: 50%; background: #fff; }
+.fh-loc-ring b { position: relative; font-size: 16px; font-weight: 800; color: var(--g700); }
+.fh-loc h3 { font-size: 15px; font-weight: 800; }
+.fh-loc p { font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+.fh-loc .btn-soft { grid-column: 1 / -1; background: linear-gradient(180deg, #fff7d6, #fde68a); color: #78350f; font-weight: 800; box-shadow: 0 4px 0 #d9b44a; }
+.kpi { border-radius: 22px; border: 1px solid rgba(255, 255, 255, .7); }
+.kpi b { letter-spacing: -.8px; }
+
+/* ---------- hotel card ---------- */
+.hr { border-left-width: 0; border-radius: 26px; padding: 0; gap: 0; overflow: hidden; box-shadow: var(--shadow); transition: transform .15s var(--ease), box-shadow .2s; }
+.hr::before { content: ''; display: block; height: 5px; background: linear-gradient(90deg, var(--tc, var(--g500)), color-mix(in srgb, var(--tc, var(--g500)) 30%, #fff)); }
+.hr > * { margin-left: 14px; margin-right: 14px; }
+.hr > .hr-top { margin-top: 12px; }
+.hr > .hr-why { margin-top: 10px; } .hr > .hr-meta { margin-top: 10px; } .hr > .hr-last { margin-top: 8px; }
+.hr > .hr-act { margin-top: 12px; margin-bottom: 14px; }
+.hr.sel { box-shadow: 0 0 0 3px var(--g500), var(--shadow); transform: scale(1.005); }
+.hr-name b { font-size: 17px; letter-spacing: -.3px; }
+.hr-why { background: linear-gradient(180deg, #fbfdfa, #f4f9f2); border: 1px solid var(--line); border-radius: 18px; }
+.hr-act { grid-template-columns: 1fr 1fr 1.4fr 1.1fr; grid-auto-flow: row; }
+.hr-b { min-height: 48px; border-radius: 16px; font-size: 13px; transition: transform .12s; }
+.hr-b.main { background: linear-gradient(180deg, #2fd16a, var(--g600)); box-shadow: 0 4px 0 var(--g800); }
+.hr-b.go { background: linear-gradient(180deg, #eaf870, var(--lime)); box-shadow: 0 4px 0 #7d9410; }
+.hr-b.map-ok { box-shadow: inset 0 0 0 1.5px #4ade80; }
+/* "Add location" is the loudest thing on a card that has no pin: a full-width amber call to action */
+.hr-b.locked, .hr-b.map-lock { grid-column: 1 / -1; order: -1; min-height: 50px; color: #78350f; font-size: 14px; background: linear-gradient(180deg, #fff7d6, #fde68a); border: 0; box-shadow: 0 4px 0 #d9b44a, 0 10px 20px -10px rgba(180, 83, 9, .5); animation: nudge 3.2s ease-in-out infinite; }
+.hr-b .plus { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: -4px; border-radius: 50%; font-size: 13px; line-height: 1; color: #fff; background: #d97706; }
+@keyframes nudge { 0%, 88%, 100% { transform: none; } 92% { transform: translateY(-2px); } 96% { transform: translateY(0); } }
+.hr-map.lock { color: #92400e; background: #fef3c7; box-shadow: inset 0 0 0 1.5px #fcd34d; }
+.round.locked, .round.map.locked { position: relative; background: linear-gradient(145deg, #fbbf24, #d97706); box-shadow: 0 4px 0 #92400e; }
+.round .plus { position: absolute; right: -3px; top: -3px; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 50%; font-size: 11px; color: #d97706; background: #fff; }
+
+.fp-map button { border-radius: 20px; min-height: 64px; }
+.fp-map .lock i { background: #fef3c7; } .fp-map .lock b { color: #b45309; } .fp-map .lock.on { border-color: #f59e0b; background: #fffbeb; }
+.fp-sec.lock { background: linear-gradient(135deg, #fffbeb, #fef3c7); color: #78350f; border: 1px dashed #fbbf24; }
+.fp-sec.lock small { color: #92400e; }
+.fp-tabs { border-radius: 20px; }
+.fp-bar { border-radius: 24px; box-shadow: var(--shadow-lg); backdrop-filter: blur(16px); }
+.fp-go { min-height: 50px; border-radius: 18px; }
+
+/* ---------- visit run ---------- */
+.vm-card { border-radius: 32px; }
+.vm-foot { backdrop-filter: blur(16px); }
+.vm-reach2 { min-height: 58px; border-radius: 20px; font-size: 16px; }
+.vm-reach2:not(.done) { animation: reachglow 2.4s ease-in-out infinite; }
+@keyframes reachglow { 50% { box-shadow: 0 0 0 8px rgba(212, 232, 58, .22), 0 8px 0 #7d9410; } }
+.vm-map { position: relative; }
+.vm-fixpin { position: absolute; right: 10px; bottom: 10px; z-index: 3; padding: 8px 12px; border-radius: 99px; font-size: 12px; font-weight: 800; color: #1e293b; background: rgba(255, 255, 255, .94); box-shadow: 0 6px 16px -6px rgba(0, 0, 0, .4); }
+.vm-map.lockedmap { background: radial-gradient(120% 100% at 50% 0%, #1d4ed8, #0f1e4a 70%); }
+.lm-btns { display: grid; gap: 8px; width: 100%; max-width: 280px; margin-top: 8px; }
+.lm-btn { margin: 0; min-height: 46px; border-radius: 16px; color: #fff; background: rgba(255, 255, 255, .16); font-weight: 800; }
+.lm-btn.gps { color: var(--g950); background: linear-gradient(180deg, #eaf870, var(--lime)); box-shadow: 0 4px 0 #7d9410; }
+.vm-actions button.go.off { color: #78350f; background: linear-gradient(180deg, #fff7d6, #fde68a); box-shadow: 0 4px 0 #d9b44a; }
+
+/* ---------- login ---------- */
+.login-card, .lg { border-radius: 30px; }
+
+@media (min-width: 700px) {
+  .dock { width: min(520px, calc(100% - 24px)); }
+  .hr-act { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 360px) { .hr-b { font-size: 12px; gap: 4px; } .fh-hero { grid-template-columns: 1fr; } .fh-ring { display: none; } }
+
+/* a card with no pin: the Add location button gets its own full row, the rest share the row below it */
+.hr-act:has(.locked), .hr-act:has(.map-lock) { display: flex; flex-wrap: wrap; }
+.hr-act:has(.locked) > .locked, .hr-act:has(.map-lock) > .map-lock { flex: 1 1 100%; }
+.hr-act:has(.locked) > :not(.locked), .hr-act:has(.map-lock) > :not(.map-lock) { flex: 1 1 0; min-width: 0; }
+.hr-act:has(.locked) > .main { flex-grow: 1.4; }
+.lc .fp-tabs { display: flex; overflow-x: auto; scrollbar-width: none; }
+.lc .fp-tabs::-webkit-scrollbar { display: none; }
+.lc .fp-tabs button { flex: none; white-space: nowrap; }

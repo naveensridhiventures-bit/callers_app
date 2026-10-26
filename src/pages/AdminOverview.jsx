@@ -79,6 +79,7 @@ export default function AdminOverview() {
   const maxCalls = Math.max(1, ...ranked.map((r) => r.calls))
   const callerName = (id) => callers.find((c) => c.id === id)?.name || '—'
   const idle = stats.filter((r) => r.today === 0 && r.assigned > 0)
+  const locNew = useMemo(() => allLeads.filter((l) => l.type === 'hotel' && l.locReview === 'new').length, [allLeads])
 
   return (
     <div className="page adm">
@@ -86,6 +87,13 @@ export default function AdminOverview() {
         <h1>Team progress <small>{session?.name}</small></h1>
       </div>
       <Segmented id="ov-period" value={period} onChange={setPeriod} options={PERIODS} />
+      {locNew > 0 && (
+        <motion.button className="cta-report loc" whileTap={{ scale: 0.98 }} onClick={() => go('locations')} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <span className="cta-ico">📱</span>
+          <span><b>{locNew} location update{locNew > 1 ? 's' : ''} from the field</b><small>Added or changed by field people. Check them and tap Looks right, or undo.</small></span>
+          <Icon name="chevron" size={18} />
+        </motion.button>
+      )}
       <motion.button className="cta-report" whileTap={{ scale: 0.98 }} onClick={() => go('reports')} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <span className="cta-ico">📄</span>
         <span><b>Download or share reports</b><small>Daily, weekly, monthly or custom dates · PDF, Excel and WhatsApp message</small></span>

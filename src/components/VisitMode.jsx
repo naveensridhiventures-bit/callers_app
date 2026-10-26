@@ -11,8 +11,9 @@ import { OUTCOMES, QUICK_REMARKS } from '../constants'
 import { REASON, REASONS, kgOf, reasonsOf } from '../cancelled'
 import { WhyBox } from './ReasonChips'
 import { useMyRemarks } from '../myRemarks'
-import MapButton from './MapPopup'
+import LocationSheet from './LocationSheet'
 import { hasPin } from '../fieldStatus'
+import { locFields } from '../location'
 
 const VISIT_OUTCOMES = ['Order Restarted', 'Will Order Soon', 'Interested', 'Revisit Needed', 'Visited', 'Owner Not Available', 'Hotel Closed', 'Not Interested']
 const NEEDS_RATING = ['Order Restarted', 'Will Order Soon', 'Interested', 'Revisit Needed', 'Visited']
@@ -79,6 +80,7 @@ function StopCard({ lead, me, index, total }) {
   const d = me && pt ? km(me, pt) : null
   const here = d != null && !pt.approx && d < 0.15
   const locked = !hasPin(lead)
+  const [locOpen, setLocOpen] = useState(null) // 'gps' | 'online' | null : the add / update location sheet
   const share = `📍 ${lead.name}\n${[lead.address, lead.area].filter(Boolean).join(', ')}\n${mapOpen(lead)}`
 
   return (
@@ -102,22 +104,26 @@ function StopCard({ lead, me, index, total }) {
       {locked ? (
         <div className="vm-map lockedmap">
           <div className="lm-c">
-            <span className="lm-ico">🔒</span>
-            <b>Map locked</b>
-            <small>Admin has not added this hotel’s exact map yet.</small>
-            <MapButton lead={lead} className="lm-btn" lockedLabel=" Call admin to add the map">Unlock</MapButton>
+            <span className="lm-ico">🧭</span>
+            <b>No exact location yet</b>
+            <small>Add it once and the map and Navigate unlock for everyone.</small>
+            <div className="lm-btns">
+              <button type="button" className="lm-btn gps" onClick={() => setLocOpen('gps')}>📡 I’m here, save my spot</button>
+              <button type="button" className="lm-btn" onClick={() => setLocOpen('online')}>🔎 Find it online</button>
+            </div>
           </div>
         </div>
       ) : (
         <div className="vm-map">
           <iframe title={`Map of ${lead.name}`} src={mapEmbed(lead)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
           <div className="mp-offline">Map needs internet. Use <b>Navigate</b> below.</div>
+          <button type="button" className="vm-fixpin" onClick={() => setLocOpen('gps')}>✏️ Wrong spot?</button>
         </div>
       )}
 
       <div className="vm-actions first">
         {locked
-          ? <MapButton lead={lead} className="go" lockedLabel=" Navigate locked"><Icon name="send" /> Navigate</MapButton>
+          ? <button type="button" className="go off" onClick={() => setLocOpen('gps')}><Icon name="send" /> Add location first</button>
           : <motion.a whileTap={{ scale: 0.95 }} className="go" href={mapDirections(lead)} target="_blank" rel="noreferrer"><Icon name="send" /> Navigate</motion.a>}
         {lead.phone && <motion.a whileTap={{ scale: 0.95 }} href={telHref(lead.phone)}><Icon name="phone" /> Call</motion.a>}
         {lead.phone && <motion.a whileTap={{ scale: 0.95 }} href={waHref(lead.phone)} target="_blank" rel="noreferrer"><Icon name="whatsapp" /> Chat</motion.a>}
@@ -132,6 +138,7 @@ function StopCard({ lead, me, index, total }) {
         {!lead.phone && !lead.contactName && <p className="mp-muted">No contact number yet. Ask for the owner or manager and add it with Edit.</p>}
         {lead.lastRemark && <p className="mp-muted"><b>Last time:</b> {lead.lastOutcome ? `${lead.lastOutcome} · ` : ''}{lead.lastRemark}</p>}
       </div>
+      {locOpen && <LocationSheet lead={lead} initialTab={locOpen} onClose={() => setLocOpen(null)} />}
     </motion.div>
   )
 }
@@ -147,7 +154,7 @@ const NO_FOLLOW = ['Order Restarted', 'Hotel Closed', 'Not Interested']
 const NO_RATING = ['Hotel Closed', 'Owner Not Available']
 
 export function RemarkSheet({ lead, reached, last, busy, onSave, onBack, quick = false, fixed = false }) {
-  const { toast } = useApp()
+  const { toast, session } = useApp()
   const [outcome, setOutcome] = useState('')
   const [rating, setRating] = useState(0)
   const [manual, setManual] = useState(false)
@@ -198,7 +205,7 @@ export function RemarkSheet({ lead, reached, last, busy, onSave, onBack, quick =
     const extra = {}
     if (why.join() !== startReasons.join()) extra.stopReason = why.map((id) => REASON[id].label).join(' / ')
     if (['Order Restarted', 'Will Order Soon'].includes(outcome) && kg && Number(kg) !== kgOf(lead)) extra.monthlyQty = String(Number(kg))
-    if (canPin && pinMe) { extra.lat = reached.pos.lat.toFixed(6); extra.lng = reached.pos.lng.toFixed(6); extra.mapUrl = `https://www.google.com/maps/search/?api=1&query=${extra.lat},${extra.lng}` }
+    if (canPin && pinMe) Object.assign(extra, locFields(session, lead, reached.pos, 'visit', reached.pos.acc))
     onSave({ outcome, rating, remark: note, next, extra: Object.keys(extra).length ? extra : undefined })
   }
   const summary = outcome ? [outcome, rating && !NO_RATING.includes(outcome) ? `${rating}★` : '', showNext ? (next ? fmtWhen(next) : 'no follow-up') : ''].filter(Boolean).join(' · ') : 'Step 1: pick how it went'
@@ -218,7 +225,7 @@ export function RemarkSheet({ lead, reached, last, busy, onSave, onBack, quick =
         <div className="vm-form">
           <WhyBox lead={lead} compact tip={false} />
           {canPin && (
-            <label className="vm-pinme"><input type="checkbox" checked={pinMe} onChange={(e) => setPinMe(e.target.checked)} /><span><b>📍 Save this spot as the hotel’s map pin</b><small>This hotel has no exact location yet. Tick only if you are standing at the hotel.</small></span></label>
+            <label className="vm-pinme"><input type="checkbox" checked={pinMe} onChange={(e) => setPinMe(e.target.checked)} /><span><b>📍 Save this spot as the hotel’s location</b><small>This hotel has no exact pin yet. Tick only if you are standing at the hotel. HR will see it.</small></span></label>
           )}
 
           <h4><i>1</i> How did it go?</h4>
@@ -427,7 +434,7 @@ export default function VisitMode({ stops, areaLabel, onClose }) {
     const pt = pointOf(cur)
     const pos = meRef.current
     const dist = pos && pt && !pt.approx ? km(pos, pt) : null
-    setReached({ dist, pos: pos ? { lat: pos.lat, lng: pos.lng } : null })
+    setReached({ dist, pos: pos ? { lat: pos.lat, lng: pos.lng, acc: pos.acc } : null })
     setPhase('form')
     toast(dist != null ? (dist < 0.25 ? '✅ You are at the hotel' : `📍 ${fmtKm(dist)} from the hotel pin`) : '✅ Checked in')
   }

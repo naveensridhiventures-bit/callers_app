@@ -30,7 +30,7 @@ export default function FieldPlan() {
   const [area, setArea] = useState(() => { const a = localStorage.getItem('sridhi.planArea') || 'all'; localStorage.removeItem('sridhi.planArea'); return a })
   const [reason, setReason] = useState('all')
   const [band, setBand] = useState('all')
-  const [pinF, setPinF] = useState('all') // all | pin | lock
+  const [pinF, setPinF] = useState(() => { const v = localStorage.getItem('sridhi.planPin') || 'all'; localStorage.removeItem('sridhi.planPin'); return v }) // all | pin | lock
   const [stF, setStF] = useState('all') // all | visited | followup | notint | todo
   const [q, setQ] = useState('')
   const [sort, setSort] = useState('near')
@@ -144,7 +144,7 @@ export default function FieldPlan() {
           <i>📍</i><b>{pinFc.get('pin')?.n || 0}</b><span>Map ready<small>navigate exactly</small></span>
         </button>
         <button type="button" className={`lock ${pinF === 'lock' ? 'on' : ''}`} onClick={() => f(setPinF)(pinF === 'lock' ? 'all' : 'lock')}>
-          <i>🔒</i><b>{pinFc.get('lock')?.n || 0}</b><span>Map locked<small>admin must add map</small></span>
+          <i>🧭</i><b>{pinFc.get('lock')?.n || 0}</b><span>Needs location<small>tap to add it yourself</small></span>
         </button>
       </div>
 
@@ -207,9 +207,9 @@ export default function FieldPlan() {
         <Fragment key={r.l.id}>
           {(i === 0 || arr[i - 1].pin !== r.pin) && (
             <div className={`fp-sec ${r.pin ? 'ok' : 'lock'}`}>
-              <i>{r.pin ? '📍' : '🔒'}</i>
-              <div><b>{r.pin ? 'Map ready' : 'Waiting for map location'} <em>{r.pin ? nPin : nLock}</em></b>
-                <small>{r.pin ? 'Exact location added by admin. Tap Map to navigate.' : 'Admin has not added the map yet. Tap Map on a card to see how to get it.'}</small></div>
+              <i>{r.pin ? '📍' : '🧭'}</i>
+              <div><b>{r.pin ? 'Map ready' : 'Needs an exact location'} <em>{r.pin ? nPin : nLock}</em></b>
+                <small>{r.pin ? 'Exact location saved. Tap Map to navigate.' : 'Tap Add location on a card: use GPS at the hotel, find it online or paste a Google Maps link.'}</small></div>
             </div>
           )}
           <HotelRow lead={r.l} d={r.d} selected={sel.has(r.l.id)} onToggle={tab === 'done' ? undefined : () => toggle(r.l.id)} onRemark={quick.open} onVisit={tab === 'done' ? undefined : (l) => setRun({ stops: [l], label: l.name })} />

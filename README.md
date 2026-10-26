@@ -166,3 +166,14 @@ Phones share `maps.app.goo.gl/...` links, which hide the coordinates. Paste one 
 - The editor changes name, phone, contact, **area** (search the Chennai list or type a new one; a new area is added for everyone through the hotel), address and the **latest remark**, and lists **every visit / call remark with ✏️ edit and 🗑 delete**. Cards, reports and the field app recalculate the last remark, last outcome and rating from what is left.
 - **Lead screen → History** (admin, hotel leads) uses the same edit / delete per entry.
 - No Apps Script change needed: edits travel with the hotel. The Sheet's separate *Calls* tab keeps its original log rows; the app and reports read the hotel's own history.
+
+## v7: field people add the location + new mobile look
+
+- **Add / update a hotel location (field person):** on any hotel card with no exact pin there is an amber **📍 Add location** button (also on the visit card and in the map popup). It opens a sheet with three ways:
+  - **📡 I'm here:** stand at the hotel and tap *Use my current location*. The app listens to the GPS for a few seconds, keeps the most accurate reading, shows accuracy and distance, then saves.
+  - **🔎 Find online:** searches OpenStreetMap for the hotel (name + area), ranked by distance. Pick the right one, check the map, save.
+  - **🔗 Paste link:** paste a Google Maps link (short links work) or `13.04, 80.23`.
+  - A pinned hotel shows **✏️ Wrong spot? Update this location**. The remark sheet's *Save this spot as the hotel's location* box also records who saved it.
+- **Admin sees it:** HR → **Locations → 📱 Field updates** lists every pin a field person added or changed with **who, when, how (GPS / online / link) and accuracy**, a map preview and distance from the old pin. **✅ Looks right** approves, **↩ Undo** returns to the old pin (or removes it). A badge shows on Locations / Hotels and a card on Progress.
+- Stored with the hotel (new Sheet columns `locBy, locById, locAt, locSource, locAcc, locPrev, locReview`). The Sheet script creates the columns by itself; pasting the v7 `Code.gs` is optional.
+- **Today** has a progress ring and a "hotels need an exact location" card. New `theme.css` refreshes cards, dock, sheets and buttons for phones.

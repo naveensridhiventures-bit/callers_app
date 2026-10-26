@@ -65,7 +65,7 @@ export default function DueModal() {
               <Avatar name={nameOf(l)} size={38} />
               <div className="due-info">
                 <b>{nameOf(l)}</b>
-                <span>{b === 'overdue' ? `${daysLate(l.nextFollowUp)} day${daysLate(l.nextFollowUp) > 1 ? 's' : ''} overdue` : `Today ${fmtWhen(l.nextFollowUp)}`}{l.area ? ` · ${l.area}` : ''}</span>
+                <span>{b === 'overdue' ? `${daysLate(l.nextFollowUp)} day${daysLate(l.nextFollowUp) > 1 ? 's' : ''} overdue` : fmtWhen(l.nextFollowUp)}{l.area ? ` · ${l.area}` : ''}</span>
                 {l.lastRemark && <em>“{l.lastRemark}”</em>}
               </div>
               <div className="due-acts">

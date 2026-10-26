@@ -173,6 +173,7 @@ export default function AdminHotels() {
                 <input type="checkbox" checked={sel.has(l.id)} onChange={() => toggle(l.id)} />
                 <div><b>{l.name}</b><small>{l.phone || 'No contact'} · {l.area || l.address || 'No area'}</small>
                   <small>📞 {nm.get(l.assignedTo) || '—'} · 🚶 {nm.get(l.fieldId) || '—'}</small>
+                  {l.locReview === 'new' && <small className="arow-loc">📱 Location added by {l.locBy || 'field'} · review in Locations</small>}
                   {(l.stopReason || kgOf(l) > 0) && <div className="arow-why"><ReasonChips text={l.stopReason} limit={3} /><KgBadge lead={l} /></div>}</div>
                 {(l.mapUrl || l.lat || l.address) && <MapButton lead={l} className="round map sm" />}
               </label>
