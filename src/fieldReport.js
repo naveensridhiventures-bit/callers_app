@@ -112,7 +112,7 @@ export function buildFieldWhatsApp(r, note = '') {
   L.push(`🚶 *FIELD SALES REPORT*  |  ${m.rangeLabel}`)
   L.push(`👤 *${m.scopeLabel}*  ·  Chennai  ·  ${m.areaLabel}`)
   L.push('━━━━━━━━━━━━━━━━')
-  L.push(`📍 *Visits:* ${t.visits}   📞 *Calls:* ${t.calls}   🏨 *Hotels reached:* ${t.hotels}`)
+  L.push(`📍 *Visits:* ${t.visits}   📞 *Calls:* ${t.calls}   🏪 *Places reached:* ${t.hotels}`)
   L.push(`⭐ *Avg interest:* ${t.avgRating ? `${t.avgRating} / 5` : '-'}   🔥 *Interested:* ${t.hot}${t.orders ? `   🎉 *Orders restarted:* ${t.orders}` : ''}`)
   if (r.byArea.length) {
     L.push('━━━━━━━━━━━━━━━━')
@@ -127,8 +127,23 @@ export function buildFieldWhatsApp(r, note = '') {
   const top = r.entries.filter((e) => e.rating >= 4 || GOOD.includes(e.outcome)).slice(-8)
   if (top.length) {
     L.push('━━━━━━━━━━━━━━━━')
-    L.push('*🔥 Hot hotels*')
+    L.push('*🔥 Hot leads*')
     top.forEach((e, i) => L.push(`${i + 1}. *${e.name}* (${e.area}) - ${e.outcome}${e.rating ? ` ${stars(e.rating)}` : ''}${e.remark ? `: ${e.remark}` : ''}`))
+  }
+  // every visit with the remark the field person typed, area by area (what management reads)
+  const found = r.entries.filter((e) => e.mode === 'visit' && e.lead.type === 'milk' && e.lead.source === 'Own source' && new Date(e.lead.createdAt) >= m.from && new Date(e.lead.createdAt) <= m.to)
+  const foundIds = [...new Set(found.map((e) => e.lead.id))]
+  if (foundIds.length) L.push(`🧭 *New distributors found by me:* ${foundIds.length}`)
+  const clip = (x) => (x.length > 170 ? `${x.slice(0, 167)}...` : x)
+  const byA = new Map()
+  r.entries.forEach((e) => { if (!byA.has(e.area)) byA.set(e.area, []); byA.get(e.area).push(e) })
+  if (byA.size) {
+    L.push('━━━━━━━━━━━━━━━━')
+    L.push('*📋 Visit remarks (area-wise)*')
+    ;[...byA].sort((x, y) => y[1].length - x[1].length).forEach(([area, es]) => {
+      L.push(`\n📍 *${area}*`)
+      es.forEach((e) => L.push(`• *${e.name}*${e.lead.source === 'Own source' ? ' 🧭' : ''} - ${e.mode === 'call' ? '📞 ' : ''}${e.outcome}${e.rating ? ` ${stars(e.rating)}` : ''}${e.remark ? `\n   💬 ${clip(e.remark)}` : ''}${e.next ? `\n   ⏰ Next: ${fmtDateTime(new Date(e.next))}` : ''}`))
+    })
   }
   L.push('━━━━━━━━━━━━━━━━')
   L.push(`⏰ *Follow-ups ${new Date(m.nextDay).toDateString() === new Date(Date.now() + 864e5).toDateString() ? 'tomorrow' : fmtDay(m.nextDay)}:* ${t.followups}${t.overdue ? `   ⚠️ Overdue: ${t.overdue}` : ''}`)
