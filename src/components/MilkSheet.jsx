@@ -160,7 +160,7 @@ export default function MilkSheet({ id, preset = {}, tab: tab0 = 'visit', onClos
         {/* ---------- DETAILS ---------- */}
         {(tab === 'details' || adding) && (
           <section className="mk-sec">
-            {adding && <p className="mk-hint">You found a distributor that is not on the admin list. Fill what you know now; you can complete the rest later. Admin sees it as <b>Own source</b>.</p>}
+            {adding && <p className="mk-hint">You found a shop or agency that can sell Sridhi Idli &amp; Dosa Batter and is not on the admin list. Fill what you know now; you can complete the rest later. Admin sees it as <b>Own source</b>.</p>}
             <label className="field"><span>Distributor / agency name *</span><input value={d.name} onChange={set('name')} placeholder="e.g. Sri Murugan Milk Agency" autoFocus={adding} /></label>
             <div className="mk-two">
               <label className="field"><span>Owner / contact person</span><input value={d.contactName} onChange={set('contactName')} placeholder="Name" /></label>
@@ -189,16 +189,16 @@ export default function MilkSheet({ id, preset = {}, tab: tab0 = 'visit', onClos
             </section>
 
             <section className="mk-sec">
-              <h3 className="mk-h"><i>2</i> How interested are they?</h3>
+              <h3 className="mk-h"><i>2</i> How keen to sell our batter?</h3>
               <div className="mk-stars"><Stars value={rating} onChange={setRating} size={38} /><small>{RATING_LABEL[rating]}</small></div>
             </section>
 
             <section className="mk-sec">
-              <h3 className="mk-h"><i>3</i> What did they handle?<small>Brands, litres, vehicle</small></h3>
+              <h3 className="mk-h"><i>3</i> What do they sell today?<small>Brands, litres, fridge</small></h3>
               <div className="chips">{allBrands.map((b) => <button key={b} type="button" className={`chip ${brands.includes(b) ? 'on' : ''}`} onClick={() => toggleBrand(b)}>{b}</button>)}</div>
               <div className="mk-add"><input value={custom} onChange={(e) => setCustom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustom())} placeholder="Another brand…" /><button type="button" className="btn-soft sm" onClick={addCustom}>Add</button></div>
               <div className="mk-two">
-                <label className="field"><span>Milk per day (litres)</span><input inputMode="numeric" value={litres} onChange={(e) => setLitres(e.target.value)} placeholder="e.g. 500" /></label>
+                <label className="field"><span>Milk sold per day (litres)</span><input inputMode="numeric" value={litres} onChange={(e) => setLitres(e.target.value)} placeholder="e.g. 500" /></label>
                 <div className="field"><span>Own vehicle?</span><YesNo value={vehicle} onChange={setVehicle} /></div>
               </div>
               <div className="field"><span>Cold storage / fridge?</span><YesNo value={cold} onChange={setCold} /></div>

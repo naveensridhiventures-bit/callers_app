@@ -19,24 +19,24 @@ export const isOwn = (l) => l?.source === SRC_OWN
 export const brandsOf = (l) => String(l?.company || '').split(',').map((s) => s.trim()).filter(Boolean)
 export const joinBrands = (arr) => [...new Set(arr.map((s) => s.trim()).filter(Boolean))].join(', ')
 
-export const BRANDS = ['Aavin', 'Thirumala', 'Heritage', 'Hatsun', 'Arokiya', 'Amul', 'Mother Dairy', 'Dodla', 'Milky Mist', 'Nandini', 'Ponvandu', 'Curd', 'Ice cream']
+export const BRANDS = ['Idli / dosa batter', 'iD Fresh', 'Aavin', 'Thirumala', 'Heritage', 'Hatsun', 'Arokiya', 'Amul', 'Mother Dairy', 'Dodla', 'Milky Mist', 'Nandini', 'Ponvandu', 'Curd', 'Ice cream']
 
 /** what happened on the visit. `need` = a follow-up date is required, `none` = no follow-up (deal closed / lost) */
 export const MILK_OUTCOMES = [
-  { id: 'Met Owner', icon: '🤝', t: 'Met the owner', s: 'Talked, details taken' },
-  { id: 'Interested', icon: '🔥', t: 'Interested', s: 'Wants to take it forward' },
+  { id: 'Met Owner', icon: '🤝', t: 'Met the owner', s: 'Pitched our batter' },
+  { id: 'Interested', icon: '🔥', t: 'Interested', s: 'Wants to sell our batter' },
   { id: 'Meeting Fixed', icon: '📅', t: 'Meeting fixed', s: 'Date agreed', need: true },
   { id: 'Call Back Later', icon: '⏰', t: 'Come back later', s: 'Busy / asked to return', need: true },
   { id: 'Owner Not Available', icon: '🚪', t: 'Owner not there', s: 'Visit again', need: true },
   { id: 'Shop Closed', icon: '🔒', t: 'Shop closed', s: 'Visit again', need: true },
-  { id: 'Onboarded', icon: '🎉', t: 'Onboarded', s: 'Deal done', none: true },
+  { id: 'Onboarded', icon: '🎉', t: 'Distributor fixed', s: 'Will sell our batter', none: true },
   { id: 'Not Interested', icon: '👎', t: 'Not interested', s: 'Said no', none: true },
 ]
 export const OUT = Object.fromEntries(MILK_OUTCOMES.map((o) => [o.id, o]))
 
 export const MILK_REMARKS = [
-  'Wants margin details', 'Has own vehicle', 'Has cold storage', 'Already with another brand', 'Needs price list',
-  'Will discuss with partner', 'Asked to come in the morning', 'Send details on WhatsApp', 'Area already covered', 'Wants a sample',
+  'Wants margin on batter', 'Has fridge for batter', 'Has own vehicle', 'Already sells another batter', 'Needs price list',
+  'Wants a sample first', 'Will discuss with partner', 'Asked to come in the morning', 'Send details on WhatsApp', 'Good shop, good footfall',
 ]
 
 /** a ready lead built from one Excel row. visited = date of the earlier visit, follow-up is due today. */

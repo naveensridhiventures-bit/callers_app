@@ -30,7 +30,9 @@ export default function AdminMilk() {
   const fieldList = callers.filter((c) => c.role === 'field' && c.active !== false)
   const nm = useMemo(() => new Map(callers.map((c) => [c.id, c.name])), [callers])
   const milk = useMemo(() => allLeads.filter(isMilk), [allLeads])
-  const board = useMemo(() => areaBoard(milk, null).filter((b) => b.n > 0).sort((a, b) => b.n - a.n || a.area.localeCompare(b.area)), [milk])
+  const full = useMemo(() => areaBoard(milk, null), [milk])
+  const board = useMemo(() => full.filter((b) => b.n > 0).sort((a, b) => b.n - a.n || a.area.localeCompare(b.area)), [full])
+  const need = useMemo(() => full.filter((b) => b.n === 0), [full])
   const seeded = useMemo(() => { const have = new Set(milk.map((l) => l.id)); return MILK_SEED.filter((r) => have.has(r.key)).length }, [milk])
 
   const k = {
@@ -86,6 +88,11 @@ export default function AdminMilk() {
     toast(`${n} distributor${n === 1 ? '' : 's'} ${field === 'none' ? 'unassigned' : `assigned to ${nm.get(field)}`} ✓`)
   }
 
+  const exportCoverage = () => {
+    const rows = full.map((b) => ({ Zone: b.zone, Area: b.area, Distributors: b.n, Status: b.n ? `${b.done} of ${b.n} visited` : 'DISTRIBUTOR NEEDED', 'Admin list': b.admin, 'Found by field': b.own }))
+      .sort((a, b) => (a.Distributors ? 1 : 0) - (b.Distributors ? 1 : 0) || a.Zone.localeCompare(b.Zone) || a.Area.localeCompare(b.Area))
+    download('chennai-area-coverage.csv', '﻿' + toCSV(rows, ['Zone', 'Area', 'Distributors', 'Status', 'Admin list', 'Found by field']), 'text/csv')
+  }
   const exportList = () => {
     const rows = milk.map((l) => {
       const p = hotelPoint(l)
@@ -106,7 +113,7 @@ export default function AdminMilk() {
 
       <div className="kpis">
         <div className="kpi"><em>🥛</em><b><Counter value={k.total} /></b><span>Distributors</span></div>
-        <div className="kpi"><em>🏢</em><b><Counter value={k.admin} /></b><span>Admin list</span></div>
+        <div className="kpi"><em>🔎</em><b><Counter value={need.length} /></b><span>Areas need a distributor</span></div>
         <div className="kpi"><em>🧭</em><b><Counter value={k.own} /></b><span>Found by field</span></div>
         <div className="kpi"><em>📭</em><b><Counter value={k.unassigned} /></b><span>Unassigned</span></div>
         <div className="kpi"><em>✅</em><b><Counter value={k.done} /></b><span>Visited{k.total ? ` · ${Math.round((k.done / k.total) * 100)}%` : ''}</span></div>
@@ -142,6 +149,13 @@ export default function AdminMilk() {
             <small>From {res.what}. {field1 ? `Assigned to ${nm.get(field1)}.` : 'Not assigned to a field person yet: tick them below and assign.'}</small>
           </div>
         )}
+      </section>
+
+      <section className="card">
+        <h3 className="card-t">🔎 Distributor needed <small className="mini-note">{need.length} of {full.length} Chennai areas</small></h3>
+        <p className="mini-note">These areas have no distributor yet to sell Sridhi Idli &amp; Dosa Batter. The field person sees them marked <b>Distributor needed</b> and goes to find one.</p>
+        <div className="chips">{need.slice(0, 40).map((b) => <span key={b.area} className="chip need">{b.area}</span>)}{need.length > 40 && <span className="chip">+{need.length - 40} more</span>}</div>
+        <button className="btn-soft" onClick={exportCoverage}><Icon name="download" size={16} /> Download area coverage (all {full.length} areas)</button>
       </section>
 
       {board.length > 0 && (

@@ -10,7 +10,7 @@ import { useGeo } from '../useGeo'
 import { bucket, km } from '../utils'
 
 const ALL = 'all'
-const VIEWS = [['all', 'All areas'], ['with', 'With distributors'], ['due', 'Follow-up due'], ['empty', 'No distributor yet']]
+const VIEWS = [['all', 'All areas'], ['empty', '🔎 Distributor needed'], ['with', 'Have distributors'], ['due', 'Follow-up due']]
 
 /**
  * AREAS: every Chennai locality, with the distributors in it (admin list + the ones you found yourself).
@@ -30,16 +30,16 @@ function AreaGrid({ board, milk, open }) {
   const { session, openMilkForm } = useApp()
   const [q, setQ] = useState('')
   const [zone, setZone] = useState('all')
-  const [view, setView] = useState(() => localStorage.getItem('sridhi.areaView') || 'with')
-  useEffect(() => { try { localStorage.setItem('sridhi.areaView', view) } catch { /* ignore */ } }, [view])
+  const [view, setView] = useState(() => localStorage.getItem('sridhi.areaView2') || 'all')
+  useEffect(() => { try { localStorage.setItem('sridhi.areaView2', view) } catch { /* ignore */ } }, [view])
 
   const total = milk.length
   const doneN = milk.filter((l) => ['visited', 'notint'].includes(fieldStatusOf(l).id)).length
   const dueN = milk.filter((l) => ['overdue', 'today'].includes(bucket(l))).length
   const ownN = milk.filter((l) => l.source === 'Own source').length
   const withN = board.filter((b) => b.n > 0).length
-  const todayN = board.reduce((n, b) => n + b.today, 0)
-  const pct = total ? Math.round((doneN / total) * 100) : 0
+  const needN = board.length - withN
+  const pct = board.length ? Math.round((withN / board.length) * 100) : 0
 
   const s = q.trim().toLowerCase()
   const inZone = (b) => zone === 'all' || b.zone === zone
@@ -53,18 +53,18 @@ function AreaGrid({ board, milk, open }) {
     <div className="page ma">
       <section className="fh-hero ma-hero">
         <div>
-          <small>🥛 CHENNAI · MILK DISTRIBUTORS</small>
-          <h1>Pick an area, visit, update.</h1>
-          <p><b>{doneN}</b> of <b>{total}</b> distributors done · <b>{withN}</b> areas covered by the list · <b>{board.length}</b> Chennai areas in all.</p>
+          <small>🌿 SRIDHI IDLI & DOSA BATTER · CHENNAI</small>
+          <h1>Find a distributor in every area.</h1>
+          <p><b>{withN}</b> of <b>{board.length}</b> areas have a distributor · <b>{needN}</b> area{needN === 1 ? '' : 's'} still <b>need one</b>.</p>
         </div>
-        <div className="fh-ring" style={{ '--p': pct }}><b>{pct}%<small>DONE</small></b></div>
+        <div className="fh-ring" style={{ '--p': pct }}><b>{pct}%<small>COVERED</small></b></div>
       </section>
 
       <div className="kpis">
-        <div className="kpi"><em>🥛</em><b><Counter value={total} /></b><span>Distributors</span></div>
+        <div className="kpi"><em>🔎</em><b><Counter value={needN} /></b><span>Areas need one</span></div>
+        <div className="kpi"><em>🤝</em><b><Counter value={total} /></b><span>Distributors</span></div>
         <div className="kpi"><em>⏰</em><b><Counter value={dueN} /></b><span>Follow-up due</span></div>
-        <div className="kpi"><em>📍</em><b><Counter value={todayN} /></b><span>Visited today</span></div>
-        <div className="kpi"><em>🧭</em><b><Counter value={ownN} /></b><span>Own source</span></div>
+        <div className="kpi"><em>🧭</em><b><Counter value={ownN} /></b><span>Found by me</span></div>
       </div>
 
       <div className="search">
@@ -101,7 +101,7 @@ function AreaGrid({ board, milk, open }) {
                 </div>
               </>
             ) : (
-              <div className="ma-empty"><em>＋</em><small>No distributor yet</small></div>
+              <div className="ma-empty"><span className="ma-need">🔎 Distributor needed</span><small>Tap to find &amp; add one</small></div>
             )}
           </motion.button>
         ))}
@@ -122,8 +122,8 @@ function AreaGrid({ board, milk, open }) {
       {!milk.length && (
         <div className="card empty">
           <div className="empty-ico">🥛</div>
-          <h3>No distributors assigned to you yet</h3>
-          <p>{session?.name?.split(' ')[0] || 'Hi'}, the admin will assign the distributor list to you. Meanwhile you can add distributors you find yourself with the green button.</p>
+          <h3>Every area needs a distributor</h3>
+          <p>{session?.name?.split(' ')[0] || 'Hi'}, no distributor is assigned to you yet. Visit milk shops and agencies in any area, and add the ones who can sell our batter with the green button.</p>
         </div>
       )}
 
@@ -179,7 +179,7 @@ function AreaDetail({ a, back }) {
         <div>
           <small>{a.zone.toUpperCase()}</small>
           <h1>{a.area}</h1>
-          <p>{a.n ? <><b>{a.done}</b> of <b>{a.n}</b> done{a.follow ? <> · <b>{a.follow}</b> follow-up due</> : ''}</> : 'No distributor in this area yet.'}</p>
+          <p>{a.n ? <><b>{a.n}</b> distributor{a.n > 1 ? 's' : ''} · <b>{a.done}</b> done{a.follow ? <> · <b>{a.follow}</b> follow-up due</> : ''}</> : <b>🔎 Distributor needed in this area</b>}</p>
         </div>
         {a.n > 0 && <div className="fh-ring" style={{ '--p': a.pct }}><b>{a.pct}%<small>DONE</small></b></div>}
       </section>
@@ -217,8 +217,8 @@ function AreaDetail({ a, back }) {
       {a.n === 0 && (
         <div className="card empty ma-none">
           <div className="empty-ico">🥛</div>
-          <h3>No distributor in {a.area} yet</h3>
-          <p>The admin has not listed one here. If you meet a milk distributor in this area, add it now. It is saved as <b>Own source</b> and admin can see it.</p>
+          <h3>Distributor needed in {a.area}</h3>
+          <p>We have no distributor here yet to sell Sridhi Idli &amp; Dosa Batter. Visit milk agencies and dairy shops in {a.area}, talk to the owner, and add the best one now. It is saved as <b>Own source</b> and the admin sees it.</p>
           <button className="btn3d lime" onClick={() => openMilkForm({ area: a.area })}><Icon name="plus" size={18} /> Add distributor in {a.area}</button>
         </div>
       )}

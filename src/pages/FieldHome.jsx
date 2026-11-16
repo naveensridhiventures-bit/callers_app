@@ -9,6 +9,7 @@ import { CLOSED } from '../constants'
 import { kgOf } from '../cancelled'
 import { fieldStatusOf, hasPin, isClosedHotel } from '../fieldStatus'
 import { isMilk } from '../milk'
+import { CHENNAI_AREAS, canonArea } from '../chennai'
 
 /** TODAY: where you stand in the day, and the one thing to do next. */
 export default function FieldHome() {
@@ -33,6 +34,7 @@ export default function FieldHome() {
     milkDue.forEach((l) => m.set(l.area || 'No area', (m.get(l.area || 'No area') || 0) + 1))
     return [...m].sort((a, b) => b[1] - a[1]).slice(0, 5)
   }, [milkDue])
+  const needAreas = CHENNAI_AREAS.length - new Set(milk.map((l) => canonArea(l.area))).size
   const t = today.totals
   const pendingKg = pending.reduce((n, l) => n + kgOf(l), 0)
   const withNext = today.entries.filter((e) => e.next).length
@@ -85,11 +87,11 @@ export default function FieldHome() {
       {milk.length > 0 && (
         <section className="card fh-milk">
           <div className="fh-pick-h">
-            <h3>🥛 Milk distributors · Chennai</h3>
+            <h3>🌿 Distributors · Chennai</h3>
             <button className="btn-soft sm" onClick={() => go('areas', 'all')}>All areas →</button>
           </div>
           <div className="fh-milk-b"><i style={{ width: `${Math.round((milkDone / milk.length) * 100)}%` }} /></div>
-          <p className="fh-milk-t"><b>{milkDone}</b> of <b>{milk.length}</b> done · <b>{milkDue.length}</b> follow-up{milkDue.length === 1 ? '' : 's'} due</p>
+          <p className="fh-milk-t"><b>{milkDone}</b> of <b>{milk.length}</b> visited · <b>{milkDue.length}</b> follow-up{milkDue.length === 1 ? '' : 's'} due · <b>{needAreas}</b> area{needAreas === 1 ? '' : 's'} still need a distributor</p>
           {milkAreas.length > 0 && <div className="chips scroll">{milkAreas.map(([a, n]) => <button key={a} className="chip" onClick={() => go('areas', a)}>{a} <b>{n}</b></button>)}</div>}
         </section>
       )}
