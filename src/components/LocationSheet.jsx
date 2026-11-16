@@ -8,6 +8,7 @@ import { ago } from '../analytics'
 import { fmtKm, hotelPoint, km, mapDirections } from '../utils'
 import { accLabel, bestFix, embedAt, findHotelPlaces, gSearchUrl, inChennai, isShortLink, parsePin, searchPlaces, srcOf } from '../location'
 
+const nn = (l) => (l?.type === 'milk' ? 'distributor' : 'hotel')
 const TABS = [
   { id: 'gps', ico: '📡', t: 'I’m here', s: 'Use GPS' },
   { id: 'online', ico: '🔎', t: 'Find online', s: 'Search maps' },
@@ -122,11 +123,11 @@ function GpsPanel({ lead, cur, onSave }) {
     return (
       <div className="ls-gps">
         <div className="ls-radar idle"><i /><i /><span>📡</span></div>
-        <h3>Standing at the hotel right now?</h3>
-        <p>Stop at the hotel entrance, then tap the button. Your phone’s GPS becomes the hotel’s exact location.</p>
+        <h3>Standing at the {nn(lead)} right now?</h3>
+        <p>Stop at the {nn(lead)} entrance, then tap the button. Your phone’s GPS becomes the {nn(lead)}’s exact location.</p>
         {st === 'err' && <p className="ls-err">⚠️ {err}</p>}
         <button type="button" className="ls-btn lime big" onClick={run}><Icon name="target" size={20} /> {st === 'err' ? 'Try again' : 'Use my current location'}</button>
-        <small className="ls-fine">Only do this at the hotel. A wrong pin sends the next person to the wrong place.</small>
+        <small className="ls-fine">Only do this at the {nn(lead)}. A wrong pin sends the next person to the wrong place.</small>
       </div>
     )
   }
@@ -157,10 +158,10 @@ function GpsPanel({ lead, cur, onSave }) {
           ? <div className={`ls-fact ${dCur > 0.3 ? 'warn' : ''}`}><i>📏</i><b>{fmtKm(dCur)}</b><small>from current pin</small></div>
           : dCentre != null && <div className={`ls-fact ${dCentre > 8 ? 'warn' : ''}`}><i>🗺</i><b>{fmtKm(dCentre)}</b><small>from {lead.area} centre</small></div>}
       </div>
-      {dCur != null && dCur > 0.3 && <p className="ls-note warn">You are {fmtKm(dCur)} away from the current pin. Update only if you are really at the hotel.</p>}
-      {dCur == null && dCentre != null && dCentre > 8 && <p className="ls-note warn">This is far from {lead.area}. Check that you are at the right hotel.</p>}
+      {dCur != null && dCur > 0.3 && <p className="ls-note warn">You are {fmtKm(dCur)} away from the current pin. Update only if you are really at the {nn(lead)}.</p>}
+      {dCur == null && dCentre != null && dCentre > 8 && <p className="ls-note warn">This is far from {lead.area}. Check that you are at the right {nn(lead)}.</p>}
       {weak && <p className="ls-note warn">GPS signal is weak. Step outside or near a window and try again.</p>}
-      <button type="button" className="ls-btn lime big" disabled={weak} onClick={() => onSave(fix, 'gps', fix.acc)}><Icon name="check" size={20} /> Save as hotel location</button>
+      <button type="button" className="ls-btn lime big" disabled={weak} onClick={() => onSave(fix, 'gps', fix.acc)}><Icon name="check" size={20} /> Save as {nn(lead)} location</button>
       <button type="button" className="ls-btn ghost" onClick={run}>Read again</button>
     </div>
   )
@@ -185,7 +186,7 @@ function OnlinePanel({ lead, cur, onSave, goLink }) {
         : await searchPlaces([`${q}, Chennai`], { area: lead.area })
       if (!alive.current) return
       setRes(r); setPick(0)
-      if (!r.length) setMsg('Nothing found. Try the hotel’s short name, or search on Google Maps and paste the link.')
+      if (!r.length) setMsg('Nothing found. Try the shop’s short name, or search on Google Maps and paste the link.')
     } catch (e) {
       if (!alive.current) return
       setRes([]); setMsg(navigator.onLine === false ? 'You are offline. Connect to the internet and try again.' : `Search failed (${String(e.message || e).slice(0, 40)}). Try again in a moment.`)
@@ -198,7 +199,7 @@ function OnlinePanel({ lead, cur, onSave, goLink }) {
     <div className="ls-online">
       <form className="ls-search" onSubmit={(e) => { e.preventDefault(); run(false) }}>
         <Icon name="search" size={18} />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Hotel name and area" enterKeyHint="search" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Shop name and area" enterKeyHint="search" />
         <button type="submit" disabled={busy || !q.trim()}>{busy ? '…' : 'Search'}</button>
       </form>
 
@@ -228,7 +229,7 @@ function OnlinePanel({ lead, cur, onSave, goLink }) {
       )}
 
       <div className="ls-alt">
-        <span>Not on this list? Small hotels are often missing.</span>
+        <span>Not on this list? Small shops are often missing.</span>
         <a href={gSearchUrl(lead)} target="_blank" rel="noreferrer">🗺 Search on Google Maps ↗</a>
         <button type="button" onClick={goLink}>Then paste the link →</button>
       </div>
@@ -262,7 +263,7 @@ function LinkPanel({ lead, cur, onSave }) {
   return (
     <div className="ls-link">
       <ol className="ls-how">
-        <li><i>1</i><span>Open <a href={gSearchUrl(lead)} target="_blank" rel="noreferrer">Google Maps ↗</a> and find the hotel</span></li>
+        <li><i>1</i><span>Open <a href={gSearchUrl(lead)} target="_blank" rel="noreferrer">Google Maps ↗</a> and find the {nn(lead)}</span></li>
         <li><i>2</i><span>Tap <b>Share → Copy link</b></span></li>
         <li><i>3</i><span>Come back and paste it below</span></li>
       </ol>

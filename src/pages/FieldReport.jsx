@@ -30,7 +30,7 @@ const waHtml = (t) => esc(t).replace(/\*([^*\n]+)\*/g, '<b>$1</b>').replace(/(^|
 
 /** Visits and calls for a day or period, filterable by Chennai area, downloadable as PDF / Excel / CSV. */
 export default function FieldReport() {
-  const { leads, session, toast } = useApp()
+  const { leads, session, toast, openLead } = useApp()
   const [kind, setKind] = useState('today')
   const [from, setFrom] = useState(toInputDate(new Date()))
   const [to, setTo] = useState(toInputDate(new Date()))
@@ -41,7 +41,7 @@ export default function FieldReport() {
   const [openDays, setOpenDays] = useState(null) // null = newest day open
   const quick = useQuickRemark()
 
-  const hotels = useMemo(() => leads.filter((l) => l.type === 'hotel'), [leads])
+  const hotels = useMemo(() => leads.filter((l) => l.type === 'hotel' || l.type === 'milk'), [leads])
   const range = useMemo(() => ({ ...rangeFor(kind, from, to), title: 'Field Sales Report' }), [kind, from, to])
   const allAreas = useMemo(() => [...new Set(hotels.map(areaOfLead))].sort((a, b) => a.localeCompare(b)), [hotels])
   const report = useMemo(() => buildFieldReport({ leads: hotels, session, range, area, mode }), [hotels, session, range, area, mode])
@@ -73,7 +73,7 @@ export default function FieldReport() {
   const isOpen = (k, i) => (openDays ? openDays.includes(k) : i === 0)
   const toggleDay = (k, i) => setOpenDays((cur) => { const base = cur || (days[0] ? [days[0].key] : []); return base.includes(k) ? base.filter((x) => x !== k) : [...base, k] })
 
-  const kpis = [['📍', t.visits, 'Visits'], ['📞', t.calls, 'Calls'], ['🏨', t.hotels, 'Hotels reached'], ['🔥', t.hot, 'Interested'], ['🎉', t.orders, 'Orders restarted'], ['🗺', t.areas, 'Areas covered']]
+  const kpis = [['📍', t.visits, 'Visits'], ['📞', t.calls, 'Calls'], ['🏪', t.hotels, 'Places reached'], ['🔥', t.hot, 'Interested'], ['🎉', t.orders, 'Orders restarted'], ['🗺', t.areas, 'Areas covered']]
 
   return (
     <div className="page">
@@ -125,7 +125,7 @@ export default function FieldReport() {
 
         <section className="card form">
           <h3>📅 Date-wise visits</h3>
-          <p className="mini-note">Tap a date to see every hotel you visited that day. Download one date, or add a remark to any hotel.</p>
+          <p className="mini-note">Tap a date to see every hotel and distributor you visited that day. Download one date, or add a remark to any hotel.</p>
           {days.length === 0 && <p className="mini-note">Nothing logged for this period{area === 'all' ? '' : ` in ${area}`}.</p>}
           {days.map((d, di) => {
             const open = isOpen(d.key, di)
@@ -144,7 +144,7 @@ export default function FieldReport() {
                           <b>{e.name}</b>
                           <small>{[e.area, e.outcome, fmtTime(e.at)].filter(Boolean).join(' · ')}</small>
                           {e.remark ? <small className="fr-remark">“{e.remark}”</small> : <small className="fr-remark none">No remark</small>}
-                          <button type="button" className="dw-addr" onClick={() => quick.open(e.lead)}>✍️ Add remark</button>
+                          <button type="button" className="dw-addr" onClick={() => (e.lead.type === 'milk' ? openLead(e.lead.id) : quick.open(e.lead))}>✍️ Add remark</button>
                         </div>
                         <StarsRO value={e.rating} size={12} />
                       </div>

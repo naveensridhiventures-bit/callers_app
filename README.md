@@ -177,3 +177,15 @@ Phones share `maps.app.goo.gl/...` links, which hide the coordinates. Paste one 
 - **Admin sees it:** HR → **Locations → 📱 Field updates** lists every pin a field person added or changed with **who, when, how (GPS / online / link) and accuracy**, a map preview and distance from the old pin. **✅ Looks right** approves, **↩ Undo** returns to the old pin (or removes it). A badge shows on Locations / Hotels and a card on Progress.
 - Stored with the hotel (new Sheet columns `locBy, locById, locAt, locSource, locAcc, locPrev, locReview`). The Sheet script creates the columns by itself; pasting the v7 `Code.gs` is optional.
 - **Today** has a progress ring and a "hotels need an exact location" card. New `theme.css` refreshes cards, dock, sheets and buttons for phones.
+
+## Chennai milk distributors: area-wise field visits (v8)
+
+The field person visits milk distributors in **every Chennai area**, whether they came from the admin list or were found by the field person (**Own source**).
+
+- **Areas (new tab):** all 196 Chennai localities by zone (`src/chennaiAreas.txt`, add a line to add an area). Each tile shows the distributors in it, progress, follow-ups due, admin vs own count. Filters: With distributors / Follow-up due / No distributor yet, plus zone chips and search. Back button returns from an area to the list.
+- **Area screen:** distributors split *Admin list* / *Own source*, status chips, **nearest-first route** with "Open route in Maps", and **Add here** for a distributor found on the road.
+- **Visit sheet** (tap a distributor): Visit (outcome, interest stars, brands, litres/day, own vehicle, cold storage, remark chips, follow-up date, GPS pin) · Details (fix name / owner / phone / area / address) · History.
+- **Add distributor:** name, phone, area, GPS pin, first visit result. Saved as *Own source*, assigned to the field person, duplicates by phone are blocked.
+- **Admin → Milk distributors:** load the built-in Excel list (48, with exact pins), upload an updated Excel/CSV (a phone already present is **updated**, history kept), assign to a field person (also area-wise), see what the field found, approve GPS pins, download the list.
+- Stored in the existing Sheet columns (`company` = brands, `dailyQty` = litres, `source` = Admin list / Own source). **No Apps Script change needed.**
+- Distributors are excluded from the one-by-one reminder pop-ups; they appear in Areas, Today and Follow-ups.

@@ -14,7 +14,7 @@ export default function DueModal() {
   const { leads, snooze, startCall, openLead, go, pendingCall, sheet } = useApp()
   const [open, setOpen] = useState(false)
   const due = useMemo(() => {
-    const rows = leads.map((l) => ({ l, b: bucket(l) })).filter((x) => x.b === 'overdue' || x.b === 'today')
+    const rows = leads.filter((l) => l.type !== 'milk').map((l) => ({ l, b: bucket(l) })).filter((x) => x.b === 'overdue' || x.b === 'today')
     return rows.sort((a, b) => new Date(a.l.nextFollowUp) - new Date(b.l.nextFollowUp))
   }, [leads])
   const overdue = due.filter((x) => x.b === 'overdue').length

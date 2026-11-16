@@ -66,6 +66,9 @@ export const OUTCOMES = [
   { id: 'Owner Not Available', icon: '🚪', status: null, connected: false, hotel: true },
   { id: 'Hotel Closed', icon: '🏚️', status: 'Not Interested', connected: true, hotel: true },
   { id: 'Visited', icon: '📍', status: 'Contacted', connected: true, hotel: true },
+  // milk-distributor visits (Chennai field sales)
+  { id: 'Met Owner', icon: '🤝', status: 'Contacted', connected: true, milk: true },
+  { id: 'Shop Closed', icon: '🔒', status: null, connected: false, milk: true },
   { id: 'Checked In', icon: '✅', status: null, connected: true, hidden: true },
   // automatic activity entries (not offered in the outcome picker)
   { id: 'Details Updated', icon: '📝', status: null, connected: true, hidden: true },

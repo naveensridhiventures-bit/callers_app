@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { uid, nowISO, addHours, atDay } from './utils'
+import { uid, nowISO, addHours, atDay, cleanPhone, hotelPoint } from './utils'
 import { OUTCOMES, CLOSED, DEFAULT_SHEET_URL, OLD_DEFAULT_URLS } from './constants'
 import { clearLoc, locFields, prevPin } from './location'
 
@@ -115,7 +115,14 @@ export function AppProvider({ children }) {
     setRoute('app'); setPage(p); setSub(nsub); setSheet(null)
   }, [])
   const openLead = useCallback((id, opts = {}) => {
-    const sh = { type: 'detail', id, ...opts }
+    // a milk distributor has its own visit sheet; every other lead opens the normal detail
+    const isMilkLead = leadsRef.current.find((x) => x.id === id)?.type === 'milk'
+    const sh = isMilkLead ? { type: 'milk', id, tab: opts.tab || 'visit' } : { type: 'detail', id, ...opts }
+    pushNav({ sheet: sh }, !!navRef.current.sheet)
+    setSheet(sh)
+  }, [])
+  const openMilkForm = useCallback((preset = {}) => {
+    const sh = { type: 'milkform', preset }
     pushNav({ sheet: sh }, !!navRef.current.sheet)
     setSheet(sh)
   }, [])
@@ -598,6 +605,40 @@ export function AppProvider({ children }) {
     return changed.length
   }, [post])
 
+  /* ---------- Chennai milk distributors: admin loads / updates the list, field person visits ---------- */
+  // New phone numbers are added; a number that already exists is updated (name, area, brands, pin) and keeps its visit history.
+  // fieldId: '' = leave unassigned, id = hand the whole batch to that field person.
+  const importMilk = useCallback((arr, fieldId = '') => {
+    const nm = new Map(callersRef.current.map((c) => [c.id, c.name])), ts = nowISO()
+    const byPhone = new Map(leadsRef.current.filter((l) => l.type === 'milk' && l.phone).map((l) => [cleanPhone(l.phone), l]))
+    const own = fieldId ? { fieldId, fieldName: nm.get(fieldId) || '', fieldAt: ts } : {}
+    const out = [], res = { added: 0, updated: 0, same: 0 }
+    arr.forEach((n) => {
+      const old = n.phone ? byPhone.get(cleanPhone(n.phone)) : null
+      if (!old) { out.push({ ...n, ...own, _synced: false }); res.added++; return }
+      const up = { ...old, ...own }
+      let diff = !!fieldId && old.fieldId !== fieldId
+      ;['name', 'area', 'company', 'address', 'contactName', 'notes'].forEach((k) => { if (n[k] && n[k] !== old[k]) { up[k] = n[k]; diff = true } })
+      if (n.lat && !hotelPoint(old)) { Object.assign(up, { lat: n.lat, lng: n.lng, mapUrl: n.mapUrl, locSource: 'admin', locBy: 'Admin', locAt: ts, locReview: 'ok' }); diff = true }
+      if (!diff) { res.same++; return }
+      out.push({ ...up, updatedAt: ts, _synced: false }); res.updated++
+    })
+    const m = new Map(out.map((l) => [l.id, l]))
+    setLeads((prev) => [...out.filter((l) => !prev.some((x) => x.id === l.id)), ...prev.map((l) => m.get(l.id) || l)])
+    ;(async () => { for (let i = 0; i < out.length; i += 200) await post({ action: 'bulk', leads: out.slice(i, i + 200).map(strip) }) })()
+    return res
+  }, [post])
+
+  // hand leads to a field person ('' = take back). Does not change what kind of lead it is.
+  const assignField = useCallback(async (ids, fieldId) => {
+    const nm = new Map(callersRef.current.map((c) => [c.id, c.name])), ts = nowISO(), set = new Set(ids)
+    const changed = leadsRef.current.filter((l) => set.has(l.id)).map((l) => ({ ...l, fieldId, fieldName: nm.get(fieldId) || '', fieldAt: fieldId ? ts : '', updatedAt: ts, _synced: false }))
+    const cm = new Map(changed.map((l) => [l.id, l]))
+    setLeads((prev) => prev.map((l) => cm.get(l.id) || l))
+    for (let i = 0; i < changed.length; i += 200) await post({ action: 'bulk', leads: changed.slice(i, i + 200).map(strip) })
+    return changed.length
+  }, [post])
+
   /* ---------- Gmail for follow-up e-mails (asked once, at first login) ---------- */
   const saveEmail = useCallback(async (email) => {
     const j = await post({ action: 'setEmail', email })
@@ -630,11 +671,11 @@ export function AppProvider({ children }) {
   const value = {
     leads, allLeads, callers, settings, setSettings, sync, syncNow, resolveMapLink, scriptVersion,
     session, gate, loginList, loginErr, retryGate: () => setGateTry((n) => n + 1), login, adminLogin, logout,
-    route, page, sub, go, sheet, openLead, openForm, closeSheet,
+    route, page, sub, go, sheet, openLead, openForm, openMilkForm, closeSheet,
     filter, setFilter, toasts, toast,
     pendingCall, pendingSnooze, startCall, clearPending, snoozePending, reopenPending,
     saveLead, saveLocation, reviewLocation, addLead, saveDetails, logCall, convertLead, snooze, removeLead, importLeads, clearAll, loadSample,
-    assignMany, saveCaller, deleteCaller, importHotels, assignHotels, saveEmail,
+    assignMany, saveCaller, deleteCaller, importHotels, assignHotels, importMilk, assignField, saveEmail,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

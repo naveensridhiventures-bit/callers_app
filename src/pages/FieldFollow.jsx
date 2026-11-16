@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useApp } from '../store'
 import { Icon } from '../ui'
 import HotelRow from '../components/HotelRow'
+import MilkCard from '../components/MilkCard'
 import VisitMode from '../components/VisitMode'
 import { useQuickRemark } from '../components/QuickRemark'
 import { useGeo } from '../useGeo'
@@ -20,7 +21,7 @@ export default function FieldFollow() {
 
   const by = useMemo(() => {
     const o = { overdue: [], today: [], upcoming: [] }
-    leads.filter((l) => l.type === 'hotel').forEach((l) => { const k = bucket(l); if (o[k]) o[k].push(l) })
+    leads.filter((l) => l.type === 'hotel' || l.type === 'milk').forEach((l) => { const k = bucket(l); if (o[k]) o[k].push(l) })
     Object.values(o).forEach((a) => a.sort((x, y) => new Date(x.nextFollowUp) - new Date(y.nextFollowUp)))
     return o
   }, [leads])
@@ -28,6 +29,16 @@ export default function FieldFollow() {
   const active = tab || (by.overdue.length ? 'overdue' : by.today.length ? 'today' : 'upcoming')
   const list = by[active]
   const dueNow = [...by.overdue, ...by.today]
+  const dueHotels = dueNow.filter((l) => l.type === 'hotel')
+  const snoozeBar = (l) => (
+    <div className="snooze">
+      <small>Move to:</small>
+      <button onClick={() => { snooze(l, addHours(1)); toast('Moved +1 hour') }}>+1h</button>
+      <button onClick={() => { snooze(l, atDay(0, 17)); toast('Moved to 5 PM') }}>5 PM</button>
+      <button onClick={() => { snooze(l, atDay(1, 11)); toast('Moved to tomorrow') }}>Tomorrow</button>
+      <button onClick={() => { snooze(l, atDay(7, 11)); toast('Moved to next week') }}>Next week</button>
+    </div>
+  )
   const dist = (l) => { const p = pointOf(l); return me && p ? km(me, p) : null }
 
   return (
@@ -42,24 +53,18 @@ export default function FieldFollow() {
         ))}
       </div>
 
-      {dueNow.length > 0 && active !== 'upcoming' && (
-        <button className="fp-startdue" onClick={() => setRun({ stops: dueNow, label: 'Follow-ups' })}>
-          <Icon name="play" size={18} /> Visit all {dueNow.length} due hotel{dueNow.length > 1 ? 's' : ''}, nearest first
+      {dueHotels.length > 0 && active !== 'upcoming' && (
+        <button className="fp-startdue" onClick={() => setRun({ stops: dueHotels, label: 'Follow-ups' })}>
+          <Icon name="play" size={18} /> Visit all {dueHotels.length} due hotel{dueHotels.length > 1 ? 's' : ''}, nearest first
         </button>
       )}
 
       {list.map((l) => (
         <div key={l.id}>
           {active === 'upcoming' && <div className="day-h"><b>{dayLabel(l.nextFollowUp)}</b></div>}
-          <HotelRow lead={l} d={dist(l)} onRemark={quick.open} onVisit={(h) => setRun({ stops: [h], label: h.name })}>
-            <div className="snooze">
-              <small>Move to:</small>
-              <button onClick={() => { snooze(l, addHours(1)); toast('Moved +1 hour') }}>+1h</button>
-              <button onClick={() => { snooze(l, atDay(0, 17)); toast('Moved to 5 PM') }}>5 PM</button>
-              <button onClick={() => { snooze(l, atDay(1, 11)); toast('Moved to tomorrow') }}>Tomorrow</button>
-              <button onClick={() => { snooze(l, atDay(7, 11)); toast('Moved to next week') }}>Next week</button>
-            </div>
-          </HotelRow>
+          {l.type === 'milk'
+            ? <MilkCard lead={l} d={dist(l)} showArea>{snoozeBar(l)}</MilkCard>
+            : <HotelRow lead={l} d={dist(l)} onRemark={quick.open} onVisit={(h) => setRun({ stops: [h], label: h.name })}>{snoozeBar(l)}</HotelRow>}
         </div>
       ))}
 

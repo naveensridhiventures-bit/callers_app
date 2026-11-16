@@ -21,6 +21,9 @@ import ReportCenter from './pages/ReportCenter'
 import Hubs from './pages/Hubs'
 import FieldHome from './pages/FieldHome'
 import FieldPlan from './pages/FieldPlan'
+import FieldAreas from './pages/FieldAreas'
+import AdminMilk from './pages/AdminMilk'
+import MilkSheet from './components/MilkSheet'
 import FieldFollow from './pages/FieldFollow'
 import FieldReport from './pages/FieldReport'
 import AdminHotels from './pages/AdminHotels'
@@ -34,8 +37,8 @@ const AdminAssign = () => <div className="page adm"><div className="page-h"><h1>
 const AdminRequests = () => <div className="page adm"><div className="page-h"><h1>Delete requests</h1></div><Requests /></div>
 const AdminSettings = () => <div className="page adm"><div className="page-h"><h1>Settings</h1></div><Settings /></div>
 const AdminReports = () => <div className="page adm"><div className="page-h"><h1>Reports</h1></div><ReportCenter admin /></div>
-const FIELD_PAGES = { home: FieldHome, plan: FieldPlan, leads: FieldPlan, follow: FieldFollow, report: FieldReport, more: More }
-const ADMIN_PAGES = { hotels: AdminHotels, locations: AdminLocations, hubs: Hubs, reports: AdminReports, overview: AdminOverview, team: AdminTeam, assign: AdminAssign, leads: Leads, requests: AdminRequests, settings: AdminSettings }
+const FIELD_PAGES = { home: FieldHome, areas: FieldAreas, plan: FieldPlan, leads: FieldPlan, follow: FieldFollow, report: FieldReport, more: More }
+const ADMIN_PAGES = { milk: AdminMilk, hotels: AdminHotels, locations: AdminLocations, hubs: Hubs, reports: AdminReports, overview: AdminOverview, team: AdminTeam, assign: AdminAssign, leads: Leads, requests: AdminRequests, settings: AdminSettings }
 const ADMIN_TABS = [
   { id: 'overview', icon: 'chart', label: 'Progress' },
   { id: 'team', icon: 'users', label: 'Callers' },
@@ -47,7 +50,8 @@ const ADMIN_TABS = [
 ]
 const FIELD_TABS = [
   { id: 'home', icon: 'home', label: 'Today' },
-  { id: 'plan', icon: 'pin', label: 'Plan' },
+  { id: 'areas', icon: 'grid', label: 'Areas' },
+  { id: 'plan', icon: 'pin', label: 'Hotels' },
   { id: 'follow', icon: 'calendar', label: 'Follow-ups' },
   { id: 'report', icon: 'download', label: 'Report' },
 ]
@@ -72,7 +76,9 @@ function Shell() {
   useEffect(() => {
     const check = () => {
       const now = Date.now()
+      if (session?.role === 'admin') return
       leads.forEach((l) => {
+        if (l.type === 'milk') return // distributors are worked area by area (Areas tab), not one pop-up each
         if (!['overdue', 'today'].includes(bucket(l))) return
         const t = new Date(l.nextFollowUp).getTime()
         const key = `${l.id}@${l.nextFollowUp}`
@@ -90,7 +96,7 @@ function Shell() {
     check()
     const t = setInterval(check, 30000)
     return () => clearInterval(t)
-  }, [leads, toast, openLead])
+  }, [leads, toast, openLead, session])
 
   /* already signed in as admin and opened /control: go straight to the admin panel */
   useEffect(() => {
@@ -102,7 +108,8 @@ function Shell() {
 
   const reqCount = isAdmin ? allLeads.filter((l) => l.delReq === '1').length : 0
   const locCount = isAdmin ? allLeads.filter((l) => l.type === 'hotel' && l.locReview === 'new').length : 0
-  const due = leads.filter((l) => ['overdue', 'today'].includes(bucket(l)) && (!isField || l.type === 'hotel')).length
+  const milkNew = isAdmin ? allLeads.filter((l) => l.type === 'milk' && l.locReview === 'new').length : 0
+  const due = leads.filter((l) => ['overdue', 'today'].includes(bucket(l)) && (!isField || l.type === 'hotel' || l.type === 'milk')).length
   const formLead = sheet?.type === 'form' && sheet.leadId ? allLeads.find((l) => l.id === sheet.leadId) || null : null
 
   const tabs = isAdmin ? ADMIN_TABS : isField ? FIELD_TABS : TABS
@@ -120,6 +127,7 @@ function Shell() {
                 {t.id === 'requests' && reqCount > 0 && <b className="badge static">{reqCount}</b>}
               </button>
             ))}
+            <button className={active === 'milk' ? 'on' : ''} onClick={() => go('milk')}><Icon name="grid" size={20} /><span>Milk distributors</span>{milkNew > 0 && <b className="badge static">{milkNew}</b>}</button>
             <button className={active === 'locations' ? 'on' : ''} onClick={() => go('locations')}><Icon name="target" size={20} /><span>Locations</span>{locCount > 0 && <b className="badge static">{locCount}</b>}</button>
             <button className={active === 'reports' ? 'on' : ''} onClick={() => go('reports')}><Icon name="download" size={20} /><span>Reports</span></button>
             <button className={active === 'settings' ? 'on' : ''} onClick={() => go('settings')}><Icon name="gear" size={20} /><span>Settings</span></button>
@@ -170,6 +178,8 @@ function Shell() {
       </nav>
 
       {sheet?.type === 'form' && <LeadForm key="form" lead={formLead} preset={sheet.preset} onClose={closeSheet} />}
+      {sheet?.type === 'milk' && <MilkSheet key={`m-${sheet.id}`} id={sheet.id} tab={sheet.tab} onClose={closeSheet} />}
+      {sheet?.type === 'milkform' && <MilkSheet key="mform" preset={sheet.preset} onClose={closeSheet} />}
       {sheet?.type === 'detail' && <LeadDetail key={`d-${sheet.id}`} id={sheet.id} calling={sheet.calling} preset={sheet.outcome} onClose={closeSheet} />}
 
       {!isAdmin && <><DueModal /><CallClose /><GmailGate /></>}

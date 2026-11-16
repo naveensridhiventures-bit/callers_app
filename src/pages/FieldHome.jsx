@@ -7,13 +7,16 @@ import { areaOfLead, buildFieldReport, rangeFor } from '../fieldReport'
 import { bucket, fmtTime, greeting } from '../utils'
 import { CLOSED } from '../constants'
 import { kgOf } from '../cancelled'
-import { hasPin, isClosedHotel } from '../fieldStatus'
+import { fieldStatusOf, hasPin, isClosedHotel } from '../fieldStatus'
+import { isMilk } from '../milk'
 
 /** TODAY: where you stand in the day, and the one thing to do next. */
 export default function FieldHome() {
   const { leads, session, go } = useApp()
   const hotels = useMemo(() => leads.filter((l) => l.type === 'hotel'), [leads])
-  const today = useMemo(() => buildFieldReport({ leads: hotels, session, range: rangeFor('today') }), [hotels, session])
+  const milk = useMemo(() => leads.filter(isMilk), [leads])
+  const fieldLeads = useMemo(() => [...hotels, ...milk], [hotels, milk])
+  const today = useMemo(() => buildFieldReport({ leads: fieldLeads, session, range: rangeFor('today') }), [fieldLeads, session])
   const visitedIds = useMemo(() => new Set(today.entries.filter((e) => e.mode === 'visit').map((e) => e.lead.id)), [today])
   const pending = useMemo(() => hotels.filter((l) => !CLOSED.includes(l.status) && !visitedIds.has(l.id)), [hotels, visitedIds])
   const due = useMemo(() => pending.filter((l) => ['overdue', 'today'].includes(bucket(l))), [pending])
@@ -23,6 +26,13 @@ export default function FieldHome() {
     pending.forEach((l) => m.set(areaOfLead(l), (m.get(areaOfLead(l)) || 0) + 1))
     return [...m].sort((a, b) => b[1] - a[1]).slice(0, 6)
   }, [pending])
+  const milkDue = useMemo(() => milk.filter((l) => ['overdue', 'today'].includes(bucket(l)) && !visitedIds.has(l.id)), [milk, visitedIds])
+  const milkDone = milk.filter((l) => ['visited', 'notint'].includes(fieldStatusOf(l).id)).length
+  const milkAreas = useMemo(() => {
+    const m = new Map()
+    milkDue.forEach((l) => m.set(l.area || 'No area', (m.get(l.area || 'No area') || 0) + 1))
+    return [...m].sort((a, b) => b[1] - a[1]).slice(0, 5)
+  }, [milkDue])
   const t = today.totals
   const pendingKg = pending.reduce((n, l) => n + kgOf(l), 0)
   const withNext = today.entries.filter((e) => e.next).length
@@ -31,26 +41,28 @@ export default function FieldHome() {
   const open = useMemo(() => hotels.filter((l) => !isClosedHotel(l)), [hotels])
   const noPin = open.filter((l) => !hasPin(l)).length
   const pinPct = open.length ? Math.round(((open.length - noPin) / open.length) * 100) : 100
-  const dayGoal = Math.max(1, t.visits + pending.length)
+  const dayGoal = Math.max(1, t.visits + pending.length + milkDue.length)
   const dayPct = Math.round((t.visits / dayGoal) * 100)
   const addLocations = () => { localStorage.setItem('sridhi.planPin', 'lock'); go('plan') }
 
   const openPlan = (a) => { if (a) localStorage.setItem('sridhi.planArea', a); go('plan') }
 
   // the one thing to do next
-  const next = !hotels.length
-    ? { ico: '🏨', t: 'No hotels assigned yet', s: 'HR will assign hotels to you. You can also add one you find on the road.', btn: '+ Add a hotel', fn: () => go('plan') }
+  const next = !hotels.length && !milk.length
+    ? { ico: '🥛', t: 'Nothing assigned yet', s: 'HR will assign distributors and hotels to you. You can also add a distributor you find on the road.', btn: 'Open areas', fn: () => go('areas', 'all') }
     : due.length
     ? { ico: '⏰', t: `${due.length} follow-up${due.length > 1 ? 's are' : ' is'} due`, s: 'Go back to these first. They already showed interest.', btn: 'Open follow-ups', fn: () => go('follow') }
+    : milkDue.length
+    ? { ico: '🥛', t: `${milkDue.length} distributor follow-up${milkDue.length > 1 ? 's' : ''} due`, s: `Open an area (${milkAreas.slice(0, 2).map(([a]) => a).join(', ')}…) and visit them.`, btn: 'Open areas', fn: () => go('areas', 'all') }
     : pending.length
     ? { ico: '🗺', t: `${pending.length} hotel${pending.length > 1 ? 's' : ''} waiting`, s: `${pendingKg ? `${pendingKg} kg to win back. ` : ''}Choose an area, tick the hotels and start.`, btn: 'Plan my visits', fn: () => go('plan') }
     : { ico: '🎉', t: 'All hotels visited today', s: 'Great day. Send your report to the team.', btn: 'Open report', fn: () => go('report') }
 
   const steps = [
-    { n: 1, ico: '🗺', t: 'Plan', s: `${pending.length} to visit`, hint: 'Filter and tick hotels', fn: () => go('plan') },
+    { n: 1, ico: '🗺', t: 'Plan', s: `${pending.length + milkDue.length} to visit`, hint: 'Pick an area or hotels', fn: () => go(milk.length && !pending.length ? 'areas' : 'plan') },
     { n: 2, ico: '📍', t: 'Visit', s: `${t.visits} today`, hint: 'Map shows why they stopped', fn: () => go('plan') },
     { n: 3, ico: '✍️', t: 'Remark', s: `${t.visits + t.calls} saved`, hint: 'Outcome, stars, note', fn: () => go('plan') },
-    { n: 4, ico: '⏰', t: 'Follow up', s: `${due.length} due · ${upcoming} later`, hint: 'Never lose a hotel', fn: () => go('follow') },
+    { n: 4, ico: '⏰', t: 'Follow up', s: `${due.length + milkDue.length} due · ${upcoming} later`, hint: 'Never lose a lead', fn: () => go('follow') },
   ]
 
   return (
@@ -59,7 +71,7 @@ export default function FieldHome() {
         <div>
           <small>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}</small>
           <h1>{greeting()}, {session.name.split(' ')[0]} 👋</h1>
-          <p>{t.visits ? <><b>{t.visits}</b> visit{t.visits > 1 ? 's' : ''} done today. </> : 'No visits yet today. '}{pending.length ? <><b>{pending.length}</b> hotel{pending.length > 1 ? 's' : ''} waiting.</> : 'Everything is visited.'}</p>
+          <p>{t.visits ? <><b>{t.visits}</b> visit{t.visits > 1 ? 's' : ''} done today. </> : 'No visits yet today. '}{pending.length + milkDue.length ? <><b>{pending.length + milkDue.length}</b> waiting{milkDue.length ? <> (<b>{milkDue.length}</b> distributor{milkDue.length > 1 ? 's' : ''})</> : ''}.</> : 'Everything is visited.'}</p>
         </div>
         <div className="fh-ring" style={{ '--p': dayPct }}><b>{dayPct}%<small>OF TODAY</small></b></div>
       </section>
@@ -69,6 +81,18 @@ export default function FieldHome() {
         <div><small>Do this next</small><h3>{next.t}</h3><p>{next.s}</p></div>
         <button className="btn3d lime big" onClick={next.fn}>{next.btn} <Icon name="chevron" size={18} /></button>
       </motion.section>
+
+      {milk.length > 0 && (
+        <section className="card fh-milk">
+          <div className="fh-pick-h">
+            <h3>🥛 Milk distributors · Chennai</h3>
+            <button className="btn-soft sm" onClick={() => go('areas', 'all')}>All areas →</button>
+          </div>
+          <div className="fh-milk-b"><i style={{ width: `${Math.round((milkDone / milk.length) * 100)}%` }} /></div>
+          <p className="fh-milk-t"><b>{milkDone}</b> of <b>{milk.length}</b> done · <b>{milkDue.length}</b> follow-up{milkDue.length === 1 ? '' : 's'} due</p>
+          {milkAreas.length > 0 && <div className="chips scroll">{milkAreas.map(([a, n]) => <button key={a} className="chip" onClick={() => go('areas', a)}>{a} <b>{n}</b></button>)}</div>}
+        </section>
+      )}
 
       {noPin > 0 && (
         <section className="card fh-loc">
@@ -85,7 +109,7 @@ export default function FieldHome() {
         <div className="kpi"><em>📍</em><b><Counter value={t.visits} /></b><span>Visits today</span></div>
         <div className="kpi"><em>📞</em><b><Counter value={t.calls} /></b><span>Calls today</span></div>
         <div className="kpi"><em>⭐</em><b>{t.avgRating ? t.avgRating : '-'}</b><span>Avg interest</span></div>
-        <div className="kpi"><em>⏰</em><b><Counter value={due.length} /></b><span>Follow-ups due</span></div>
+        <div className="kpi"><em>⏰</em><b><Counter value={due.length + milkDue.length} /></b><span>Follow-ups due</span></div>
       </div>
 
       <section className="card fh-steps">

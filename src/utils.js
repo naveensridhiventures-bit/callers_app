@@ -5,8 +5,8 @@ const pad = (n) => String(n).padStart(2, '0')
 /** a bare number has no name yet, so show the phone instead */
 export const nameOf = (l) => l.name || l.phone || 'Unknown'
 /** hotels are Chennai field-sales leads; the distributor / sales leads are Bengaluru */
-export const cityOf = (l) => (l && l.type === 'hotel' ? 'Chennai' : 'Bengaluru')
-export const typeLabel = (t) => (t === 'sales' ? 'Sales' : t === 'number' ? 'Number' : t === 'hotel' ? 'Hotel' : 'Distributor')
+export const cityOf = (l) => (l && (l.type === 'hotel' || l.type === 'milk') ? 'Chennai' : 'Bengaluru')
+export const typeLabel = (t) => (t === 'sales' ? 'Sales' : t === 'number' ? 'Number' : t === 'hotel' ? 'Hotel' : t === 'milk' ? 'Milk distributor' : 'Distributor')
 
 export const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4)
 export const nowISO = () => new Date().toISOString()

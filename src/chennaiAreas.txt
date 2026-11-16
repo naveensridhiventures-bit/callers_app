@@ -1,0 +1,214 @@
+# Chennai localities by zone. Format: Name|lat|lng   (centres are approximate: used for sorting and area maps only)
+# Add a new line here to add an area for everyone. A name can have aliases after a  ~  e.g.  Kilpauk|13.08|80.24|~Kialpauk~Kilpak
+
+# North Chennai
+George Town|13.0950|80.2890|~Georg Town~George Town Hub
+Parrys|13.0930|80.2870|~Parry's Corner~Parrys Corner~Partys corner
+Mannady|13.0950|80.2870|~Mannadi
+Sowcarpet|13.0975|80.2830|~Sowkarpet
+Broadway|13.0880|80.2830
+Flower Bazaar|13.0910|80.2790
+Elephant Gate|13.0900|80.2820
+Kondithope|13.0990|80.2810
+Mint|13.1000|80.2860
+Washermanpet|13.1143|80.2870|~Old Washermanpet
+Royapuram|13.1037|80.2954
+Tondiarpet|13.1260|80.2900|~Tondiarpet
+Korukkupet|13.1250|80.2780
+Basin Bridge|13.0960|80.2710
+Pulianthope|13.1010|80.2640|~Pulianthope
+Choolai|13.0870|80.2600
+Vepery|13.0850|80.2600
+Otteri|13.0941|80.2541
+Pattalam|13.0990|80.2480
+Vyasarpadi|13.1190|80.2530|~Vysarpadi
+Kodungaiyur|13.1380|80.2490
+MKB Nagar|13.1310|80.2570
+Perambur|13.1186|80.2330
+Ayanavaram|13.1000|80.2330
+Sembium|13.1130|80.2270
+Retteri|13.1360|80.2300
+Kolathur|13.1200|80.2200
+Villivakkam|13.1080|80.2070
+Madhavaram|13.1480|80.2310
+Madhavaram Milk Colony|13.1330|80.2370
+Moolakadai|13.1420|80.2420
+Manali|13.1670|80.2630
+Manali New Town|13.1800|80.2500
+Puzhal|13.1650|80.2060
+Red Hills|13.1860|80.1830|~Redhills
+Surapet|13.1550|80.1600
+Thiruvottiyur|13.1643|80.3010|~Tiruvottiyur
+Wimco Nagar|13.1620|80.3070
+Kaladipet|13.1480|80.3020
+Ennore|13.2150|80.3200
+Ernavur|13.1930|80.3180
+Kathivakkam|13.2080|80.3170
+Minjur|13.2760|80.2610
+Ponneri|13.3400|80.2000
+
+# Central Chennai
+Egmore|13.0732|80.2609
+Periamet|13.0830|80.2650
+Pudupet|13.0750|80.2650
+Chintadripet|13.0780|80.2700
+Park Town|13.0830|80.2740
+Purasawalkam|13.0897|80.2420|~Purasaiwakkam
+Kilpauk|13.0836|80.2417|~Kialpauk
+Chetpet|13.0715|80.2420
+Aminjikarai|13.0735|80.2230|~Aminjikarai
+Choolaimedu|13.0667|80.2256|~Choolimedu~Choolaimedu
+Shenoy Nagar|13.0780|80.2330
+Nungambakkam|13.0569|80.2425
+Thousand Lights|13.0585|80.2530
+Gopalapuram|13.0510|80.2540
+Teynampet|13.0440|80.2500
+Mount Road|13.0600|80.2630|~Anna Salai
+Royapettah|13.0525|80.2646|~Royapetta
+Triplicane|13.0569|80.2780|~Thiruvallikeni
+Chepauk|13.0610|80.2740
+Marina|13.0500|80.2820
+Mylapore|13.0368|80.2676
+Mandaveli|13.0291|80.2720|~Mandhaveli~Mandavelli
+R.A. Puram|13.0270|80.2610|~RA Puram~Raja Annamalai Puram
+Alwarpet|13.0330|80.2520
+Luz|13.0340|80.2690
+Santhome|13.0330|80.2790|~San Thome
+Foreshore Estate|13.0230|80.2760
+Kotturpuram|13.0100|80.2400
+Nandanam|13.0290|80.2390
+Saidapet|13.0213|80.2231
+Little Mount|13.0100|80.2300
+Raj Bhavan|13.0110|80.2245|~Raj bhavan~Rajbhavan
+Guindy|13.0067|80.2206
+Anna Nagar|13.0850|80.2101
+Anna Nagar West|13.0900|80.1950
+Arumbakkam|13.0730|80.2120
+Thirumangalam|13.0850|80.2010
+Koyambedu|13.0694|80.1948|~CMBT
+Nerkundram|13.0690|80.1900
+Virugambakkam|13.0550|80.1900
+Kodambakkam|13.0521|80.2255
+Vadapalani|13.0500|80.2121
+Saligramam|13.0434|80.2005
+K.K. Nagar|13.0412|80.1999|~KK Nagar
+Ashok Nagar|13.0373|80.2123
+Jafferkhanpet|13.0310|80.2100
+T. Nagar|13.0418|80.2341|~T Nagar~Thyagaraya Nagar
+Pondy Bazaar|13.0440|80.2410
+West Mambalam|13.0385|80.2200
+Mambalam|13.0380|80.2200
+Ekkaduthangal|13.0170|80.2050|~Ekkatuthangal~Ekkattuthangal
+Ramapuram|13.0330|80.1800
+Nesapakkam|13.0377|80.1840
+Mogappair|13.0850|80.1750|~Mogapair
+Mogappair West|13.0900|80.1700
+Nolambur|13.0819|80.1669
+Padi|13.1000|80.1850
+Korattur|13.1140|80.1800
+
+# West Chennai
+Valasaravakkam|13.0420|80.1730
+Alwarthirunagar|13.0420|80.1640
+Maduravoyal|13.0626|80.1706|~Maduravayol
+Alapakkam|13.0496|80.1697|~Aalapakkam
+Vanagaram|13.0436|80.1645
+Ayanambakkam|13.0700|80.1450
+Porur|13.0382|80.1565
+Mugalivakkam|13.0160|80.1700
+Manapakkam|13.0210|80.1620
+Moulivakkam|13.0225|80.1504
+Iyyappanthangal|13.0439|80.1366|~Iyyapanthangal~Iyyapanthangal noombal
+Kattupakkam|13.0340|80.1320
+Gerugambakkam|13.0000|80.1280
+Kolapakkam|12.9990|80.1220
+Kundrathur|12.9980|80.0970
+Mangadu|13.0290|80.1060
+Paraniputhur|13.0100|80.1100
+Thiruverkadu|13.0744|80.1210|~Tiruverkadu
+Poonamallee|13.0473|80.0945|~Poonamalle
+Vellanur|13.1350|80.0900
+Thirumazhisai|13.0600|80.0600
+
+# North-West (Ambattur - Avadi belt)
+Ambattur|13.1143|80.1548|~Ambathur
+Ambattur Industrial Estate|13.0990|80.1600
+Thirumullaivoyal|13.1260|80.1330
+Annanur|13.1180|80.1240
+Avadi|13.1067|80.0970
+Muthapudupet|13.1170|80.1030
+Pattabiram|13.1240|80.0640
+Nemilichery|13.1246|80.0430|~Nimilicheri~Nemilicheri
+Thirunindravur|13.1210|80.0290
+
+# South Chennai
+Adyar|13.0012|80.2565|~Adayar
+Besant Nagar|13.0002|80.2668
+Thiruvanmiyur|12.9830|80.2594|~Tiruvanmiyur
+Valmiki Nagar|12.9860|80.2630
+Kapaleeshwar Nagar|12.9700|80.2600
+Tharamani|12.9836|80.2383|~Taramani
+Velachery|12.9815|80.2180
+Guindy Industrial Estate|13.0100|80.2100
+Alandur|13.0030|80.2000
+St. Thomas Mount|13.0000|80.1970|~St Thomas Mount~Parangimalai
+Adambakkam|12.9885|80.2027
+Pazhavanthangal|12.9930|80.1950
+Nanganallur|12.9810|80.1920
+Puzhuthivakkam|12.9740|80.1990|~Ullagaram
+Keelkattalai|12.9660|80.1900
+Madipakkam|12.9620|80.1980
+Kovilambakkam|12.9370|80.1900
+Nanmangalam|12.9100|80.1800
+Medavakkam|12.9200|80.1920
+Jalladianpet|12.9300|80.1950
+Pallikaranai|12.9300|80.2130
+Perumbakkam|12.9000|80.2000
+
+# OMR and IT Corridor
+Perungudi|12.9650|80.2461
+Kandanchavadi|12.9570|80.2470
+Thoraipakkam|12.9410|80.2370
+Okkiyam Thoraipakkam|12.9300|80.2380
+Karapakkam|12.9189|80.2299
+Sholinganallur|12.9010|80.2279
+Semmencherry|12.8700|80.2270
+Navalur|12.8450|80.2260
+Thazhambur|12.8650|80.2250
+Siruseri|12.8250|80.2270
+Kelambakkam|12.7870|80.2200
+Kandigai|12.8000|80.2000
+
+# ECR (East Coast Road)
+Kottivakkam|12.9740|80.2600
+Palavakkam|12.9620|80.2564
+Neelankarai|12.9490|80.2590
+Injambakkam|12.9180|80.2570
+Panaiyur|12.8960|80.2560
+Akkarai|12.8830|80.2560
+Uthandi|12.8570|80.2480
+Kanathur|12.8330|80.2470
+Muttukadu|12.8100|80.2450
+Kovalam|12.7900|80.2530
+
+# South Suburbs (GST Road to Tambaram)
+Meenambakkam|12.9830|80.1650
+Pammal|12.9690|80.1360
+Pallavaram|12.9675|80.1491
+Zamin Pallavaram|12.9560|80.1450
+Chromepet|12.9516|80.1462
+Hasthinapuram|12.9430|80.1400
+Chitlapakkam|12.9328|80.1484|~Chittlapakkam~Chitlapakam
+Tambaram|12.9249|80.1000|~Tambaram East~Tambaram West
+Sanatorium Tambaram|12.9380|80.1180|~Tambaram Sanatorium
+Selaiyur|12.9070|80.1380
+Rajakilpakkam|12.9150|80.1500
+Sembakkam|12.8890|80.1450
+Madambakkam|12.8960|80.1500
+Perungalathur|12.9040|80.0900
+Peerkankaranai|12.9000|80.0900
+Vandalur|12.8900|80.0800
+Urapakkam|12.8600|80.0600
+Guduvanchery|12.8450|80.0600
+Mudichur|12.9100|80.0700
+Irumbuliyur|12.9170|80.1000

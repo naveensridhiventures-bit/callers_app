@@ -17,7 +17,7 @@ export function MapPopup({ lead, onClose }) {
   const [fix, setFix] = useState(false) // the "wrong spot? update it" sheet
   const pt = hotelPoint(lead)
   const canCheckIn = session && session.role !== 'admin'
-  const canFix = session && (session.role === 'field' || session.role === 'admin') && lead.type === 'hotel'
+  const canFix = session && (session.role === 'field' || session.role === 'admin') && (lead.type === 'hotel' || lead.type === 'milk')
   const src = srcOf(lead)
 
   const checkIn = () => {
@@ -42,7 +42,7 @@ export function MapPopup({ lead, onClose }) {
       <div className="mp">
         <div className="mp-head">
           <button className="icon-btn light" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
-          <span className="mp-pin">🏨</span>
+          <span className="mp-pin">{lead.type === 'milk' ? '🥛' : '🏨'}</span>
           <h2>{lead.name}</h2>
           <p>{[lead.area, 'Chennai'].filter(Boolean).join(' · ')}</p>
           <div className="mp-chips">
@@ -53,7 +53,7 @@ export function MapPopup({ lead, onClose }) {
         {lead.type === 'hotel' && <div className="mp-why"><WhyBox lead={lead} /></div>}
 
         <div className="mp-map">
-          <iframe title="Hotel location" src={mapEmbed(lead)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+          <iframe title="Shop location" src={mapEmbed(lead)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
           <div className="mp-offline">Map needs internet. Use <b>Navigate</b> below.</div>
         </div>
 

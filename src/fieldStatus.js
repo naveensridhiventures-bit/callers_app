@@ -17,7 +17,7 @@ export const FIELD_STATUS = [
 ]
 export const FS = Object.fromEntries(FIELD_STATUS.map((s) => [s.id, s]))
 
-const VISIT_DONE = ['Visited', 'Order Restarted', 'Will Order Soon', 'Interested', 'Revisit Needed', 'Owner Not Available']
+const VISIT_DONE = ['Visited', 'Met Owner', 'Meeting Fixed', 'Onboarded', 'Order Restarted', 'Will Order Soon', 'Interested', 'Revisit Needed', 'Owner Not Available']
 const NOT_INT = ['Not Interested', 'Hotel Closed']
 
 export function fieldStatusOf(l) {
