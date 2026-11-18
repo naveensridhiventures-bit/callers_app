@@ -1,15 +1,15 @@
 // Google Sheets database (Apps Script web app). Pre-connected so every device syncs out of the box.
 export const DEFAULT_SHEET_URL =
-  'https://script.google.com/macros/s/AKfycbwrAHFFLvFL85VYfk4nXdNC_cZw2vcILbaPYzlai2CBv7TIUDnwJkaDSaRD3MjSPhey/exec'
+  'https://script.google.com/macros/s/AKfycby3BKx80noMizSjV5ucyRA8e-Y2-x-JIdzxNZkQD3Tywi5ckXQSJ-l6RubgeznHV8s/exec'
 
 // Cloudinary (visit photos). Create a FREE account at cloudinary.com, then:
 //   Settings > Upload > Upload presets > Add preset > Signing mode = "Unsigned" > Save.
 // Put your Cloud name and that preset name below (or set VITE_CLOUDINARY_CLOUD_NAME / VITE_CLOUDINARY_PRESET).
 // Until both are filled, photos wait safely on the phone and upload by themselves once this is set.
 export const CLOUDINARY = {
-  cloudName: import.meta.env?.VITE_CLOUDINARY_CLOUD_NAME || '',
-  uploadPreset: import.meta.env?.VITE_CLOUDINARY_PRESET || '',
-  folder: 'sridhi-visits',
+  cloudName: import.meta.env?.VITE_CLOUDINARY_CLOUD_NAME || 'djwgtjdda',
+  uploadPreset: import.meta.env?.VITE_CLOUDINARY_PRESET || 'CALLERAPP',
+  folder: '', // the preset CALLERAPP already puts photos in the sridhi_visits folder
 }
 
 // HR / admin number that field people call to get a hotel's map location added.
@@ -18,6 +18,7 @@ export const ADMIN_CONTACT = ''
 
 // earlier built-in links: devices that saved one of these are moved to the current link automatically
 export const OLD_DEFAULT_URLS = [
+  'https://script.google.com/macros/s/AKfycbwrAHFFLvFL85VYfk4nXdNC_cZw2vcILbaPYzlai2CBv7TIUDnwJkaDSaRD3MjSPhey/exec',
   'https://script.google.com/macros/s/AKfycbxBBahpPIIy3OH7g-Y8AusdEDulxrRNV00QR93jCchHTj9ru6F7bxHqsLE10jgwPTA/exec',
   'https://script.google.com/macros/s/AKfycbz1N2290oLkIZwpBA1QG4RqxMgt6GS-3U9PaO6MmxhTIOGVdRUnj1Fg85ad9LSITs9B/exec',
   'https://script.google.com/macros/s/AKfycbzZ5m2BZ8wD5d1fnh1TOY98YKcGOY5QtMirbZ9NAvnHuF_XbVQHe7Fn9wAnv5u8YS3T/exec',
