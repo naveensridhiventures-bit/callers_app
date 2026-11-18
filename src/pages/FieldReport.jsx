@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { thumbUrl } from '../photos'
 import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Counter, Icon, Segmented } from '../ui'
@@ -144,6 +145,7 @@ export default function FieldReport() {
                           <b>{e.name}</b>
                           <small>{[e.area, e.outcome, fmtTime(e.at)].filter(Boolean).join(' · ')}</small>
                           {e.remark ? <small className="fr-remark">“{e.remark}”</small> : <small className="fr-remark none">No remark</small>}
+                          {e.photo && <a href={e.photo} target="_blank" rel="noreferrer" className="mk-ph"><img src={thumbUrl(e.photo, 160)} alt="Visit" loading="lazy" /></a>}
                           <button type="button" className="dw-addr" onClick={() => (e.lead.type === 'milk' ? openLead(e.lead.id) : quick.open(e.lead))}>✍️ Add remark</button>
                         </div>
                         <StarsRO value={e.rating} size={12} />

@@ -1,18 +1,19 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../store'
 import { Icon, Sheet } from '../ui'
-import { RATING_LABEL, Stars, StarsRO, ratingToPriority } from './Stars'
+import { StarsRO } from './Stars'
 import MapButton from './MapPopup'
 import ChennaiAreaPicker from './ChennaiAreaPicker'
-import { BRANDS, MILK_OUTCOMES, MILK_REMARKS, OUT, SRC_OWN, brandsOf, isOwn, joinBrands } from '../milk'
+import CameraCapture from './CameraCapture'
+import { MILK_OUTCOMES, OUT, SRC_OWN, brandsOf, isOwn } from '../milk'
 import { canonArea, zoneOf } from '../chennai'
 import { FS, fieldStatusOf } from '../fieldStatus'
 import { accLabel, bestFix, inChennai, isShortLink, locFields, parsePin } from '../location'
+import { cloudReady, queuePhoto, thumbUrl, uploadPhoto } from '../photos'
 import { atDay, cleanPhone, fmtWhen, fromLocalInput, hotelPoint, nowISO, telHref, toLocalInput, uid, waHref } from '../utils'
 
 const FOLLOW = [
-  { id: 'today', t: 'Today 5 PM', at: () => atDay(0, 17), show: () => new Date().getHours() < 17 },
   { id: 'tom', t: 'Tomorrow', at: () => atDay(1, 11) },
   { id: 'd3', t: 'In 3 days', at: () => atDay(3, 11) },
   { id: 'wk', t: 'Next week', at: () => atDay(7, 11) },
@@ -20,52 +21,66 @@ const FOLLOW = [
 ]
 
 /**
- * One milk distributor, built for the street:  Visit (what happened) · Details (fix / complete the record) · History.
- * With no `id` it adds a NEW distributor the field person found herself (source = "Own source").
+ * One milk distributor.
+ *   Field person: ONE simple screen. Pick 1 of 4 outcomes, write a remark, take a live photo (camera only), done.
+ *                 Location is captured automatically. Name + contact number + address can be added or corrected.
+ *   Admin:        Details / History (with photos).
+ * With no `id` it adds a NEW distributor the field person found (source = "Own source").
  */
 export default function MilkSheet({ id, preset = {}, tab: tab0 = 'visit', onClose }) {
-  const { allLeads, leads, session, saveLead, logCall, saveDetails, removeLead, startCall, toast, openLead } = useApp()
+  const { allLeads, leads, session, logCall, saveDetails, removeLead, startCall, toast, openLead, flushPhotos } = useApp()
   const lead = id ? allLeads.find((l) => l.id === id) : null
   const adding = !lead
   const isAdmin = session?.role === 'admin'
-  const [tab, setTab] = useState(isAdmin && tab0 === 'visit' ? 'details' : tab0)
+  const [tab, setTab] = useState(isAdmin ? (tab0 === 'history' ? 'history' : 'details') : tab0 === 'history' ? 'history' : 'visit')
 
-  // ---- record fields (Details)
   const [d, setD] = useState(() => ({
     name: lead?.name || preset.name || '', contactName: lead?.contactName || '', phone: lead?.phone || '', altPhone: lead?.altPhone || '',
     area: lead?.area || preset.area || '', address: lead?.address || '', notes: lead?.notes || '',
   }))
   const set = (k) => (e) => setD((p) => ({ ...p, [k]: e.target.value }))
 
-  // ---- what we learn on the visit
-  const [brands, setBrands] = useState(() => brandsOf(lead || {}))
-  const [custom, setCustom] = useState('')
-  const [litres, setLitres] = useState(lead?.dailyQty || '')
-  const [vehicle, setVehicle] = useState(lead?.vehicle || '')
-  const [cold, setCold] = useState(lead?.coldStorage || '')
-  const [outcome, setOutcome] = useState(adding ? 'Met Owner' : '')
-  const [rating, setRating] = useState(0)
+  const [outcome, setOutcome] = useState('')
   const [remark, setRemark] = useState('')
   const [next, setNext] = useState('')
-  const [pin, setPin] = useState(null)
-  const [busy, setBusy] = useState(false)
+  const [shot, setShot] = useState(null)      // { blob, url }
+  const [cam, setCam] = useState(false)
+  const [loc, setLoc] = useState(null)        // { lat, lng, acc }
+  const [locErr, setLocErr] = useState('')
+  const [pin, setPin] = useState(null)        // admin only
+  const [more, setMore] = useState(adding)
+  const [busy, setBusy] = useState('')
+  const locRef = useRef(null); locRef.current = loc
 
   const o = OUT[outcome]
   const fs = lead ? fieldStatusOf(lead) : FS.todo
   const own = adding || isOwn(lead)
-  const pt = pin || (lead ? hotelPoint(lead) : null)
-  const allBrands = useMemo(() => [...new Set([...BRANDS, ...brands])], [brands])
-  const toggleBrand = (b) => setBrands((a) => (a.includes(b) ? a.filter((x) => x !== b) : [...a, b]))
-  const addCustom = () => { const v = custom.trim(); if (v) { setBrands((a) => (a.includes(v) ? a : [...a, v])); setCustom('') } }
-  const addRemark = (t) => setRemark((r) => (r.includes(t) ? r : r ? `${r}. ${t}` : t))
 
-  const facts = () => ({ company: joinBrands(brands), dailyQty: String(litres || '').trim(), vehicle, coldStorage: cold })
+  /* location is captured the moment the screen opens, so the photo is stamped instantly */
+  const getLoc = async () => {
+    setLocErr('')
+    try {
+      const f = await bestFix({ ms: 12000, good: 20, onUpdate: (b) => b?.lat != null && setLoc((c) => (!c || b.acc < c.acc ? { lat: b.lat, lng: b.lng, acc: b.acc } : c)) })
+      if (!inChennai(f)) { setLocErr('You seem to be outside Chennai. Check your location.'); return }
+      setLoc({ lat: f.lat, lng: f.lng, acc: f.acc })
+    } catch (e) { setLocErr(e?.message || 'Location is off. Turn on GPS and try again.') }
+  }
+  useEffect(() => { if (!isAdmin && tab === 'visit') getLoc() /* eslint-disable-next-line */ }, [])
+  useEffect(() => () => { if (shot?.url) URL.revokeObjectURL(shot.url) }, [shot])
+
+  const pick = (x) => {
+    setOutcome(x.id)
+    if (x.none) setNext('')
+    else if (x.need && !next) setNext(FOLLOW[0].at())
+    else if (!x.need) setNext('')
+  }
+
   const detailPatch = () => ({ name: d.name.trim(), contactName: d.contactName.trim(), phone: cleanPhone(d.phone) || d.phone.trim(), altPhone: d.altPhone.trim(), area: canonArea(d.area), address: d.address.trim(), notes: d.notes.trim() })
 
   const checkRecord = () => {
-    if (!d.name.trim()) { setTab('details'); toast('Enter the distributor name', 'warn'); return false }
-    if (adding && cleanPhone(d.phone).length < 10) { toast('Enter a valid 10-digit phone number', 'warn'); return false }
-    if (!d.area.trim()) { setTab('details'); toast('Choose the area', 'warn'); return false }
+    if (!d.name.trim()) { setMore(true); setTab(isAdmin ? 'details' : 'visit'); toast('Enter the customer name', 'warn'); return false }
+    if ((adding || !isAdmin) && cleanPhone(d.phone).length < 10) { setMore(true); toast('Enter the 10-digit contact number', 'warn'); return false }
+    if (!d.area.trim()) { setMore(true); toast('Choose the area', 'warn'); return false }
     if (adding) {
       const dup = leads.find((l) => l.type === 'milk' && cleanPhone(l.phone) === cleanPhone(d.phone))
       if (dup) { toast(`Already in your list: ${dup.name}${dup.area ? ` · ${dup.area}` : ''}`, 'warn'); openLead(dup.id); return false }
@@ -73,31 +88,43 @@ export default function MilkSheet({ id, preset = {}, tab: tab0 = 'visit', onClos
     return true
   }
 
-  const pinFields = (base) => (pin ? locFields(session, base || {}, pin, pin.source, pin.acc) : {})
-
-  const saveVisit = () => {
+  const saveVisit = async () => {
     if (busy) return
     if (!checkRecord()) return
     if (!outcome) return toast('Choose how the visit went', 'warn')
-    if (o.need && !next) return toast('Pick when to go back. This visit needs a follow-up.', 'warn')
-    setBusy(true)
+    if (o.remarkReq && !remark.trim()) return toast('Write a short remark for “Other”', 'warn')
+    if (o.need && !next) return toast('Pick when to go back', 'warn')
+    if (!shot) return toast('Take the shop photo with the camera', 'warn')
+    if (!loc && !locErr) return toast('Waiting for your location… one moment', 'warn')
+
     const base = lead || {
       id: uid(), type: 'milk', city: 'Chennai', bizType: 'Milk Distributor', source: SRC_OWN, status: 'Contacted', priority: 'Warm',
       calls: [], callCount: 0, nextFollowUp: '', createdAt: nowISO(), fieldId: session.id, fieldName: session.name, fieldAt: nowISO(),
     }
+    const callId = uid()
+    let photo = ''
+    setBusy('Saving…')
+    if (cloudReady() && navigator.onLine !== false) {
+      try { setBusy('Uploading photo…'); photo = await uploadPhoto(shot.blob, callId) } catch { photo = '' }
+    }
+    if (!photo) await queuePhoto({ id: callId, leadId: base.id, callId, blob: shot.blob })
+
+    const needPin = !hotelPoint(base) && loc
     logCall({ ...base, ...detailPatch() }, {
-      outcome, remark: remark.trim(), next: o.none ? '' : next, rating: rating || undefined,
-      priority: ratingToPriority(rating) || undefined, mode: 'visit', visit: pin ? { lat: pin.lat, lng: pin.lng } : undefined,
-      extra: { ...facts(), ...pinFields(base) },
+      id: callId, outcome, remark: remark.trim(), next: o.none ? '' : next, status: o.status, priority: o.id === 'Interested' ? 'Hot' : undefined,
+      mode: 'visit', visit: loc ? { lat: loc.lat, lng: loc.lng, acc: loc.acc } : undefined, photo,
+      extra: needPin ? locFields(session, base, loc, 'gps', loc.acc) : {},
     })
     navigator.vibrate?.(40)
-    toast(adding ? `${d.name.trim()} added ✓` : outcome === 'Onboarded' ? '🎉 Onboarded! Great work' : 'Visit saved ✓')
+    toast(!photo ? (cloudReady() ? 'Saved ✓ Photo will upload when network is back' : 'Saved ✓ Photo kept on phone') : adding ? `${d.name.trim()} added ✓` : 'Visit saved ✓')
+    setBusy('')
+    if (!photo) setTimeout(() => flushPhotos?.(), 4000)
     onClose()
   }
 
   const saveRecord = () => {
     if (!checkRecord()) return
-    saveDetails(lead, { ...lead, ...detailPatch(), ...facts(), ...pinFields(lead) })
+    saveDetails(lead, { ...lead, ...detailPatch(), ...(pin ? locFields(session, lead, pin, pin.source, pin.acc) : {}) })
     toast('Details saved ✓')
     onClose()
   }
@@ -109,23 +136,23 @@ export default function MilkSheet({ id, preset = {}, tab: tab0 = 'visit', onClos
 
   const footer = tab === 'history' ? null : (
     <div className="sheet-foot">
-      {!adding && tab === 'visit' && o?.need && !next && <p className="mk-need">⏰ Pick a follow-up date to save</p>}
-      <button type="button" className="btn3d lime big" disabled={busy} onClick={tab === 'details' && !adding ? saveRecord : saveVisit}>
-        <Icon name="check" size={20} /> {adding ? 'Save distributor' : tab === 'details' ? 'Save changes' : 'Save visit'}
+      <button type="button" className="btn3d lime big" disabled={!!busy} onClick={isAdmin && !adding ? saveRecord : saveVisit}>
+        {busy ? <em className="spin" /> : <Icon name="check" size={20} />} {busy || (isAdmin && !adding ? 'Save changes' : adding ? 'Save customer & visit' : 'Save visit')}
       </button>
     </div>
   )
 
   const hist = lead ? (lead.calls || []).filter((c) => !['Checked In'].includes(c.outcome)) : []
+  const dpin = loc || (lead ? hotelPoint(lead) : null)
 
   return (
     <Sheet onClose={onClose} footer={footer}>
-      <div className="mk">
+      <div className="mk sv">
         <header className="mk-head">
           <span className="mk-ico">🥛</span>
           <div>
-            <small>{adding ? 'New distributor · your own source' : `${zoneOf(lead.area) !== 'Other' ? zoneOf(lead.area) : 'Chennai'}`}</small>
-            <h2>{adding ? 'Add distributor' : lead.name}</h2>
+            <small>{adding ? 'New customer · your own find' : zoneOf(lead.area) !== 'Other' ? zoneOf(lead.area) : 'Chennai'}</small>
+            <h2>{adding ? 'Add customer' : lead.name}</h2>
             {!adding && <p>📍 {lead.area || 'Area not set'}{lead.contactName ? ` · ${lead.contactName}` : ''}</p>}
           </div>
           <button type="button" className="ls-x" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
@@ -139,49 +166,51 @@ export default function MilkSheet({ id, preset = {}, tab: tab0 = 'visit', onClos
               {Number(lead.rating) > 0 && <StarsRO value={Number(lead.rating)} size={13} />}
               {lead.nextFollowUp && !['Onboarded', 'Not Interested'].includes(lead.status) && <span className="due upcoming"><Icon name="clock" size={12} /> {fmtWhen(lead.nextFollowUp)}</span>}
             </div>
-            {brandsOf(lead).length > 0 && <div className="mk-brands">{brandsOf(lead).map((b) => <span key={b}>{b}</span>)}</div>}
             <div className="mk-act">
               {lead.phone ? <a className="hr-b" href={telHref(lead.phone)} onClick={(e) => { if (!startCall(lead)) e.preventDefault() }}><Icon name="phone" size={17} /> Call</a> : <span className="hr-b off">No phone</span>}
               {lead.phone ? <a className="hr-b" href={waHref(lead.phone, `Hi ${lead.contactName || lead.name}, this is ${session?.name || 'Sridhi'} from Sridhi. `)} target="_blank" rel="noreferrer"><Icon name="whatsapp" size={17} /> WhatsApp</a> : <span className="hr-b off">—</span>}
               <MapButton lead={lead} className="hr-b"><Icon name="pin" size={17} /> {hotelPoint(lead) ? 'Map' : 'Find'}</MapButton>
             </div>
             {lead.lastRemark && <p className="mk-last"><b>Last remark:</b> {lead.lastRemark}</p>}
-            <div className="mk-tabs" role="tablist">
-              {[...(isAdmin ? [] : [['visit', '✍️ Visit']]), ['details', '📝 Details'], ['history', `🕘 History (${hist.length})`]].map(([k, t]) => (
-                <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>
-                  {tab === k && <motion.span layoutId="mk-tab" className="mk-tab-bg" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
-                  <span>{t}</span>
-                </button>
-              ))}
-            </div>
+            {(isAdmin || hist.length > 0) && (
+              <div className="mk-tabs" role="tablist">
+                {[...(isAdmin ? [] : [['visit', '✍️ Visit']]), ...(isAdmin ? [['details', '📝 Details']] : []), ['history', `🕘 History (${hist.length})`]].map(([k, t]) => (
+                  <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>
+                    {tab === k && <motion.span layoutId="mk-tab" className="mk-tab-bg" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
+                    <span>{t}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         )}
 
-        {/* ---------- DETAILS ---------- */}
-        {(tab === 'details' || adding) && (
+        {/* ---------- ADMIN DETAILS ---------- */}
+        {tab === 'details' && isAdmin && (
           <section className="mk-sec">
-            {adding && <p className="mk-hint">You found a shop or agency that can sell Sridhi Idli &amp; Dosa Batter and is not on the admin list. Fill what you know now; you can complete the rest later. Admin sees it as <b>Own source</b>.</p>}
-            <label className="field"><span>Distributor / agency name *</span><input value={d.name} onChange={set('name')} placeholder="e.g. Sri Murugan Milk Agency" autoFocus={adding} /></label>
+            <label className="field"><span>Distributor / agency name *</span><input value={d.name} onChange={set('name')} /></label>
             <div className="mk-two">
-              <label className="field"><span>Owner / contact person</span><input value={d.contactName} onChange={set('contactName')} placeholder="Name" /></label>
-              <label className="field"><span>Phone {adding ? '*' : ''}</span><input inputMode="tel" value={d.phone} onChange={set('phone')} placeholder="10-digit number" /></label>
+              <label className="field"><span>Contact person</span><input value={d.contactName} onChange={set('contactName')} /></label>
+              <label className="field"><span>Phone</span><input inputMode="tel" value={d.phone} onChange={set('phone')} /></label>
             </div>
             <ChennaiAreaPicker value={d.area} onChange={(v) => setD((p) => ({ ...p, area: v }))} />
-            <label className="field"><span>Shop address / landmark</span><input value={d.address} onChange={set('address')} placeholder="Street, landmark" /></label>
+            <label className="field"><span>Address / landmark</span><input value={d.address} onChange={set('address')} /></label>
             <PinField pin={pin} onChange={setPin} cur={lead ? hotelPoint(lead) : null} lead={lead} />
-            <label className="field"><span>Notes</span><textarea rows={2} value={d.notes} onChange={set('notes')} placeholder="Anything useful for the next visit" /></label>
-            {isAdmin && <div className="mk-two"><label className="field"><span>Alternate phone</span><input value={d.altPhone} onChange={set('altPhone')} /></label></div>}
+            <label className="field"><span>Notes</span><textarea rows={2} value={d.notes} onChange={set('notes')} /></label>
+            <button type="button" className="mk-del" onClick={del}><Icon name="trash" size={16} /> Delete this distributor</button>
           </section>
         )}
 
-        {/* ---------- VISIT ---------- */}
-        {(tab === 'visit' || adding) && !isAdmin && (
+        {/* ---------- FIELD: ONE SIMPLE SCREEN ---------- */}
+        {tab === 'visit' && !isAdmin && (
           <>
+            {adding && <p className="mk-hint">Found a shop that can sell Sridhi Idli &amp; Dosa Batter? Add it here. Admin will see it as <b>Own source</b>.</p>}
+
             <section className="mk-sec">
-              <h3 className="mk-h"><i>1</i> How did the visit go?</h3>
-              <div className="mk-out">
+              <h3 className="mk-h"><i>1</i> How did it go?</h3>
+              <div className="sv-out">
                 {MILK_OUTCOMES.map((x) => (
-                  <button key={x.id} type="button" className={`${outcome === x.id ? 'on' : ''} ${x.none ? 'end' : ''}`} onClick={() => { setOutcome(x.id); if (x.none) setNext('') }}>
+                  <button key={x.id} type="button" className={`${x.tone} ${outcome === x.id ? 'on' : ''}`} onClick={() => pick(x)} aria-pressed={outcome === x.id}>
                     <em>{x.icon}</em><b>{x.t}</b><small>{x.s}</small>
                   </button>
                 ))}
@@ -189,42 +218,66 @@ export default function MilkSheet({ id, preset = {}, tab: tab0 = 'visit', onClos
             </section>
 
             <section className="mk-sec">
-              <h3 className="mk-h"><i>2</i> How keen to sell our batter?</h3>
-              <div className="mk-stars"><Stars value={rating} onChange={setRating} size={38} /><small>{RATING_LABEL[rating]}</small></div>
+              <h3 className="mk-h"><i>2</i> Your remark{o?.remarkReq && <em className="mk-req">required</em>}</h3>
+              <textarea rows={3} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Type what they said or what you saw…" />
             </section>
 
-            <section className="mk-sec">
-              <h3 className="mk-h"><i>3</i> What do they sell today?<small>Brands, litres, fridge</small></h3>
-              <div className="chips">{allBrands.map((b) => <button key={b} type="button" className={`chip ${brands.includes(b) ? 'on' : ''}`} onClick={() => toggleBrand(b)}>{b}</button>)}</div>
-              <div className="mk-add"><input value={custom} onChange={(e) => setCustom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustom())} placeholder="Another brand…" /><button type="button" className="btn-soft sm" onClick={addCustom}>Add</button></div>
-              <div className="mk-two">
-                <label className="field"><span>Milk sold per day (litres)</span><input inputMode="numeric" value={litres} onChange={(e) => setLitres(e.target.value)} placeholder="e.g. 500" /></label>
-                <div className="field"><span>Own vehicle?</span><YesNo value={vehicle} onChange={setVehicle} /></div>
-              </div>
-              <div className="field"><span>Cold storage / fridge?</span><YesNo value={cold} onChange={setCold} /></div>
-            </section>
-
-            <section className="mk-sec">
-              <h3 className="mk-h"><i>4</i> What did they say?</h3>
-              <div className="chips scroll">{MILK_REMARKS.map((t) => <button key={t} type="button" className="chip" onClick={() => addRemark(t)}>＋ {t}</button>)}</div>
-              <textarea rows={3} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Type your remark… (what they said, what to do next)" />
-            </section>
-
-            {!o?.none && (
+            {o && !o.none && (
               <section className="mk-sec">
-                <h3 className="mk-h"><i>5</i> When do you go back?{o?.need && <em className="mk-req">required</em>}</h3>
+                <h3 className="mk-h"><i>3</i> Follow-up date{o.need ? <em className="mk-req">required</em> : <small>optional</small>}</h3>
                 <div className="chips">
-                  {FOLLOW.filter((f) => !f.show || f.show()).map((f) => {
-                    const v = f.at()
-                    return <button key={f.id} type="button" className={`chip ${next === v ? 'on' : ''}`} onClick={() => setNext(next === v ? '' : v)}>{f.t}</button>
-                  })}
-                  {!o?.need && <button type="button" className={`chip ${!next ? 'on' : ''}`} onClick={() => setNext('')}>No follow-up</button>}
+                  {FOLLOW.map((f) => { const v = f.at(); return <button key={f.id} type="button" className={`chip ${next === v ? 'on' : ''}`} onClick={() => setNext(next === v ? '' : v)}>{f.t}</button> })}
                 </div>
                 <label className="field"><span>Or pick a date and time</span><input type="datetime-local" value={toLocalInput(next)} onChange={(e) => setNext(fromLocalInput(e.target.value))} /></label>
-                {next && <p className="mk-when">⏰ You will be reminded {fmtWhen(next)}</p>}
+                {next && <p className="mk-when">⏰ Reminder {fmtWhen(next)}</p>}
               </section>
             )}
+
+            <section className="mk-sec">
+              <h3 className="mk-h"><i>{o && !o.none ? 4 : 3}</i> Shop photo<em className="mk-req">camera only</em></h3>
+              {shot ? (
+                <div className="sv-shot">
+                  <img src={shot.url} alt="Visit photo" />
+                  <button type="button" className="btn-soft" onClick={() => setCam(true)}>🔄 Retake</button>
+                </div>
+              ) : (
+                <button type="button" className="sv-cam" onClick={() => setCam(true)}>
+                  <span>📷</span><b>Take photo now</b><small>Taken live at the shop · GPS and time are stamped on it</small>
+                </button>
+              )}
+              <div className={`sv-loc ${loc ? 'ok' : locErr ? 'bad' : ''}`}>
+                <i>{loc ? '📍' : locErr ? '⚠️' : '🛰️'}</i>
+                <div>
+                  <b>{loc ? 'Location captured' : locErr ? 'Location not available' : 'Capturing location…'}</b>
+                  <small>{loc ? `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)} · ±${Math.round(loc.acc)} m (${accLabel(loc.acc).t})` : locErr || 'Keep GPS on. This takes a few seconds.'}</small>
+                </div>
+                <button type="button" onClick={getLoc}>↻</button>
+              </div>
+            </section>
+
+            <section className="mk-sec">
+              <button type="button" className="sv-more" onClick={() => setMore((m) => !m)} aria-expanded={more}>
+                <span>👤 Customer details</span><small>{d.name ? `${d.name}${d.phone ? ` · ${d.phone}` : ''}` : 'Name, number, address'}</small><em>{more ? '▾' : '▸'}</em>
+              </button>
+              {more && (
+                <div className="sv-fields">
+                  <label className="field"><span>Customer name *</span><input value={d.name} onChange={set('name')} placeholder="Shop / agency name" autoFocus={adding} /></label>
+                  <label className="field"><span>Contact number *</span><input inputMode="tel" value={d.phone} onChange={set('phone')} placeholder="10-digit mobile number" /></label>
+                  <ChennaiAreaPicker value={d.area} onChange={(v) => setD((p) => ({ ...p, area: v }))} />
+                  <label className="field"><span>Address (type it)</span><input value={d.address} onChange={set('address')} placeholder="Street, landmark" /></label>
+                </div>
+              )}
+            </section>
           </>
+        )}
+
+        {cam && (
+          <CameraCapture
+            loc={locRef.current}
+            label={`${d.name || 'Visit'} · ${d.area || 'Chennai'}`}
+            onClose={() => setCam(false)}
+            onShot={(blob) => { setShot({ blob, url: URL.createObjectURL(blob) }); setCam(false) }}
+          />
         )}
 
         {/* ---------- HISTORY ---------- */}
@@ -236,18 +289,18 @@ export default function MilkSheet({ id, preset = {}, tab: tab0 = 'visit', onClos
                 <li key={c.id || i}>
                   <i>{c.mode === 'visit' ? '📍' : c.outcome === 'Details Updated' ? '📝' : '📞'}</i>
                   <div>
-                    <b>{c.outcome}{c.rating ? ` · ${'⭐'.repeat(Number(c.rating))}` : ''}</b>
+                    <b>{c.outcome}</b>
                     <small>{fmtWhen(c.at)}{c.by ? ` · ${c.by}` : ''}</small>
                     {c.remark && <p>{c.remark}</p>}
                     {c.next && <small className="mk-nx">⏰ go back {fmtWhen(c.next)}</small>}
+                    {c.photo && <a href={c.photo} target="_blank" rel="noreferrer" className="mk-ph"><img src={thumbUrl(c.photo, 160)} alt="Visit" loading="lazy" /></a>}
+                    {c.lat && <a className="mk-nx" href={`https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lng}`} target="_blank" rel="noreferrer">📍 visit location ↗</a>}
                   </div>
                 </li>
               ))}
             </ul>
-            {isAdmin && <button type="button" className="mk-del" onClick={del}><Icon name="trash" size={16} /> Delete this distributor</button>}
           </section>
         )}
-        {tab === 'details' && !adding && isAdmin && <button type="button" className="mk-del" onClick={del}><Icon name="trash" size={16} /> Delete this distributor</button>}
       </div>
     </Sheet>
   )

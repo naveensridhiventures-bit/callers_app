@@ -44,6 +44,7 @@ export function fieldEntries(leads, session, range) {
       at: c.at, mode: c.mode === 'visit' ? 'visit' : 'call', lead: l, name: nameOf(l), phone: l.phone || '',
       area: areaOfLead(l), address: l.address || '', outcome: c.outcome, rating: Number(c.rating) || 0,
       remark: c.remark || '', next: c.next || '', duration: c.duration || 0,
+      photo: c.photo || '', lat: c.lat || '', lng: c.lng || '',
     })
   }))
   return out.sort((a, b) => a.at.localeCompare(b.at))
@@ -142,7 +143,7 @@ export function buildFieldWhatsApp(r, note = '') {
     L.push('*📋 Visit remarks (area-wise)*')
     ;[...byA].sort((x, y) => y[1].length - x[1].length).forEach(([area, es]) => {
       L.push(`\n📍 *${area}*`)
-      es.forEach((e) => L.push(`• *${e.name}*${e.lead.source === 'Own source' ? ' 🧭' : ''} - ${e.mode === 'call' ? '📞 ' : ''}${e.outcome}${e.rating ? ` ${stars(e.rating)}` : ''}${e.remark ? `\n   💬 ${clip(e.remark)}` : ''}${e.next ? `\n   ⏰ Next: ${fmtDateTime(new Date(e.next))}` : ''}`))
+      es.forEach((e) => L.push(`• *${e.name}*${e.lead.source === 'Own source' ? ' 🧭' : ''} - ${e.mode === 'call' ? '📞 ' : ''}${e.outcome}${e.rating ? ` ${stars(e.rating)}` : ''}${e.remark ? `\n   💬 ${clip(e.remark)}` : ''}${e.next ? `\n   ⏰ Next: ${fmtDateTime(new Date(e.next))}` : ''}${e.phone ? `\n   📞 ${e.phone}` : ''}${e.photo ? `\n   📷 ${e.photo}` : ''}${e.lat ? `\n   📍 https://maps.google.com/?q=${e.lat},${e.lng}` : ''}`))
     })
   }
   L.push('━━━━━━━━━━━━━━━━')

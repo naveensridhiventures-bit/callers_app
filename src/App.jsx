@@ -68,8 +68,11 @@ function Shell() {
   const isAdmin = session?.role === 'admin'
   const isField = session?.role === 'field'
   const PG = isField ? FIELD_PAGES : PAGES
-  const Page = isAdmin ? ADMIN_PAGES[page] || AdminOverview : PG[page] || (isField ? FieldHome : Dashboard)
-  const curPage = isAdmin ? (ADMIN_PAGES[page] ? page : 'overview') : PG[page] ? page : 'home'
+  // a field person with only milk distributors gets 3 simple tabs (Areas, Follow-ups, Report)
+  const simple = isField && !leads.some((l) => l.type === 'hotel')
+  const pageK = simple && (page === 'home' || page === 'plan' || !PG[page]) ? 'areas' : page
+  const Page = isAdmin ? ADMIN_PAGES[pageK] || AdminOverview : PG[pageK] || (isField ? FieldHome : Dashboard)
+  const curPage = isAdmin ? (ADMIN_PAGES[pageK] ? pageK : 'overview') : PG[pageK] ? pageK : 'home'
   const notified = useRef(new Set(JSON.parse(localStorage.getItem('sridhi.notified') || '[]')))
 
   /* due-follow-up reminders while the app is open */
@@ -112,7 +115,7 @@ function Shell() {
   const due = leads.filter((l) => ['overdue', 'today'].includes(bucket(l)) && (!isField || l.type === 'hotel' || l.type === 'milk')).length
   const formLead = sheet?.type === 'form' && sheet.leadId ? allLeads.find((l) => l.id === sheet.leadId) || null : null
 
-  const tabs = isAdmin ? ADMIN_TABS : isField ? FIELD_TABS : TABS
+  const tabs = isAdmin ? ADMIN_TABS : isField ? (simple ? FIELD_TABS.filter((t) => !['home', 'plan'].includes(t.id)) : FIELD_TABS) : TABS
   const active = curPage
 
   return (

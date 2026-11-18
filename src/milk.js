@@ -23,14 +23,10 @@ export const BRANDS = ['Idli / dosa batter', 'iD Fresh', 'Aavin', 'Thirumala', '
 
 /** what happened on the visit. `need` = a follow-up date is required, `none` = no follow-up (deal closed / lost) */
 export const MILK_OUTCOMES = [
-  { id: 'Met Owner', icon: '🤝', t: 'Met the owner', s: 'Pitched our batter' },
-  { id: 'Interested', icon: '🔥', t: 'Interested', s: 'Wants to sell our batter' },
-  { id: 'Meeting Fixed', icon: '📅', t: 'Meeting fixed', s: 'Date agreed', need: true },
-  { id: 'Call Back Later', icon: '⏰', t: 'Come back later', s: 'Busy / asked to return', need: true },
-  { id: 'Owner Not Available', icon: '🚪', t: 'Owner not there', s: 'Visit again', need: true },
-  { id: 'Shop Closed', icon: '🔒', t: 'Shop closed', s: 'Visit again', need: true },
-  { id: 'Onboarded', icon: '🎉', t: 'Distributor fixed', s: 'Will sell our batter', none: true },
-  { id: 'Not Interested', icon: '👎', t: 'Not interested', s: 'Said no', none: true },
+  { id: 'Interested', icon: '🔥', t: 'Interested', s: 'Wants our batter', status: 'Interested', tone: 'green' },
+  { id: 'Follow-up', icon: '⏰', t: 'Follow-up', s: 'Visit again later', status: 'Contacted', need: true, tone: 'amber' },
+  { id: 'Not Interested', icon: '👎', t: 'Not interested', s: 'Said no', status: 'Not Interested', none: true, tone: 'red' },
+  { id: 'Other', icon: '💬', t: 'Other', s: 'Write what happened', status: 'Contacted', tone: 'blue', remarkReq: true },
 ]
 export const OUT = Object.fromEntries(MILK_OUTCOMES.map((o) => [o.id, o]))
 

@@ -189,3 +189,12 @@ The field person visits milk distributors in **every Chennai area**, whether the
 - **Admin → Milk distributors:** load the built-in Excel list (48, with exact pins), upload an updated Excel/CSV (a phone already present is **updated**, history kept), assign to a field person (also area-wise), see what the field found, approve GPS pins, download the list.
 - Stored in the existing Sheet columns (`company` = brands, `dailyQty` = litres, `source` = Admin list / Own source). **No Apps Script change needed.**
 - Distributors are excluded from the one-by-one reminder pop-ups; they appear in Areas, Today and Follow-ups.
+
+## Simple field visit + camera photo + Cloudinary (v9)
+Field person screen: pick **Interested / Follow-up / Not interested / Other**, type a remark, take a **live camera photo** (no gallery), location is captured automatically and stamped on the photo, name + contact number + typed address can be edited. Hotels/Today tabs are hidden when no hotels are assigned.
+
+Photos go to Cloudinary; only the link is stored in the Sheet. Setup (free):
+1. cloudinary.com > sign up > copy your **Cloud name**.
+2. Settings > Upload > Upload presets > Add preset > **Signing mode: Unsigned** > save, copy the preset name.
+3. In `src/constants.js` fill `CLOUDINARY.cloudName` and `CLOUDINARY.uploadPreset`, rebuild, push.
+Until then photos wait on the phone and upload automatically once set. No signal also queues them.

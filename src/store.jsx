@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { uid, nowISO, addHours, atDay, cleanPhone, hotelPoint } from './utils'
 import { OUTCOMES, CLOSED, DEFAULT_SHEET_URL, OLD_DEFAULT_URLS } from './constants'
 import { clearLoc, locFields, prevPin } from './location'
+import { cloudReady, dropPhoto, queuedPhotos, uploadPhoto } from './photos'
 
 const Ctx = createContext(null)
 export const useApp = () => useContext(Ctx)
@@ -441,16 +442,17 @@ export function AppProvider({ children }) {
   )
 
   const logCall = useCallback(
-    (lead, { outcome, remark, next, status, priority, duration, extra, visit, mode, rating }) => {
+    (lead, { outcome, remark, next, status, priority, duration, extra, visit, mode, rating, photo, id: callId }) => {
       const o = OUTCOMES.find((x) => x.id === outcome)
       const newStatus = status || o?.status || lead.status
       // a field person's entry is a physical 'visit' or a phone 'call'; callers only ever call
       const m = visit ? 'visit' : mode || (sessionRef.current?.role === 'field' ? 'visit' : '')
       const call = {
-        id: uid(), at: nowISO(), outcome, remark: remark || '', next: next || '',
+        id: callId || uid(), at: nowISO(), outcome, remark: remark || '', next: next || '',
         by: sessionRef.current?.name || settingsRef.current.name || '', duration: duration || 0,
         ...(m ? { mode: m } : {}),
-        ...(visit && visit.lat != null ? { lat: visit.lat, lng: visit.lng } : {}),
+        ...(visit && visit.lat != null ? { lat: visit.lat, lng: visit.lng, ...(visit.acc ? { acc: Math.round(visit.acc) } : {}) } : {}),
+        ...(photo ? { photo } : {}),
         ...(rating ? { rating } : {}),
       }
       const updated = {
@@ -471,6 +473,30 @@ export function AppProvider({ children }) {
     },
     [saveLead, writePending]
   )
+
+  /* ---------- visit photos waiting on the phone: upload to Cloudinary, then attach the link to the visit ---------- */
+  const flushing = useRef(false)
+  const flushPhotos = useCallback(async () => {
+    if (flushing.current || !cloudReady() || (typeof navigator !== 'undefined' && navigator.onLine === false)) return
+    flushing.current = true
+    try {
+      for (const q of await queuedPhotos()) {
+        const lead = leadsRef.current.find((x) => x.id === q.leadId)
+        if (!lead) { await dropPhoto(q.id); continue }
+        let url
+        try { url = await uploadPhoto(q.blob, q.callId) } catch { break }
+        const fresh = leadsRef.current.find((x) => x.id === q.leadId) || lead
+        saveLead({ ...fresh, calls: (fresh.calls || []).map((c) => (c.id === q.callId ? { ...c, photo: url } : c)) })
+        await dropPhoto(q.id)
+      }
+    } finally { flushing.current = false }
+  }, [saveLead])
+  useEffect(() => {
+    flushPhotos()
+    window.addEventListener('online', flushPhotos)
+    const iv = setInterval(flushPhotos, 60000)
+    return () => { window.removeEventListener('online', flushPhotos); clearInterval(iv) }
+  }, [flushPhotos])
 
   /* ---------- exact hotel location ----------
      A field person (or HR) pins a hotel by GPS, by an online search or by a Google Maps link.
@@ -674,7 +700,7 @@ export function AppProvider({ children }) {
     route, page, sub, go, sheet, openLead, openForm, openMilkForm, closeSheet,
     filter, setFilter, toasts, toast,
     pendingCall, pendingSnooze, startCall, clearPending, snoozePending, reopenPending,
-    saveLead, saveLocation, reviewLocation, addLead, saveDetails, logCall, convertLead, snooze, removeLead, importLeads, clearAll, loadSample,
+    saveLead, flushPhotos, saveLocation, reviewLocation, addLead, saveDetails, logCall, convertLead, snooze, removeLead, importLeads, clearAll, loadSample,
     assignMany, saveCaller, deleteCaller, importHotels, assignHotels, importMilk, assignField, saveEmail,
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

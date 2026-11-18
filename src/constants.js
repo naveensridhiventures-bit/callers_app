@@ -2,6 +2,16 @@
 export const DEFAULT_SHEET_URL =
   'https://script.google.com/macros/s/AKfycbwrAHFFLvFL85VYfk4nXdNC_cZw2vcILbaPYzlai2CBv7TIUDnwJkaDSaRD3MjSPhey/exec'
 
+// Cloudinary (visit photos). Create a FREE account at cloudinary.com, then:
+//   Settings > Upload > Upload presets > Add preset > Signing mode = "Unsigned" > Save.
+// Put your Cloud name and that preset name below (or set VITE_CLOUDINARY_CLOUD_NAME / VITE_CLOUDINARY_PRESET).
+// Until both are filled, photos wait safely on the phone and upload by themselves once this is set.
+export const CLOUDINARY = {
+  cloudName: import.meta.env?.VITE_CLOUDINARY_CLOUD_NAME || '',
+  uploadPreset: import.meta.env?.VITE_CLOUDINARY_PRESET || '',
+  folder: 'sridhi-visits',
+}
+
 // HR / admin number that field people call to get a hotel's map location added.
 // Digits only with country code, e.g. '919876543210'. Leave '' to hide the Call button.
 export const ADMIN_CONTACT = ''
