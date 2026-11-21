@@ -1,23 +1,20 @@
 {
-  "name": "sridhi-caller-app",
+  "name": "batter-stock",
   "private": true,
-  "version": "1.7.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "vite build && node -e \"const fs=require('fs');fs.mkdirSync('dist/control',{recursive:true});fs.copyFileSync('dist/index.html','dist/control/index.html')\"",
+    "build": "vite build",
     "preview": "vite preview --host"
   },
   "dependencies": {
-    "exceljs": "^4.4.0",
-    "framer-motion": "^11.11.17",
-    "jspdf": "^4.2.1",
-    "jspdf-autotable": "^5.0.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "vite-plugin-pwa": "^0.21.1"
   }
 }

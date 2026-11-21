@@ -1,18 +1,12 @@
-import React from 'react'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './install'
+import { registerSW } from 'virtual:pwa-register'
 import App from './App'
-import './styles.css'
-import './theme.css'
-import './location.css'
-import './milk.css'
+
+registerSW({ immediate: true })
 
 createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+  <StrictMode>
     <App />
-  </React.StrictMode>
+  </StrictMode>
 )
-
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}))
-}

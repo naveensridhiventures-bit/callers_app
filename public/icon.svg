@@ -1,1 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22c55e"/><stop offset="1" stop-color="#06301a"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#g)"/><text x="256" y="338" font-family="Poppins,Arial,sans-serif" font-size="270" font-weight="800" fill="#fff" text-anchor="middle">S</text><rect x="116" y="388" width="280" height="14" rx="7" fill="#d4e83a"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14a37f"/><stop offset="1" stop-color="#0b6b4f"/></linearGradient></defs>
+  <rect width="512" height="512" rx="112" fill="url(#g)"/>
+  <path d="M120 250h272c0 82-52 138-136 138S120 332 120 250z" fill="#fff"/>
+  <ellipse cx="256" cy="250" rx="136" ry="30" fill="#fde68a"/>
+  <circle cx="200" cy="170" r="22" fill="#fff" opacity=".9"/><circle cx="262" cy="140" r="28" fill="#fff" opacity=".9"/><circle cx="322" cy="176" r="20" fill="#fff" opacity=".9"/>
+</svg>

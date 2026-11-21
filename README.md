@@ -1,203 +1,23 @@
-# Sridhi Caller App 🌿📞
+# Batter Stock – Idli Dosa Batter daily stock app (React + Vite PWA)
 
-Telecaller app for **hiring distributors in Bengaluru** and **sales follow-up**.
-React + Vite · Framer Motion + CSS 3D · Google Sheets as the database · installable on mobile.
+## Run on a computer
+    npm install
+    npm run dev        # test
+    npm run build      # creates the `dist` folder
 
-## Run it
+## Put it on the internet (so phones can install it)
+Upload the `dist` folder to Netlify (drag & drop at app.netlify.com/drop), Vercel or Cloudflare Pages.
+Open the link on the phone in Chrome -> "Install app" / "Add to Home screen".
 
-```bash
-npm install
-npm run dev        # open the URL on your PC, or on your phone (same Wi-Fi)
-npm run build      # production build in /dist
-```
+## Daily formula
+Closing = Opening + Purchase - Vehicle load - Extra load + Returned - Damage(cold room) - Sampling - Mixing
+Sold    = Load + Extra - Returned - Damage(in vehicle)
+Closing (or the physical count entered under "Close the day") becomes the next day's opening.
 
-## Google Sheets (automatic)
+Data is stored on the phone (localStorage + IndexedDB for photos). Use Settings -> Backup to move/save it.
 
-The Web app URL is built into `src/constants.js` (`DEFAULT_SHEET_URL`), so every device syncs by itself:
-on open, every 30 s, when the app comes back to the screen, and the moment the internet returns.
-Offline changes are queued on the phone and uploaded automatically.
-The tabs **Leads**, **Calls** and **Callers** are created by the script itself.
-
-### Update the Apps Script to v4 (needed for HR admin, callers, delete requests, assigned date)
-1. Open your Google Sheet → **Extensions → Apps Script**.
-2. Replace everything with `apps-script/Code.gs` and **change `ADMIN_PIN`** (the HR admin password).
-3. **Deploy → Manage deployments → ✏️ → Version: New version → Deploy.**
-   The URL stays the same, so the app needs no change.
-
-## HR admin + callers
-
-- **Hidden admin:** open `yourdomain.com/control` → enter `ADMIN_PIN` (default `hr@sridhi`, change it). Installing the app from that page gives HR a separate "Sridhi HR Control" icon.
-- **More → 🛡 Admin**
-  - **Callers:** add a caller with a 4-digit PIN (HR gives her name + PIN).
-  - **Assign:** filter leads, tick them, assign to a caller. Or **auto-distribute** between callers (area-wise or one by one).
-  - **Import numbers:** paste *just phone numbers* (one per line) or name/phone/area columns, and assign on import.
-  - **Requests:** callers cannot delete leads; they send a *delete request* (with a note) and HR approves or keeps the lead.
-  - **Team:** calls today / 7 days, interested, onboarded, overdue per caller.
-- Once callers exist, the app asks for **name + PIN**; each caller gets **only her own numbers** (filtered on the server).
-  New assignments arrive automatically with a pop-up.
-
-## Caller flow for a bare number
-
-1. HR assigns numbers. The caller sees only the phone number, tagged **📞 Number**.
-2. She taps **Call**. If nobody answers, she logs **No Response / Switched Off / Not Reachable / Busy / Wrong Number**
-   with a remark; the number stays a number and a retry follow-up is set.
-3. If the person picks up: **Move to Distributor lead** or **Move to Sales lead** → the call page opens →
-   **Add details** (name, shop, area…) → log what they said → set the next **follow-up**
-   (Google Calendar / Gmail reminder / `.ics`).
-
-## Other features
-
-3D splash, tilt cards, Call Mode swipe stack, live call timer, dashboard with target ring,
-Reports + CSV export, scripts and WhatsApp templates, in-app due reminders with vibration, installable on the phone home screen.
-
-## Real-app behaviour
-
-- **Install as app:** banner on Home/Login/Settings (Android/Chrome one tap; iPhone: Share → Add to Home Screen).
-- **Back button:** goes to the previous page / closes the open sheet instead of leaving the app; on the first page it asks "Press back again to exit".
-- **Edit / Delete:** open a lead → ✏️ Edit, 🗑 Delete (admin deletes; callers send a request).
-- `/control` needs SPA rewrites on the host: `vercel.json` and `public/_redirects` (Netlify/Cloudflare) are included. GitHub Pages has no rewrites, so use Vercel/Netlify/Cloudflare Pages.
-
-## HR admin dashboard (open `/control`)
-
-- **Progress:** calls made, connected %, positive calls, onboarded, unassigned, overdue; calls-per-day chart, pipeline funnel, caller leaderboard and a live activity feed. Filter Today / 7 days / 30 days / All.
-- **Callers:** one card per caller with last-active time, assigned / calls / connected % / interested / not called / overdue, an *interest-level bar* (Onboarded, Hot, Warm, Cold, Number tried, Not called), a 7-day chart, her leads (filter by interest) and recent calls. Add or remove callers here.
-- **Assign, Leads, Requests, Settings** as before. On a PC the admin gets a sidebar; on a phone a bottom bar.
-- Interest level: Onboarded = status Onboarded; Hot = priority Hot or status Interested / Meeting Fixed / Documentation; Cold = Not Interested or priority Cold; Warm = called, otherwise; Number tried = a bare number that was called; Not called = no calls yet.
-
-## Mobile fixes
-Bottom sheets are CSS-animated and can no longer get stuck on screen; after choosing a call outcome the panel scrolls to Remark / Follow-up and the **Save** button stays pinned at the bottom.
-
-## EOD & reports
-
-- **Caller:** More → **📋 EOD** (and the card on Home, highlighted after 5 PM). Pick Today / Yesterday / This week / This month / Custom dates, then:
-  - **Copy for WhatsApp**: an emoji-formatted message (calls, connected, details updated, interested, meetings, onboarded, outcomes, highlights, tomorrow's follow-ups, pipeline, your note) ready to paste in the management group. Also *Open WhatsApp* and *Share…*.
-  - **Download PDF** (branded, charts + tables + full call log) or **Download Excel** (Summary, By Caller, Activity Log, Highlights & Follow-ups, Leads Snapshot). On phones that support it, *Share PDF on WhatsApp* sends the file directly.
-- **Admin:** sidebar **Reports** (or the card on Progress): same options for the whole team or one caller, with a caller-wise leaderboard.
-- **What counts as "called":** logging a call, **adding a new lead after speaking**, or **updating a lead's details** all mark the lead as called (the first time it is touched it counts as a call; later edits are logged as *Details updated*).
-- PDF/Excel libraries are loaded only when you press download, so the app stays fast.
-
-## Assigned date & time
-Every lead now remembers **when it was assigned** (`assignedAt`): on HR assign, import, reassign, or when a caller adds it. Callers see a **📥 Today, 2:57 pm** tag and a **🆕 New** tag on cards, leads are **grouped by day** (Today / Yesterday / date) with counts, and there are date chips (All dates, Today, Yesterday, This week, Pick date). Home shows "N new leads assigned today". The Excel report has an *Assigned on* column. Needs script **v4** (older leads fall back to the day they were added).
-
-## Close every call + follow-up reminders
-- Tapping **Call** records a pending call. When the caller comes back from the dialer (or reopens the app) a popup forces her to close it: **No Response / Switched Off / Not Reachable / Busy** (one tap, follow-up auto-set, can be changed with chips) or **Spoke to the person** (opens the lead with the outcome pre-selected).
-- Another call cannot be started until the pending one is closed. "Later" snoozes 10 min and a red banner stays on Home.
-- After login/open, and after 30+ min away, a **Follow-ups need you** popup lists overdue and today's leads with Call, WhatsApp, +1h and +1d snooze. "Remind me in 30 min" re-shows it later.
-
-## Other + Wrong Audience
-- Call outcomes now include **Other** (asks "What happened?", required) and **Wrong Audience** (popup: Household, Student, Hotel/Restaurant, Kirana, Already a distributor, Company, Other + type). The audience is saved on the lead and in the remark; the lead moves to Not Interested.
-- Area in the lead form is a dropdown with **Other…**, which asks "Which area?".
-
-## Hubs
-- `src/hubData.js` holds the 40 hubs and 408 areas (5 km by road) from the hub plan workbook. The **Hubs** page (admin dock/sidebar, caller More → Hubs) shows each hub with its distributor count, areas and distributors, matched by the lead's Area. Leads with no area, or an area outside the plan, show under "No hub yet".
-- Hubs page has a **Download PDF** button: summary tiles, region bars, hub overview, distributors per hub, and an all-areas appendix.
-- **Accurate area:** the lead form's area is now a searchable picker of the exact selling areas from the hub plan (each shows its Hub). Picking one stores the area and the hub on the lead. Typing something not in the plan shows a warning. The Hubs page (and PDF) shows per hub which areas already have a distributor and which are **still needed**.
-- **Other area:** an area not in the hub plan goes under **Other** (hub = Other). The Hubs page and PDF list these in an 'Other areas' group; leads with no area show under 'No area yet'.
-
-## Lapsed hotels, field person, Gmail follow-up mails (script v5)
-- **Update Apps Script to v5** (paste `apps-script/Code.gs`, deploy a new version), set `ADMIN_EMAIL`, then in the Apps Script editor run **`setupFollowupMails`** once and accept the permissions. This starts a 10-minute timer that e-mails follow-ups (name, phone, map link) 30 min before they are due, even when the app is closed. HR gets an alert for follow-ups 2+ hours overdue.
-- **HR → Callers → Add** now has a role: *Caller* or *Field person* (same name + PIN login).
-- **HR → Hotels:** import hotels that stopped ordering (CSV/paste: hotel name, phone optional, map link optional), or convert existing Hotel/Restaurant leads, then **bulk assign to a caller and a field person** at once.
-- **Caller + field person** see hotel name, contact (if given), address and a 📍 button → location popup (live map, Navigate, Open in Maps, Share, GPS check-in). Visits and win-back outcomes (Order Restarted, Will Order Soon, Revisit Needed, Hotel Closed…) are logged like calls, with follow-ups.
-- **First login:** a popup asks for the Gmail ID used for follow-up mails.
-
-## Field sales (Chennai) - v6
-
-A person added as **Field** in HR Control gets a Chennai-only app: no Bengaluru hubs, distributors or scripts.
-
-- **Today**: visits and calls so far, average interest, follow-ups due. Pick a Chennai area, then **Start visits**.
-- **Visit run**: one hotel at a time, nearest first from the live GPS position (nearest-neighbour + 2-opt route), with a map, Navigate, call/WhatsApp, check-in, outcome, **1-5 star interest rating** and follow-up. The next hotel is re-planned from where you stand after every save.
-- **Hotels**: filter by area. Add a hotel on the road with the + button and pin your current location.
-- **Report**: pick a day, week, month or custom dates, filter by area and visits / calls, then download **PDF, Excel or CSV**, or copy the WhatsApp message.
-
-Paste the new `apps-script/Code.gs` (version 6) and deploy a new version so ratings, visit/call type and area are saved to the Sheet.
-
-## Field flow redesign (r1022a)
-
-Built the way a field salesperson works through a day: **Follow up → Plan → Visit → Remark → Report**.
-
-- **Today**: one "Do this next" card (follow-ups due first, then hotels waiting), KPIs, a 4-step guide and tap-to-plan area chips.
-- **Plan** (tab): list switch *To visit / Follow-up due / Done today*, search, area chips, filters (why they stopped, KG, sort), tick hotels or **Select all**, then the pinned **Start visit** bar. Nothing ticked = visit everything shown, nearest first.
-- **Hotel card**: why they stopped (colour tags + original reason), KG, distance, last outcome and remark, follow-up date, and one-tap **Map / Call / Remark / Visit**.
-- **Visit card**: *Why they stopped* panel sits right above the map (with a "How to win them back" tip). **I have reached** is pinned at the bottom of the screen. The location popup shows the same panel.
-- **Remark sheet**: numbered steps (How did it go → Interest → What they said and why they stopped → When to go back). Outcomes that need a revisit require a follow-up date. **Save** stays pinned.
-- **Follow-ups** (tab): Overdue / Today / Upcoming, visit all due hotels in one run, move a follow-up (+1h, 5 PM, tomorrow, next week).
-- The floating + button is removed for field users (it covered cards); use **+ Hotel** in the Plan header.
-No Apps Script change needed.
-
-## Exact hotel locations (r1022c)
-
-- **HR → Hotels** shows a banner with how many hotels still have no exact pin; **Locations** is also in the admin sidebar.
-- **Locations page**: progress ring, tabs *Need pin / Pinned / All*, area filter and search. Per hotel:
-  - **Auto-find**: searches OpenStreetMap by hotel name + area + Chennai and lists matches nearest to the area centre. Preview, then **Use**. **Auto-find all** runs the whole list (1 per second) and **Accept suggestions within 4 km of the area centre** saves the safe ones at once.
-  - **Google Maps ↗**: opens the search for that hotel; copy the link, paste it, check the preview and save. Accepts a full Google Maps link or `13.0418, 80.2341`. Short `maps.app.goo.gl` links hide the coordinates, so open them first.
-  - **Bulk paste**: lines like `Hotel name, lat, lng` or `phone, Google Maps link`. **Missing list** downloads a CSV with a Google search link per hotel to fill offline.
-- **Field person**: at a hotel with no exact pin, the remark sheet offers **Save this spot as the hotel's map pin**.
-- Saved pins feed the map, Navigate and the nearest-first routing automatically.
-
-## Short Google Maps links (r1022e)
-Phones share `maps.app.goo.gl/...` links, which hide the coordinates. Paste one in **Locations** and the Sheet script follows the link and reads the lat/lng (also works in Bulk paste).
-**One-time setup:** paste the new `apps-script/Code.gs` (adds `resolveMap`), run **`authorizeFetch`** once in the Apps Script editor and accept the permission, then **Deploy → Manage deployments → ✏️ → New version → Deploy**.
-
-## Locations: reason, closed hotels, colours (r1022j)
-- Every hotel card shows **why they stopped** and the last visit. Filter by reason with the chips.
-- **Closed hotels need no pin**: detected from the reason / last outcome, or tap *This hotel is closed*. They get their own tab and are left out of the % and Auto-find.
-- Colours: green = exact pin, orange = still area only, grey = closed. The top tiles count **Exact pin / Need pin / Closed**.
-
-## Field: date-wise visits, downloads, own quick remarks (r1022k)
-- **Script URL** updated in `src/constants.js`; phones on the earlier built-in link move to the new one automatically.
-- **Report tab → 📅 Date-wise visits**: every date in the chosen period is a row (visits, calls, hotels, avg interest). Tap a date to see each hotel, the remark and the stars. Each date has its own **PDF / Excel / CSV** download, and **✍️ Add remark** on any hotel.
-- **Periods**: Today, Yesterday, This week, Last 7 days, This month, Last 30 days, Pick dates. Downloads include a Date column plus a Day-wise table / sheet.
-- **Remark sheet**: type your own remark in the box, or tap chips. **＋ My quick remark** creates a chip of your own (for example Credit, Interested); typing a remark also offers **⭐ Keep as quick remark**. Your chips (orange ⭐) are saved permanently on the phone under your login; **✏️ Edit mine** deletes them.
-- No Apps Script change needed.
-
-## r1022l
-- Script URL updated again in `src/constants.js`; the previous built-in link was added to `OLD_DEFAULT_URLS` so devices move over automatically.
-
-## r1022m: field statuses + locked maps
-- **Field statuses** (derived from what happened, no extra typing): ✅ Visited, ⏰ Need follow-up (a return date is set), 🚫 Not interested (also closed hotels), ○ To visit. Shown on every hotel card; Plan has status chips with counts and a new **All hotels** tab. In the lead screens a field person picks one of the three with big buttons, which sets the stored status and the follow-up date together.
-- **Map ready vs locked**: a hotel counts as map-ready only with an exact pin (lat/lng or a full Google Maps link). Plan lists **📍 Map ready** hotels first, then a **🔒 Waiting for map location** section with greyed, locked cards. The two tiles at the top filter the list.
-- Tapping a locked Map / Navigate button opens a **Map is locked** sheet: call admin and ask them to add the map location, with steps, WhatsApp and Copy message. Locked hotels show no map or Navigate in the visit run either. Admin and caller accounts are not affected.
-- **Set the admin number**: `ADMIN_CONTACT` in `src/constants.js` (digits with country code, e.g. `'919876543210'`) adds a **Call admin** button and sends WhatsApp straight to admin. Leave `''` to let the person pick the contact in WhatsApp.
-- The map unlocks by itself after admin adds the pin in HR → Locations and the app syncs.
-
-## r1022n: admin edit / delete remarks, add area
-- **HR → Locations**: every hotel card has **✏️ Edit hotel · remark · area** (or **➕ Add area** when the area is empty) and **🗑 Delete** (asks to confirm).
-- The editor changes name, phone, contact, **area** (search the Chennai list or type a new one; a new area is added for everyone through the hotel), address and the **latest remark**, and lists **every visit / call remark with ✏️ edit and 🗑 delete**. Cards, reports and the field app recalculate the last remark, last outcome and rating from what is left.
-- **Lead screen → History** (admin, hotel leads) uses the same edit / delete per entry.
-- No Apps Script change needed: edits travel with the hotel. The Sheet's separate *Calls* tab keeps its original log rows; the app and reports read the hotel's own history.
-
-## v7: field people add the location + new mobile look
-
-- **Add / update a hotel location (field person):** on any hotel card with no exact pin there is an amber **📍 Add location** button (also on the visit card and in the map popup). It opens a sheet with three ways:
-  - **📡 I'm here:** stand at the hotel and tap *Use my current location*. The app listens to the GPS for a few seconds, keeps the most accurate reading, shows accuracy and distance, then saves.
-  - **🔎 Find online:** searches OpenStreetMap for the hotel (name + area), ranked by distance. Pick the right one, check the map, save.
-  - **🔗 Paste link:** paste a Google Maps link (short links work) or `13.04, 80.23`.
-  - A pinned hotel shows **✏️ Wrong spot? Update this location**. The remark sheet's *Save this spot as the hotel's location* box also records who saved it.
-- **Admin sees it:** HR → **Locations → 📱 Field updates** lists every pin a field person added or changed with **who, when, how (GPS / online / link) and accuracy**, a map preview and distance from the old pin. **✅ Looks right** approves, **↩ Undo** returns to the old pin (or removes it). A badge shows on Locations / Hotels and a card on Progress.
-- Stored with the hotel (new Sheet columns `locBy, locById, locAt, locSource, locAcc, locPrev, locReview`). The Sheet script creates the columns by itself; pasting the v7 `Code.gs` is optional.
-- **Today** has a progress ring and a "hotels need an exact location" card. New `theme.css` refreshes cards, dock, sheets and buttons for phones.
-
-## Chennai milk distributors: area-wise field visits (v8)
-
-The field person visits milk distributors in **every Chennai area**, whether they came from the admin list or were found by the field person (**Own source**).
-
-- **Areas (new tab):** all 196 Chennai localities by zone (`src/chennaiAreas.txt`, add a line to add an area). Each tile shows the distributors in it, progress, follow-ups due, admin vs own count. Filters: With distributors / Follow-up due / No distributor yet, plus zone chips and search. Back button returns from an area to the list.
-- **Area screen:** distributors split *Admin list* / *Own source*, status chips, **nearest-first route** with "Open route in Maps", and **Add here** for a distributor found on the road.
-- **Visit sheet** (tap a distributor): Visit (outcome, interest stars, brands, litres/day, own vehicle, cold storage, remark chips, follow-up date, GPS pin) · Details (fix name / owner / phone / area / address) · History.
-- **Add distributor:** name, phone, area, GPS pin, first visit result. Saved as *Own source*, assigned to the field person, duplicates by phone are blocked.
-- **Admin → Milk distributors:** load the built-in Excel list (48, with exact pins), upload an updated Excel/CSV (a phone already present is **updated**, history kept), assign to a field person (also area-wise), see what the field found, approve GPS pins, download the list.
-- Stored in the existing Sheet columns (`company` = brands, `dailyQty` = litres, `source` = Admin list / Own source). **No Apps Script change needed.**
-- Distributors are excluded from the one-by-one reminder pop-ups; they appear in Areas, Today and Follow-ups.
-
-## Simple field visit + camera photo + Cloudinary (v9)
-Field person screen: pick **Interested / Follow-up / Not interested / Other**, type a remark, take a **live camera photo** (no gallery), location is captured automatically and stamped on the photo, name + contact number + typed address can be edited. Hotels/Today tabs are hidden when no hotels are assigned.
-
-Photos go to Cloudinary; only the link is stored in the Sheet. Setup (free):
-1. cloudinary.com > sign up > copy your **Cloud name**.
-2. Settings > Upload > Upload presets > Add preset > **Signing mode: Unsigned** > save, copy the preset name.
-3. In `src/constants.js` fill `CLOUDINARY.cloudName` and `CLOUDINARY.uploadPreset`, rebuild, push.
-Until then photos wait on the phone and upload automatically once set. No signal also queues them.
-
-## Stock delivery + cash collection (v10)
-Field tab **Stock**: Deliver stock (distributor, packets at Rs 35, returned packets, Cash/Credit, credit days 3/5/7/15, cash collected now) and Collect payment (partial or full, Cash/UPI). Stored in each distributor's call history (no Sheet change). Reminders: day before, on due day and daily while overdue. WhatsApp EOD report, Excel/CSV and the admin Milk page show packets, billed, collected and pending. Change the price in `src/stock.js` (`RATE`).
+## Push & deploy (easiest)
+1. Push this folder to a GitHub repo.
+2. Connect the repo on Netlify / Vercel / Cloudflare Pages (build: `npm run build`, output: `dist`).
+3. Open the link on the phone in Chrome -> Install app.
+Or skip the build: upload the ready `dist` folder directly.

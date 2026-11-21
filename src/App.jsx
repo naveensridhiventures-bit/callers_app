@@ -1,228 +1,87 @@
-import FieldStock from './pages/FieldStock'
-import StockSheet from './components/StockSheet'
-import { owingList, inr, dueText } from './stock'
-import { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { AppProvider, useApp } from './store'
-import { Icon } from './ui'
-import Login from './components/Login'
-import ControlLogin from './components/ControlLogin'
-import Splash from './components/Splash'
-import LeadForm from './components/LeadForm'
-import LeadDetail from './components/LeadDetail'
-import CallClose from './components/CallClose'
-import DueModal from './components/DueModal'
-import Dashboard from './pages/Dashboard'
-import Leads from './pages/Leads'
-import Followups from './pages/Followups'
-import CallMode from './pages/CallMode'
-import More from './pages/More'
-import Settings from './pages/Settings'
-import AdminOverview from './pages/AdminOverview'
-import AdminTeam from './pages/AdminTeam'
-import ReportCenter from './pages/ReportCenter'
-import Hubs from './pages/Hubs'
-import FieldHome from './pages/FieldHome'
-import FieldPlan from './pages/FieldPlan'
-import FieldAreas from './pages/FieldAreas'
-import AdminMilk from './pages/AdminMilk'
-import MilkSheet from './components/MilkSheet'
-import FieldFollow from './pages/FieldFollow'
-import FieldReport from './pages/FieldReport'
-import AdminHotels from './pages/AdminHotels'
-import AdminLocations from './pages/AdminLocations'
-import GmailGate from './components/GmailGate'
-import { Assign, Requests } from './pages/Admin'
-import { bucket, cityOf, fmtTime, nameOf } from './utils'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useStore } from './store'
+import { buildAlerts, buildLedger, emptyRow, todayStr } from './ledger'
+import { Avatar, Lightbox, Toast } from './ui'
+import Setup from './Setup'
+import Today from './Today'
+import Damage from './Damage'
+import Reports from './Reports'
+import Settings from './Settings'
+import Check from './Check'
+import EntrySheet from './EntrySheet'
+import './styles.css'
 
-const PAGES = { home: Dashboard, leads: Leads, call: CallMode, follow: Followups, more: More }
-const AdminAssign = () => <div className="page adm"><div className="page-h"><h1>Assign leads</h1></div><Assign /></div>
-const AdminRequests = () => <div className="page adm"><div className="page-h"><h1>Delete requests</h1></div><Requests /></div>
-const AdminSettings = () => <div className="page adm"><div className="page-h"><h1>Settings</h1></div><Settings /></div>
-const AdminReports = () => <div className="page adm"><div className="page-h"><h1>Reports</h1></div><ReportCenter admin /></div>
-const FIELD_PAGES = { home: FieldHome, areas: FieldAreas, plan: FieldPlan, leads: FieldPlan, follow: FieldFollow, report: FieldReport, stock: FieldStock, more: More }
-const ADMIN_PAGES = { milk: AdminMilk, hotels: AdminHotels, locations: AdminLocations, hubs: Hubs, reports: AdminReports, overview: AdminOverview, team: AdminTeam, assign: AdminAssign, leads: Leads, requests: AdminRequests, settings: AdminSettings }
-const ADMIN_TABS = [
-  { id: 'overview', icon: 'chart', label: 'Progress' },
-  { id: 'team', icon: 'users', label: 'Callers' },
-  { id: 'assign', icon: 'send', label: 'Assign' },
-  { id: 'leads', icon: 'list', label: 'Leads' },
-  { id: 'hotels', icon: 'pin', label: 'Hotels' },
-  { id: 'hubs', icon: 'grid', label: 'Hubs' },
-  { id: 'requests', icon: 'trash', label: 'Requests' },
-]
-const FIELD_TABS = [
-  { id: 'home', icon: 'home', label: 'Today' },
-  { id: 'areas', icon: 'grid', label: 'Areas' },
-  { id: 'plan', icon: 'pin', label: 'Hotels' },
-  { id: 'stock', icon: 'list', label: 'Stock' },
-  { id: 'follow', icon: 'calendar', label: 'Follow-ups' },
-  { id: 'report', icon: 'download', label: 'Report' },
-]
 const TABS = [
-  { id: 'home', icon: 'home', label: 'Home' },
-  { id: 'leads', icon: 'users', label: 'Leads' },
-  { id: 'call', icon: 'phone', label: 'Call', fab: true },
-  { id: 'follow', icon: 'calendar', label: 'Follow-ups' },
-  { id: 'more', icon: 'grid', label: 'More' },
+  ['today', '🏠', 'Today'],
+  ['damage', '⚠️', 'Damage'],
+  ['reports', '📊', 'Reports'],
+  ['check', '🔎', 'Check'],
+  ['settings', '⚙️', 'Settings']
 ]
 
-function Shell() {
-  const { route, page, go, sheet, closeSheet, openForm, leads, allLeads, toasts, sync, session, gate, openLead, toast, logout } = useApp()
-  const isAdmin = session?.role === 'admin'
-  const isField = session?.role === 'field'
-  const PG = isField ? FIELD_PAGES : PAGES
-  // a field person with only milk distributors gets 3 simple tabs (Areas, Follow-ups, Report)
-  const simple = isField && !leads.some((l) => l.type === 'hotel')
-  const pageK = simple && (page === 'home' || page === 'plan' || !PG[page]) ? 'areas' : page
-  const Page = isAdmin ? ADMIN_PAGES[pageK] || AdminOverview : PG[pageK] || (isField ? FieldHome : Dashboard)
-  const curPage = isAdmin ? (ADMIN_PAGES[pageK] ? pageK : 'overview') : PG[pageK] ? pageK : 'home'
-  const notified = useRef(new Set(JSON.parse(localStorage.getItem('sridhi.notified') || '[]')))
+export default function App() {
+  const [state, actions] = useStore()
+  const app = { state, actions }
+  const [tab, setTab] = useState('today')
+  const [date, setDate] = useState(todayStr())
+  const [sheet, setSheet] = useState({ open: false, type: 'purchase', preset: null })
+  const [photo, setPhoto] = useState(null)
+  const [msg, setMsg] = useState('')
+  const [installEvt, setInstallEvt] = useState(null)
 
-  /* due-follow-up reminders while the app is open */
+  const toast = useCallback((m) => { setMsg(m); clearTimeout(window.__t); window.__t = setTimeout(() => setMsg(''), 2200) }, [])
+
   useEffect(() => {
-    const check = () => {
-      const now = Date.now()
-      if (session?.role === 'admin') return
-      leads.forEach((l) => {
-        if (l.type === 'milk') return // distributors are worked area by area (Areas tab), not one pop-up each
-        if (!['overdue', 'today'].includes(bucket(l))) return
-        const t = new Date(l.nextFollowUp).getTime()
-        const key = `${l.id}@${l.nextFollowUp}`
-        if (t > now || now - t > 6 * 3600e3 || notified.current.has(key)) return
-        notified.current.add(key)
-        localStorage.setItem('sridhi.notified', JSON.stringify([...notified.current].slice(-300)))
-        toast(`⏰ Call ${nameOf(l)} now (${fmtTime(l.nextFollowUp)})`, 'warn')
-        navigator.vibrate?.([120, 60, 120])
-        if ('Notification' in window && Notification.permission === 'granted') {
-          const n = new Notification('Follow-up due', { body: `${nameOf(l)} · ${l.area || cityOf(l)}\n${l.lastRemark || ''}`, icon: '/icon-192.png' })
-          n.onclick = () => { window.focus(); openLead(l.id) }
-        }
-      })
-    }
-    /* credit payments: remind the day before, on the due day, and every day while overdue */
-    const checkDues = () => {
-      if (session?.role !== 'field') return
-      const day = new Date().toDateString()
-      owingList(leads).forEach(({ lead: l, L, s }) => {
-        if (!['soon', 'today', 'late'].includes(s.k)) return
-        const key = `pay:${l.id}:${L.dueAt}:${s.k}:${day}`
-        if (notified.current.has(key)) return
-        notified.current.add(key)
-        localStorage.setItem('sridhi.notified', JSON.stringify([...notified.current].slice(-300)))
-        toast(`💰 Collect ${inr(L.outstanding)} from ${l.name} (${dueText(s).toLowerCase()})`, 'warn')
-        navigator.vibrate?.([120, 60, 120])
-        if ('Notification' in window && Notification.permission === 'granted') {
-          const n = new Notification('Payment to collect', { body: `${l.name} · ${l.area || 'Chennai'}\n${inr(L.outstanding)} · ${dueText(s)}`, icon: '/icon-192.png' })
-          n.onclick = () => { window.focus(); go('stock') }
-        }
-      })
-    }
-    check(); checkDues()
-    const t = setInterval(() => { check(); checkDues() }, 30000)
-    return () => clearInterval(t)
-  }, [leads, toast, openLead, session, go])
+    const h = (e) => { e.preventDefault(); setInstallEvt(e) }
+    window.addEventListener('beforeinstallprompt', h)
+    return () => window.removeEventListener('beforeinstallprompt', h)
+  }, [])
+  const install = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; setInstallEvt(null) }
 
-  /* already signed in as admin and opened /control: go straight to the admin panel */
-  useEffect(() => {
-    if (route === 'control' && session?.role === 'admin') go('overview')
-  }, [route, session, go])
+  const ledger = useMemo(() => buildLedger(state, date), [state, date])
+  const row = ledger.map[date] || emptyRow(date)
+  const alerts = useMemo(() => buildAlerts(state, ledger), [state, ledger])
+  const urgent = alerts.filter((a) => a.sev !== 'info').length
+  const me = state.users.find((u) => u.id === state.currentUserId)
 
-  if (route === 'control') return <ControlLogin />
-  if (gate !== 'ready') return <Login />
+  const openEntry = (type, preset = null) => {
+    if (row.locked) return toast('🔒 This day is closed. Admin can re-open it.')
+    setSheet({ open: true, type, preset })
+  }
+  const goDay = (d) => { setDate(d); setTab('today'); window.scrollTo({ top: 0 }) }
 
-  const reqCount = isAdmin ? allLeads.filter((l) => l.delReq === '1').length : 0
-  const locCount = isAdmin ? allLeads.filter((l) => l.type === 'hotel' && l.locReview === 'new').length : 0
-  const milkNew = isAdmin ? allLeads.filter((l) => l.type === 'milk' && l.locReview === 'new').length : 0
-  const due = leads.filter((l) => ['overdue', 'today'].includes(bucket(l)) && (!isField || l.type === 'hotel' || l.type === 'milk')).length
-  const formLead = sheet?.type === 'form' && sheet.leadId ? allLeads.find((l) => l.id === sheet.leadId) || null : null
-
-  const tabs = isAdmin ? ADMIN_TABS : isField ? (simple ? FIELD_TABS.filter((t) => !['home', 'plan'].includes(t.id)) : FIELD_TABS) : TABS
-  const active = curPage
+  if (!state.ready) return <Setup app={app} />
 
   return (
-    <div className={`app ${isAdmin ? 'admin-app' : ''}`}>
-      {isAdmin && (
-        <aside className="side">
-          <div className="brand"><i>S</i><b>Sridhi <span>HR Control</span></b></div>
-          <nav>
-            {ADMIN_TABS.map((t) => (
-              <button key={t.id} className={active === t.id ? 'on' : ''} onClick={() => go(t.id)}>
-                <Icon name={t.icon} size={20} /><span>{t.label}</span>
-                {t.id === 'requests' && reqCount > 0 && <b className="badge static">{reqCount}</b>}
-              </button>
-            ))}
-            <button className={active === 'milk' ? 'on' : ''} onClick={() => go('milk')}><Icon name="grid" size={20} /><span>Milk distributors</span>{milkNew > 0 && <b className="badge static">{milkNew}</b>}</button>
-            <button className={active === 'locations' ? 'on' : ''} onClick={() => go('locations')}><Icon name="target" size={20} /><span>Locations</span>{locCount > 0 && <b className="badge static">{locCount}</b>}</button>
-            <button className={active === 'reports' ? 'on' : ''} onClick={() => go('reports')}><Icon name="download" size={20} /><span>Reports</span></button>
-            <button className={active === 'settings' ? 'on' : ''} onClick={() => go('settings')}><Icon name="gear" size={20} /><span>Settings</span></button>
-          </nav>
-          <div className="side-foot">
-            <span className={`sync ${sync.state}`} title={sync.msg || 'Google Sheets auto-sync'}><Icon name="cloud" size={16} /> {sync.state === 'error' ? 'Sync problem' : sync.state === 'syncing' ? 'Syncing…' : 'Synced'}</span>
-            <button className="btn-soft sm" onClick={logout}>Exit admin</button>
-          </div>
-        </aside>
+    <div className="app">
+      <header className="topbar">
+        <div className="brand"><span className="brand-ic">🥣</span><div><b>{state.settings.business}</b><small>{state.settings.packKg} kg packets · ₹{state.settings.ratePerKg}/kg</small></div></div>
+        <button className="who" onClick={() => setTab('settings')} aria-label="Switch user"><Avatar user={me} size={30} /><span>{me?.name?.split(' ')[0]}</span></button>
+      </header>
+
+      <main>
+        {tab === 'today' && <Today app={app} date={date} setDate={setDate} row={row} openEntry={openEntry} openPhoto={(id, cap) => setPhoto({ id, cap })} toast={toast} alertCount={urgent} goCheck={() => setTab('check')} />}
+        {tab === 'damage' && <Damage app={app} ledger={ledger} openPhoto={(id, cap) => setPhoto({ id, cap })} openEntry={openEntry} />}
+        {tab === 'reports' && <Reports app={app} ledger={ledger} goDay={goDay} />}
+        {tab === 'check' && <Check app={app} alerts={alerts} goDay={goDay} />}
+        {tab === 'settings' && <Settings app={app} toast={toast} installEvt={installEvt} onInstall={install} />}
+      </main>
+
+      {tab === 'today' && (
+        <button className="fab" onClick={() => openEntry('load')} aria-label="Quick add vehicle load">🚚<span>Load</span></button>
       )}
 
-      <div className="content">
-        <header className="top">
-          <div className="brand"><i>S</i><b>Sridhi <span>{isAdmin ? 'HR Control' : isField ? 'Field · Chennai' : 'Caller'}</span></b></div>
-          <div className="top-r">
-            {session && !isAdmin && <span className="who">👤 {session.name.split(' ')[0]}</span>}
-            <span className={`sync ${sync.state}`} title={sync.msg || 'Google Sheets auto-sync'} onClick={() => go(isAdmin ? 'settings' : 'more', isAdmin ? undefined : 'settings')}>
-              <Icon name="cloud" size={16} />{sync.state === 'syncing' ? <em className="spin" /> : null}
-            </span>
-            <button className="icon-btn" onClick={() => go(isAdmin ? 'settings' : 'more', isAdmin ? undefined : 'settings')} aria-label="Settings"><Icon name="gear" size={20} /></button>
-          </div>
-        </header>
-
-        <motion.main key={`${isAdmin ? 'a' : 'c'}-${curPage}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.26 }}>
-          <Page />
-        </motion.main>
-      </div>
-
-      {(!isAdmin ? page !== 'call' && !isField : active === 'leads') && (
-        <motion.button className="fab-add" initial={{ scale: 0 }} animate={{ scale: 1 }} whileTap={{ scale: 0.88 }} whileHover={{ scale: 1.08, rotate: 90 }} onClick={() => openForm()} aria-label="Add lead">
-          <Icon name="plus" size={26} />
-        </motion.button>
-      )}
-
-      <nav className="dock" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
-        {tabs.map((t) => (
-          <button key={t.id} className={`${active === t.id ? 'on' : ''} ${t.fab ? 'fab' : ''}`} onClick={() => go(t.id)}>
-            {active === t.id && !t.fab && <motion.span layoutId="dock-pill" className="dock-pill" transition={{ type: 'spring', stiffness: 380, damping: 30 }} />}
-            <motion.span className="ico" whileTap={{ scale: 0.8 }} animate={active === t.id && !t.fab ? { y: -2 } : { y: 0 }}>
-              <Icon name={t.icon} size={t.fab ? 26 : 22} />
-              {t.id === 'follow' && due > 0 && <b className="badge">{due > 99 ? '99+' : due}</b>}
-              {t.id === 'requests' && reqCount > 0 && <b className="badge">{reqCount}</b>}
-              {t.id === 'hotels' && locCount > 0 && <b className="badge">{locCount}</b>}
-            </motion.span>
-            <small>{t.label}</small>
+      <nav className="tabbar">
+        {TABS.map(([k, i, l]) => (
+          <button key={k} className={tab === k ? 'on' : ''} onClick={() => { setTab(k); window.scrollTo({ top: 0 }) }}>
+            <span>{i}{k === 'check' && urgent > 0 && <em className="badge">{urgent}</em>}</span>{l}
           </button>
         ))}
       </nav>
 
-      {sheet?.type === 'form' && <LeadForm key="form" lead={formLead} preset={sheet.preset} onClose={closeSheet} />}
-      {sheet?.type === 'milk' && <MilkSheet key={`m-${sheet.id}`} id={sheet.id} tab={sheet.tab} onClose={closeSheet} />}
-      {sheet?.type === 'stock' && <StockSheet key="stock" preset={sheet.preset} onClose={closeSheet} />}
-      {sheet?.type === 'milkform' && <MilkSheet key="mform" preset={sheet.preset} onClose={closeSheet} />}
-      {sheet?.type === 'detail' && <LeadDetail key={`d-${sheet.id}`} id={sheet.id} calling={sheet.calling} preset={sheet.outcome} onClose={closeSheet} />}
-
-      {!isAdmin && <><DueModal /><CallClose /><GmailGate /></>}
-
-      <div className="toasts">
-        {toasts.map((t) => <div key={t.id} className={`toast ${t.type}`}>{t.msg}</div>)}
-      </div>
+      <EntrySheet open={sheet.open} type={sheet.type} preset={sheet.preset} date={date} row={row} app={app} toast={toast} onClose={() => setSheet((s) => ({ ...s, open: false }))} />
+      <Lightbox photoId={photo?.id} caption={photo?.cap} onClose={() => setPhoto(null)} />
+      <Toast msg={msg} />
     </div>
-  )
-}
-
-export default function App() {
-  const [splash, setSplash] = useState(true)
-  return (
-    <AppProvider>
-      <Shell />
-      <AnimatePresence>{splash && <Splash key="splash" onDone={() => setSplash(false)} />}</AnimatePresence>
-    </AppProvider>
   )
 }

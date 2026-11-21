@@ -1,0 +1,17 @@
+{
+  "id": "/control",
+  "name": "Sridhi HR Control",
+  "short_name": "Sridhi HR",
+  "description": "HR admin: assign numbers to callers",
+  "start_url": "/control",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#06301a",
+  "theme_color": "#0a4a25",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
