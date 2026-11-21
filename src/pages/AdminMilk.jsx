@@ -1,3 +1,4 @@
+import { DELIVERED, PAID, dueText, inr, owingList } from '../stock'
 import { useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../store'
@@ -150,6 +151,29 @@ export default function AdminMilk() {
           </div>
         )}
       </section>
+
+      {(() => {
+        const owing = owingList(milk)
+        const owed = owing.reduce((t, x) => t + x.L.outstanding, 0)
+        const t = milk.reduce((a, l) => { (l.calls || []).forEach((c) => { if (c.outcome === DELIVERED) { a.p += +c.dlPackets || 0; a.b += +c.dlAmt || 0; a.c += +c.dlCollected || 0 } else if (c.outcome === PAID) a.c += +c.payAmt || 0 }); return a }, { p: 0, b: 0, c: 0 })
+        if (!t.p && !owing.length) return null
+        const csv = () => download('Sridhi-stock-and-dues.csv', '\ufeff' + toCSV(owing.map(({ lead: l, L, s }) => ({ Distributor: l.name, Area: l.area, Phone: l.phone, 'Packets delivered': L.packets, 'Billed (Rs)': L.billed, 'Collected (Rs)': L.collected, 'Pending (Rs)': L.outstanding, 'Due date': L.dueAt ? new Date(L.dueAt).toLocaleDateString('en-IN') : '', Status: dueText(s) })), ['Distributor', 'Area', 'Phone', 'Packets delivered', 'Billed (Rs)', 'Collected (Rs)', 'Pending (Rs)', 'Due date', 'Status']), 'text/csv;charset=utf-8')
+        return (
+          <section className="card">
+            <h3 className="card-t">📦 Stock &amp; payments <small className="mini-note">₹35 / packet</small></h3>
+            <div className="kpis">
+              <div className="kpi"><em>📦</em><b>{t.p}</b><span>Packets delivered</span></div>
+              <div className="kpi"><em>🧾</em><b>{inr(t.b)}</b><span>Billed</span></div>
+              <div className="kpi"><em>💵</em><b>{inr(t.c)}</b><span>Collected</span></div>
+              <div className="kpi warn"><em>⏳</em><b>{inr(owed)}</b><span>Pending</span></div>
+            </div>
+            {owing.slice(0, 15).map(({ lead: l, L, s }) => (
+              <div key={l.id} className={`st-card ${s.k}`}><div onClick={() => openLead(l.id, { tab: 'history' })}><b>{l.name}</b><small>📍 {l.area || 'Chennai'} · {l.fieldName || ''}</small><span className={`st-chip ${s.k}`}>{dueText(s)}</span></div><div className="st-amt"><b>{inr(L.outstanding)}</b></div></div>
+            ))}
+            {owing.length > 0 && <button className="btn-soft" onClick={csv}><Icon name="download" size={16} /> Download pending payments</button>}
+          </section>
+        )
+      })()}
 
       <section className="card">
         <h3 className="card-t">🔎 Distributor needed <small className="mini-note">{need.length} of {full.length} Chennai areas</small></h3>

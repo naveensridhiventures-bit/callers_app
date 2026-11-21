@@ -198,3 +198,6 @@ Photos go to Cloudinary; only the link is stored in the Sheet. Setup (free):
 2. Settings > Upload > Upload presets > Add preset > **Signing mode: Unsigned** > save, copy the preset name.
 3. In `src/constants.js` fill `CLOUDINARY.cloudName` and `CLOUDINARY.uploadPreset`, rebuild, push.
 Until then photos wait on the phone and upload automatically once set. No signal also queues them.
+
+## Stock delivery + cash collection (v10)
+Field tab **Stock**: Deliver stock (distributor, packets at Rs 35, returned packets, Cash/Credit, credit days 3/5/7/15, cash collected now) and Collect payment (partial or full, Cash/UPI). Stored in each distributor's call history (no Sheet change). Reminders: day before, on due day and daily while overdue. WhatsApp EOD report, Excel/CSV and the admin Milk page show packets, billed, collected and pending. Change the price in `src/stock.js` (`RATE`).

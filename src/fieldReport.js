@@ -1,5 +1,6 @@
 import { fmtDateTime, fmtDay, rangeFor as baseRange, toInputDate } from './reports'
 import { nameOf } from './utils'
+import { inr, stockReport, dueText } from './stock'
 
 export { toInputDate }
 
@@ -45,6 +46,7 @@ export function fieldEntries(leads, session, range) {
       area: areaOfLead(l), address: l.address || '', outcome: c.outcome, rating: Number(c.rating) || 0,
       remark: c.remark || '', next: c.next || '', duration: c.duration || 0,
       photo: c.photo || '', lat: c.lat || '', lng: c.lng || '',
+      dlPackets: Number(c.dlPackets) || 0, dlReturned: Number(c.dlReturned) || 0, dlAmt: Number(c.dlAmt) || 0, dlCollected: Number(c.dlCollected) || 0, dlDays: Number(c.dlDays) || 0, payAmt: Number(c.payAmt) || 0,
     })
   }))
   return out.sort((a, b) => a.at.localeCompare(b.at))
@@ -100,7 +102,7 @@ export function buildFieldReport({ leads, session, range, area = 'all', mode = '
       areas: byArea.length, avgRating: avg(rated.map((e) => e.rating)), rated: rated.length, hot: good.length,
       orders: entries.filter((e) => e.outcome === 'Order Restarted').length, followups: followups.length, overdue,
     },
-    entries, byArea, byDay, followups,
+    entries, byArea, byDay, followups, stock: stockReport(entries, leads),
   }
 }
 
@@ -115,6 +117,17 @@ export function buildFieldWhatsApp(r, note = '') {
   L.push('━━━━━━━━━━━━━━━━')
   L.push(`📍 *Visits:* ${t.visits}   📞 *Calls:* ${t.calls}   🏪 *Places reached:* ${t.hotels}`)
   L.push(`⭐ *Avg interest:* ${t.avgRating ? `${t.avgRating} / 5` : '-'}   🔥 *Interested:* ${t.hot}${t.orders ? `   🎉 *Orders restarted:* ${t.orders}` : ''}`)
+  const k = r.stock
+  if (k && (k.deliveries || k.later || k.owing.length)) {
+    L.push('━━━━━━━━━━━━━━━━')
+    L.push('*📦 STOCK & CASH*')
+    if (k.deliveries) L.push(`📦 Delivered: *${k.packets} packets* to ${k.deliveries} drop${k.deliveries === 1 ? '' : 's'}${k.returned ? `  ↩️ Returned: ${k.returned}` : ''}`)
+    if (k.deliveries) L.push(`🧾 Billed: *${inr(k.billed)}*   (₹35 / packet)`)
+    L.push(`💵 Cash collected: *${inr(k.collected)}*${k.later ? ` (old dues ${inr(k.later)})` : ''}`)
+    if (k.credit) L.push(`🧾 Credit given: *${inr(k.credit)}*`)
+    L.push(`⏳ *Total still to collect: ${inr(k.owed)}*${k.overdue.length ? `   ⚠️ ${k.overdue.length} overdue` : ''}`)
+    k.owing.slice(0, 10).forEach((x) => L.push(`   • ${x.lead.name}${x.lead.area ? ` (${x.lead.area})` : ''} - ${inr(x.L.outstanding)} · ${dueText(x.s)}`))
+  }
   if (r.byArea.length) {
     L.push('━━━━━━━━━━━━━━━━')
     L.push('*🗺 Area-wise*')

@@ -1,3 +1,4 @@
+import DuesBanner from '../components/DuesBanner'
 import { useMemo, useState } from 'react'
 import { useApp } from '../store'
 import { Icon } from '../ui'
@@ -45,6 +46,7 @@ export default function FieldFollow() {
     <div className="page fp">
       <div className="page-h"><h1>Follow-ups <small>{dueNow.length} due</small></h1></div>
 
+      <DuesBanner />
       <div className="fp-tabs" role="tablist">
         {TABS.map(([id, t]) => (
           <button key={id} role="tab" aria-selected={active === id} className={`${active === id ? 'on' : ''} ${id === 'overdue' && by.overdue.length ? 'red' : ''}`} onClick={() => setTab(id)}>

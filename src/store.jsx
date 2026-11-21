@@ -474,6 +474,21 @@ export function AppProvider({ children }) {
     [saveLead, writePending]
   )
 
+  /* ---------- stock delivered / cash collected: one more entry in the distributor's history ---------- */
+  const logStock = useCallback(
+    (lead, entry, loc) => {
+      const fresh = leadsRef.current.find((x) => x.id === lead.id) || lead
+      const call = { id: uid(), at: nowISO(), next: '', by: sessionRef.current?.name || '', duration: 0, mode: 'visit', ...entry, ...(loc ? { lat: loc.lat, lng: loc.lng, acc: Math.round(loc.acc || 0) } : {}) }
+      return saveLead({ ...fresh, calls: [call, ...(fresh.calls || [])], lastCall: call.at }, { ...call, leadId: fresh.id, name: fresh.name, phone: fresh.phone, area: fresh.area || '' })
+    },
+    [saveLead]
+  )
+  const openStock = useCallback((preset = {}) => {
+    const sh = { type: 'stock', preset }
+    pushNav({ sheet: sh }, !!navRef.current.sheet)
+    setSheet(sh)
+  }, [])
+
   /* ---------- visit photos waiting on the phone: upload to Cloudinary, then attach the link to the visit ---------- */
   const flushing = useRef(false)
   const flushPhotos = useCallback(async () => {
@@ -697,7 +712,7 @@ export function AppProvider({ children }) {
   const value = {
     leads, allLeads, callers, settings, setSettings, sync, syncNow, resolveMapLink, scriptVersion,
     session, gate, loginList, loginErr, retryGate: () => setGateTry((n) => n + 1), login, adminLogin, logout,
-    route, page, sub, go, sheet, openLead, openForm, openMilkForm, closeSheet,
+    route, page, sub, go, sheet, openLead, openForm, openMilkForm, openStock, logStock, closeSheet,
     filter, setFilter, toasts, toast,
     pendingCall, pendingSnooze, startCall, clearPending, snoozePending, reopenPending,
     saveLead, flushPhotos, saveLocation, reviewLocation, addLead, saveDetails, logCall, convertLead, snooze, removeLead, importLeads, clearAll, loadSample,

@@ -1,3 +1,4 @@
+import DuesBanner from '../components/DuesBanner'
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useApp } from '../store'
@@ -60,6 +61,7 @@ function AreaGrid({ board, milk, open }) {
         <div className="fh-ring" style={{ '--p': pct }}><b>{pct}%<small>COVERED</small></b></div>
       </section>
 
+      <DuesBanner />
       <div className="kpis">
         <div className="kpi"><em>🔎</em><b><Counter value={needN} /></b><span>Areas need one</span></div>
         <div className="kpi"><em>🤝</em><b><Counter value={total} /></b><span>Distributors</span></div>

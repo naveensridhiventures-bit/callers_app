@@ -8,9 +8,10 @@ const tOnly = (iso) => (iso ? new Date(iso).toLocaleTimeString('en-IN', { hour: 
 const rows = (r) => r.entries.map((e) => ({
   Date: fmtDay(e.at), Time: tOnly(e.at), Type: e.mode === 'visit' ? 'Visit' : 'Call', Hotel: e.name, Area: e.area, Phone: e.phone, Outcome: e.outcome,
   Rating: e.rating || '', Remark: e.remark, 'Next follow-up': when(e.next),
+  Packets: e.dlPackets || '', Returned: e.dlReturned || '', 'Bill (Rs)': e.dlAmt || '', 'Collected (Rs)': e.outcome === 'Stock Delivered' ? e.dlCollected : e.payAmt || '', 'Credit days': e.dlDays || '',
   Photo: e.photo || '', Location: e.lat ? `https://www.google.com/maps?q=${e.lat},${e.lng}` : '',
 }))
-const COLS = ['Date', 'Time', 'Type', 'Hotel', 'Area', 'Phone', 'Outcome', 'Rating', 'Remark', 'Next follow-up', 'Photo', 'Location']
+const COLS = ['Date', 'Time', 'Type', 'Hotel', 'Area', 'Phone', 'Outcome', 'Rating', 'Remark', 'Next follow-up', 'Packets', 'Returned', 'Bill (Rs)', 'Collected (Rs)', 'Credit days', 'Photo', 'Location']
 
 export const makeFieldCSV = (r) => new Blob(['﻿' + toCSV(rows(r), COLS)], { type: 'text/csv;charset=utf-8' })
 
@@ -41,10 +42,10 @@ export async function makeFieldXLSX(r) {
 
   const ws = wb.addWorksheet('Visits & Calls')
   ws.columns = [{ header: 'Date', width: 18 }, { header: 'Time', width: 10 }, { header: 'Type', width: 8 }, { header: 'Hotel', width: 28 }, { header: 'Area', width: 18 }, { header: 'Phone', width: 14 },
-    { header: 'Outcome', width: 20 }, { header: 'Rating (1-5)', width: 11 }, { header: 'Remark', width: 40 }, { header: 'Next follow-up', width: 18 }, { header: 'Photo link', width: 30 }, { header: 'Location link', width: 30 }]
+    { header: 'Outcome', width: 20 }, { header: 'Rating (1-5)', width: 11 }, { header: 'Remark', width: 40 }, { header: 'Next follow-up', width: 18 }, { header: 'Packets', width: 9 }, { header: 'Returned', width: 9 }, { header: 'Bill (Rs)', width: 11 }, { header: 'Collected (Rs)', width: 14 }, { header: 'Credit days', width: 11 }, { header: 'Photo link', width: 30 }, { header: 'Location link', width: 30 }]
   rows(r).forEach((x) => ws.addRow(COLS.map((c) => x[c])))
   head(ws)
-  ws.autoFilter = { from: 'A1', to: 'L1' }
+  ws.autoFilter = { from: 'A1', to: 'Q1' }
 
   const wd = wb.addWorksheet('Day-wise')
   wd.columns = [{ header: 'Date', width: 20 }, { header: 'Visits', width: 9 }, { header: 'Calls', width: 9 }, { header: 'Hotels', width: 9 }, { header: 'Avg rating', width: 11 }]

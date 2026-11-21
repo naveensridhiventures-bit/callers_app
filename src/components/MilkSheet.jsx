@@ -28,7 +28,7 @@ const FOLLOW = [
  * With no `id` it adds a NEW distributor the field person found (source = "Own source").
  */
 export default function MilkSheet({ id, preset = {}, tab: tab0 = 'visit', onClose }) {
-  const { allLeads, leads, session, logCall, saveDetails, removeLead, startCall, toast, openLead, flushPhotos } = useApp()
+  const { allLeads, leads, session, openStock, logCall, saveDetails, removeLead, startCall, toast, openLead, flushPhotos } = useApp()
   const lead = id ? allLeads.find((l) => l.id === id) : null
   const adding = !lead
   const isAdmin = session?.role === 'admin'
@@ -171,6 +171,7 @@ export default function MilkSheet({ id, preset = {}, tab: tab0 = 'visit', onClos
               {lead.phone ? <a className="hr-b" href={waHref(lead.phone, `Hi ${lead.contactName || lead.name}, this is ${session?.name || 'Sridhi'} from Sridhi. `)} target="_blank" rel="noreferrer"><Icon name="whatsapp" size={17} /> WhatsApp</a> : <span className="hr-b off">—</span>}
               <MapButton lead={lead} className="hr-b"><Icon name="pin" size={17} /> {hotelPoint(lead) ? 'Map' : 'Find'}</MapButton>
             </div>
+            {!isAdmin && <button type="button" className="sv-deliver" onClick={() => { onClose(); setTimeout(() => openStock({ mode: 'deliver', id: lead.id }), 60) }}>📦 Deliver stock / collect payment</button>}
             {lead.lastRemark && <p className="mk-last"><b>Last remark:</b> {lead.lastRemark}</p>}
             {(isAdmin || hist.length > 0) && (
               <div className="mk-tabs" role="tablist">

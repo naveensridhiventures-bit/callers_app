@@ -1,3 +1,6 @@
+import FieldStock from './pages/FieldStock'
+import StockSheet from './components/StockSheet'
+import { owingList, inr, dueText } from './stock'
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AppProvider, useApp } from './store'
@@ -37,7 +40,7 @@ const AdminAssign = () => <div className="page adm"><div className="page-h"><h1>
 const AdminRequests = () => <div className="page adm"><div className="page-h"><h1>Delete requests</h1></div><Requests /></div>
 const AdminSettings = () => <div className="page adm"><div className="page-h"><h1>Settings</h1></div><Settings /></div>
 const AdminReports = () => <div className="page adm"><div className="page-h"><h1>Reports</h1></div><ReportCenter admin /></div>
-const FIELD_PAGES = { home: FieldHome, areas: FieldAreas, plan: FieldPlan, leads: FieldPlan, follow: FieldFollow, report: FieldReport, more: More }
+const FIELD_PAGES = { home: FieldHome, areas: FieldAreas, plan: FieldPlan, leads: FieldPlan, follow: FieldFollow, report: FieldReport, stock: FieldStock, more: More }
 const ADMIN_PAGES = { milk: AdminMilk, hotels: AdminHotels, locations: AdminLocations, hubs: Hubs, reports: AdminReports, overview: AdminOverview, team: AdminTeam, assign: AdminAssign, leads: Leads, requests: AdminRequests, settings: AdminSettings }
 const ADMIN_TABS = [
   { id: 'overview', icon: 'chart', label: 'Progress' },
@@ -52,6 +55,7 @@ const FIELD_TABS = [
   { id: 'home', icon: 'home', label: 'Today' },
   { id: 'areas', icon: 'grid', label: 'Areas' },
   { id: 'plan', icon: 'pin', label: 'Hotels' },
+  { id: 'stock', icon: 'list', label: 'Stock' },
   { id: 'follow', icon: 'calendar', label: 'Follow-ups' },
   { id: 'report', icon: 'download', label: 'Report' },
 ]
@@ -96,10 +100,28 @@ function Shell() {
         }
       })
     }
-    check()
-    const t = setInterval(check, 30000)
+    /* credit payments: remind the day before, on the due day, and every day while overdue */
+    const checkDues = () => {
+      if (session?.role !== 'field') return
+      const day = new Date().toDateString()
+      owingList(leads).forEach(({ lead: l, L, s }) => {
+        if (!['soon', 'today', 'late'].includes(s.k)) return
+        const key = `pay:${l.id}:${L.dueAt}:${s.k}:${day}`
+        if (notified.current.has(key)) return
+        notified.current.add(key)
+        localStorage.setItem('sridhi.notified', JSON.stringify([...notified.current].slice(-300)))
+        toast(`💰 Collect ${inr(L.outstanding)} from ${l.name} (${dueText(s).toLowerCase()})`, 'warn')
+        navigator.vibrate?.([120, 60, 120])
+        if ('Notification' in window && Notification.permission === 'granted') {
+          const n = new Notification('Payment to collect', { body: `${l.name} · ${l.area || 'Chennai'}\n${inr(L.outstanding)} · ${dueText(s)}`, icon: '/icon-192.png' })
+          n.onclick = () => { window.focus(); go('stock') }
+        }
+      })
+    }
+    check(); checkDues()
+    const t = setInterval(() => { check(); checkDues() }, 30000)
     return () => clearInterval(t)
-  }, [leads, toast, openLead, session])
+  }, [leads, toast, openLead, session, go])
 
   /* already signed in as admin and opened /control: go straight to the admin panel */
   useEffect(() => {
@@ -182,6 +204,7 @@ function Shell() {
 
       {sheet?.type === 'form' && <LeadForm key="form" lead={formLead} preset={sheet.preset} onClose={closeSheet} />}
       {sheet?.type === 'milk' && <MilkSheet key={`m-${sheet.id}`} id={sheet.id} tab={sheet.tab} onClose={closeSheet} />}
+      {sheet?.type === 'stock' && <StockSheet key="stock" preset={sheet.preset} onClose={closeSheet} />}
       {sheet?.type === 'milkform' && <MilkSheet key="mform" preset={sheet.preset} onClose={closeSheet} />}
       {sheet?.type === 'detail' && <LeadDetail key={`d-${sheet.id}`} id={sheet.id} calling={sheet.calling} preset={sheet.outcome} onClose={closeSheet} />}
 

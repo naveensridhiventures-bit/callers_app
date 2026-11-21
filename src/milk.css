@@ -205,3 +205,77 @@
 .cam-shot:active i { transform: scale(.88); }
 .cam-shot:disabled { opacity: .4; }
 .cam-err { margin: auto; padding: 24px; display: flex; flex-direction: column; gap: 14px; align-items: center; color: #fff; text-align: center; }
+
+/* ================= stock & cash (v10) ================= */
+.sv-deliver { width: 100%; padding: 13px; border-radius: 18px; font-weight: 800; font-size: 15px; color: #0a4a25; background: linear-gradient(135deg, #e9f6a8, #cdeea0); box-shadow: var(--shadow); }
+.mc-owe { margin: 6px 0 0; padding: 7px 12px; border-radius: 12px; font-size: 12.5px; font-weight: 800; background: #fef3c7; color: #92400e; }
+.mc-owe.late { background: #fee2e2; color: #b91c1c; }
+.hr-act { flex-wrap: wrap; }
+.dues { display: flex; align-items: center; gap: 12px; width: 100%; margin: 0 0 12px; padding: 12px 14px; border-radius: 20px; text-align: left; color: #fff; background: linear-gradient(120deg, #b45309, #d97706); box-shadow: var(--shadow); }
+.dues.late { background: linear-gradient(120deg, #991b1b, #dc2626); }
+.dues i { font-style: normal; font-size: 26px; }
+.dues div { flex: 1; min-width: 0; }
+.dues b { display: block; font-size: 16px; font-weight: 800; }
+.dues small { display: block; font-size: 12px; font-weight: 600; opacity: .92; }
+.dues em { font-style: normal; font-size: 24px; opacity: .8; }
+.st-act { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.st-act .btn3d { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 8px; font-size: 15px; }
+.st-act .btn3d span { font-size: 28px; }
+.st-h { display: flex; align-items: center; gap: 8px; margin: 18px 0 8px; font-size: 15px; font-weight: 800; }
+.st-h small { margin-left: auto; font-size: 12px; background: #e3eee6; padding: 2px 9px; border-radius: 99px; }
+.kpi.warn b { color: #b45309; }
+.st-card { display: flex; align-items: center; gap: 10px; padding: 12px 14px; margin-bottom: 8px; border-radius: 18px; background: #fff; box-shadow: var(--shadow); border-left: 5px solid #d97706; }
+.st-card.late { border-left-color: #dc2626; }
+.st-card.later { border-left-color: #94a3b8; }
+.st-card > div:first-child { flex: 1; min-width: 0; }
+.st-card b { display: block; font-size: 15px; }
+.st-card small { display: block; font-size: 12px; color: #5f7468; }
+.st-chip { display: inline-block; margin-top: 4px; padding: 2px 9px; border-radius: 99px; font-size: 11.5px; font-weight: 800; background: #fef3c7; color: #92400e; }
+.st-chip.late { background: #fee2e2; color: #b91c1c; }
+.st-chip.later { background: #eef2f6; color: #475569; }
+.st-amt { text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.st-amt b { font-size: 17px; color: #b45309; }
+.st-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; margin-bottom: 6px; border-radius: 16px; background: #fff; box-shadow: var(--shadow); }
+.st-row i { font-style: normal; font-size: 20px; }
+.st-row div { flex: 1; min-width: 0; }
+.st-row small { display: block; font-size: 12px; color: #5f7468; }
+.st-row em { font-style: normal; font-size: 11.5px; color: #5f7468; }
+.st-tabs { margin-top: 0; }
+.st-q { width: 100%; font-size: 16px; padding: 12px 14px; border-radius: 14px; border: 1.5px solid #d7e4da; margin-bottom: 8px; }
+.st-list { list-style: none; margin: 0; padding: 0; max-height: 280px; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+.st-list button { width: 100%; text-align: left; display: flex; flex-direction: column; padding: 10px 12px; border-radius: 14px; background: #f3f8f4; position: relative; }
+.st-list b { font-size: 14.5px; }
+.st-list small { font-size: 12px; color: #5f7468; }
+.st-list em { position: absolute; right: 12px; top: 12px; font-style: normal; font-size: 11.5px; font-weight: 800; color: #b45309; }
+.st-none { font-size: 13px; color: #5f7468; padding: 10px; }
+.st-sel { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 18px; background: #e8f6ec; }
+.st-sel > div { flex: 1; min-width: 0; }
+.st-sel b { display: block; font-size: 16px; }
+.st-sel small { display: block; font-size: 12px; color: #4a5d52; }
+.st-owe { display: inline-block; margin-top: 4px; font-style: normal; font-size: 12px; font-weight: 800; color: #92400e; }
+.st-owe.late { color: #b91c1c; }
+.st-owe.big { font-size: 15px; padding: 10px 12px; border-radius: 14px; background: #fef3c7; display: block; margin: 0 0 10px; }
+.st-big { display: flex; align-items: center; gap: 10px; padding: 6px 16px; border-radius: 20px; background: #f3fbe0; border: 2px solid #c9e48a; margin-bottom: 10px; }
+.st-big input { flex: 1; min-width: 0; border: 0; background: transparent; font-size: 40px; font-weight: 800; color: #0a4a25; padding: 4px 0; outline: 0; }
+.st-big span { font-weight: 800; color: #5f7468; }
+.st-bill { background: linear-gradient(160deg, #0f6b34, #0a4a25); color: #fff; }
+.st-bill > div { display: flex; justify-content: space-between; font-size: 14px; padding: 3px 0; }
+.st-bill .neg { color: #fecaca; }
+.st-bill .tot { border-top: 1px dashed rgba(255, 255, 255, .4); margin-top: 6px; padding-top: 8px; font-size: 20px; font-weight: 800; color: #d4e83a; }
+.st-pay { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.st-pay button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 12px; border-radius: 18px; background: #eef2f6; border: 2px solid transparent; }
+.st-pay button em { font-style: normal; font-size: 24px; }
+.st-pay button b { font-size: 16px; }
+.st-pay button small { font-size: 12px; color: #5f7468; }
+.st-pay button.on { background: #fff; border-color: #0f6b34; box-shadow: 0 0 0 4px rgba(15, 107, 52, .14); }
+.st-credit { margin-top: 10px; padding: 12px; border-radius: 16px; background: #fef3c7; }
+.st-credit p { margin: 0 0 8px; font-size: 14px; }
+.st-credit small { display: block; margin-top: 8px; font-size: 12.5px; color: #92400e; }
+.st-loc { text-align: center; font-size: 12px; color: #5f7468; margin: 0; }
+.st-ok { text-align: center; padding: 26px 16px; border-radius: 24px; background: linear-gradient(160deg, #e9f6a8, #cdeea0); }
+.st-ok span { font-size: 54px; }
+.st-ok h2 { margin: 6px 0 2px; }
+.st-ok b { display: block; font-size: 22px; margin-top: 10px; color: #0a4a25; }
+.st-ok small { display: block; margin-top: 4px; font-size: 13px; }
+.st-wa { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; font-weight: 800; }
+.st input, .st textarea { font-size: 16px; }
